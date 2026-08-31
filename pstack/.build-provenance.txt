@@ -1,0 +1,28 @@
+package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
+source: (local clone)
+source_commit: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+converted_at: 2026-08-31T07:31:18Z
+converter: convert.py (sha256[:16]=7a3b5cee1db5540b)
+schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
+fixes:
+  - F-publish: skills/make-bot-ui excluded (Tailscale privilege-escalation scan; F33)
+  - skills/poteto-mode/SKILL.md: frontmatter name 'Poteto Mode' -> 'poteto-mode'
+  - R1: poteto-mode principles index regenerated from 21 leaves (single source of truth; hand-maintained wording replaced)
+  - F16: check-plan.mjs lane slug env-overridable via PSTACK_FAST_LANE
+  - F16: multi-phase-plan template documents the PSTACK_FAST_LANE override
+  - F10-F12: worktree-audit.sh portable via stat_mtime/date_epoch helpers (GNU + BSD/macOS); awk no longer truncates space-paths
+  - F-publish: 3 localhost endpoint literals neutralized in feature-map example docs (install-scanner network findings)
+  - T8: 12 factual fixes from the hermes deep review (readonly-MCP rationale x3, swarm Cursor params x2, tool-name mappings x2, model-panel path x1, principle cross-link, adaptation note)
+  - Phase-2A: delegation translation applied across 17 skill files (subagent_type/Task/AskQuestion/run_in_background/cloud -> delegate_task + clarify + background execution)
+  - G1: delegation escape hatch added to feature.md + poteto-mode Subagents (in-thread authoring allowed for resident surgical edits, with mandatory independent delegate review)
+  - F-publish: automations/benny excluded (scanner persistence verdict) and skills/make-bot-ui excluded (scanner privilege verdict; F33)
+  - plugin.json: injected exact agent-plugins-v1 $schema at ROOT (9 whitelisted fields; displayName/category/tags/agents/skills omitted)
+  - text normalization: UTF-8 without BOM, LF line endings (files normalized: 124, BOM stripped: 0, CRLF fixed: 125)
+counts:
+  skills_loaded: 44 (23 workflow/mode + 21 principle)
+  skill_md_on_disk: 44 (skills/ only; automations/benny + make-bot-ui excluded for the install scanner)
+  agents_files: 2
+notes:
+  - agents/ is inert on the hermes portable path (kept for Cursor dual-load / Phase 2)
+  - automations/benny + make-bot-ui excluded (install-scanner verdict); rebuild via Phase 4 / stay Cursor-side
+  - .cursor-plugin/plugin.json preserved unchanged for Cursor dual-load; hermes probes the root manifest only
