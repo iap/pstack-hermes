@@ -552,6 +552,32 @@ def main() -> int:
 
         load_ok = load.get("status") == "ok" and load.get("parsed", {}).get("skill_count") == 44 \
             and not load.get("parsed", {}).get("diagnostics")
+
+        # Optional: repo YAML structural check (only when pyyaml is available,
+        # e.g. via `uv sync` dev group or CI). The package itself ships no YAML;
+        # this validates the repo's CI configs, labeler, and issue templates.
+        try:
+            import yaml  # type: ignore
+        except ImportError:
+            yaml = None
+        if yaml is not None:
+            repo = Path(__file__).resolve().parent
+            gh = repo / ".github"
+            ymls = sorted(gh.rglob("*.yml")) if gh.is_dir() else []
+            bad_yml = []
+            for y in ymls:
+                try:
+                    yaml.safe_load(y.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    bad_yml.append(f"{y.name}: {str(exc)[:100]}")
+            if ymls:
+                print(f"\n-- [R] Repo YAML structural check ({len(ymls)} files) --")
+                for b in bad_yml:
+                    print(f"  YAML FAIL: {b}")
+                    rep.failed.append(f"repo YAML invalid: {b}")
+                if not bad_yml:
+                    print(f"  PASS: all {len(ymls)} .github YAML files parse clean")
+
         print("\n== verdict ==")
         if rep.failed:
             print(f"HARD FAILURES: {len(rep.failed)}")

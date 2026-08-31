@@ -11,6 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up uv (pinned interpreter + lockfile)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: Clone upstream pstack at the pinned commit
         run: |
           git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
@@ -29,7 +34,7 @@ jobs:
 
       - name: Convert (apply all transforms)
         run: |
-          python3 convert.py \
+          uv run --frozen convert.py \
             --source "$RUNNER_TEMP/cursor-plugins/pstack" \
             --out "$GITHUB_WORKSPACE/pstack" \
             --build-note "CI build $GITHUB_SHA"
@@ -47,9 +52,9 @@ jobs:
           fi
           echo "provenance consistency verified: source_commit == $pin"
 
-      - name: Validate (static + structural checks)
+      - name: Validate (static + repo YAML + structural checks)
         run: |
-          python3 validate.py --package "$GITHUB_WORKSPACE/pstack"
+          uv run --frozen validate.py --package "$GITHUB_WORKSPACE/pstack"
 
       - name: Scanner gate (community source must be safe)
         run: |

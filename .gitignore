@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 
+# uv-managed virtualenv (uv run creates it; never commit)
+.venv/
+
 # validate.py runtime scratch (GOLD+ loader data_root; empty/regenerable)
 .validate-data/
 
