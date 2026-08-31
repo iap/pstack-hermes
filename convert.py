@@ -550,6 +550,28 @@ Panel roles (how critics, arena runners, arena cross-judge pool, architect runne
          'On yes, load the create-verification-skill skill via skill_view (it ships in this plugin) and follow it.'),
     ]
     T9_MAP = [
+        ('Drafts or revises a personal -mode skill via create-skill + unslop',
+         'Drafts or revises a personal -mode skill via the `skill_manage` tool (action: `create`) + unslop'),
+        ('an inline mining pass (see step 1), Cursor\'s built-in `create-skill` (authoring), and the **unslop** skill',
+         'an inline mining pass (see step 1), the `skill_manage` tool (action: `create`, authoring), and the **unslop** skill'),
+        ('Use Cursor\'s built-in `create-skill` skill to author the skill.',
+         'Use the `skill_manage` tool (action: `create`) to author the skill.'),
+        ('follow `create-skill`\'s YAML rules', 'follow the `skill_manage` authoring YAML rules'),
+        ('Apply the **unslop** skill and `create-skill`\'s writing guidelines to every line.',
+         'Apply the **unslop** skill and the `skill_manage` authoring writing guidelines to every line.'),
+        ('A `create-skill`-style test/iterate benchmark loop isn\'t useful here.',
+         'A skill-authoring test/iterate benchmark loop isn\'t useful here.'),
+        ('`create-skill` alone, no mining required.', 'the `skill_manage` tool alone, no mining required.'),
+        ('- Cursor\'s built-in `create-skill` skill: skill authoring process and writing guidelines.',
+         '- The `skill_manage` tool (action: `create`): skill authoring process and writing guidelines.'),
+        ('Agent-facing prose also follows the **create-skill** skill (Cursor\'s built-in for authoring SKILL.md files).',
+         'Agent-facing prose also follows the **skill_manage** tool (hermes\' authoring operation for SKILL.md files).'),
+        ('1. Use the **create-skill** skill (Cursor\'s built-in for authoring SKILL.md files).',
+         '1. Use the `skill_manage` tool (action: `create`, hermes\' authoring operation for SKILL.md files).'),
+        ('- Existing-skill-first: propose `new skill via create-skill:` only when no existing skill is a real home, the pattern recurs, and the topic deserves its own skill.',
+         '- Existing-skill-first: propose `new skill via the skill_manage tool:` only when no existing skill is a real home, the pattern recurs, and the topic deserves its own skill.'),
+        ('| <new pattern, no existing skill is a real home> | <draft a new skill via create-skill> | <new skill via create-skill: <kebab-name>> |',
+         '| <new pattern, no existing skill is a real home> | <draft a new skill via the skill_manage tool> | <new skill via the skill_manage tool: <kebab-name>> |'),
         ('Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.',
          'Before spawning investigators, list the MCP tools available in this session (the configured MCP servers\' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.'),
         ('- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)',
@@ -844,26 +866,32 @@ def main() -> int:
     skills_src = source / "skills"
     skills_dst = out / "skills"
     grokbot = skills_src / "grokbot"
-    if not grokbot.is_dir():
-        raise ConvertError(f"expected container missing in source: {grokbot}")
     flattened: list[str] = []
     for child in sorted(p for p in skills_src.iterdir()):
         if not child.is_dir():
             raise ConvertError(f"unexpected non-directory under skills/: {child.name}")
         if child.name == "grokbot":
-            # F-publish: skills/make-bot-ui is excluded from the hermes package
-            # (privilege-escalation scan verdict; F33 deepest vendor coupling).
+            # Study-era layout: make-bot-ui nested in a grokbot container.
+            # F-publish: excluded from the hermes package (privilege-escalation
+            # scan verdict; F33 deepest vendor coupling). Upstream has since
+            # flattened the container themselves - both layouts are handled.
             for inner in sorted(p for p in child.iterdir()):
                 if inner.name == "make-bot-ui":
-                    st.fixes.append("F-publish: skills/make-bot-ui excluded "
+                    st.fixes.append("F-publish: skills/grokbot/make-bot-ui excluded "
                                     "(Tailscale privilege-escalation scan; F33)")
                     continue
                 raise ConvertError(f"unexpected file under skills/grokbot/: {inner.name}")
             flattened.append("(grokbot container skipped)")
+        elif child.name == "make-bot-ui":
+            # Current upstream layout: the container is gone; exclude directly.
+            st.fixes.append("F-publish: skills/make-bot-ui excluded "
+                            "(Tailscale privilege-escalation scan; F33; upstream "
+                            "flattened the grokbot container)")
+            flattened.append("(make-bot-ui excluded)")
         else:
             copy_tree(child, skills_dst / child.name, st)
-    if flattened != ["(grokbot container skipped)"]:
-        st.warnings.append(f"skills/grokbot contained unexpected children: {flattened}")
+    if flattened:
+        st.warnings.append(f"excluded containers: {flattened}")
 
     # (b) exactly two frontmatter name fixes
     for dirname, (old, new) in FRONTMATTER_FIXES.items():
