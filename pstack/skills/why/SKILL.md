@@ -97,7 +97,7 @@ Capture this as seed context (file paths, symbols, commits, PR numbers, linked t
 
 ### Discovery
 
-Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.
+Before spawning investigators, list the MCP tools available in this session (the configured MCP servers' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.
 
 Map each available MCP to one evidence category:
 
@@ -117,7 +117,7 @@ Launch all matching investigators in a single message so they run concurrently. 
 
 Subagent config (each):
 - `delegate_task`: role `leaf`
-- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)
+- `model`: the why-investigators role model from `config/models.json` (fallback: the parent chat model)
 - `readonly`: `false` (agent mode) so investigators can record findings if needed. Note: readonly on hermes restricts file writes only - MCP access is unaffected, so read-only mode would also work for pure exploration. Investigators still shouldn't write anything. That's a posture, not a sandbox.
 
 Each investigator gets:
@@ -163,7 +163,7 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 Spawn one synthesizer subagent:
 
 - `delegate_task`: role `leaf`
-- `model`: your configured why-synthesizer model (default `claude-fable-5-thinking-max`)
+- `model`: the why-synthesizer role model from `config/models.json` (fallback: the parent chat model)
 - `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly mode on hermes restricts file writes only - MCP access is unaffected - but agent mode keeps the option to record findings.
 
 The synthesizer gets:
