@@ -469,6 +469,216 @@ def apply_phase1_transforms(out: Path, st: "Stats") -> None:
     # --- T6: delegation translation (Phase-2A) ---
     apply_delegation_translation(out, st)
 
+    # --- T9/T10: hermes-native discovery + config (Stages A+B) ---
+    # Stage A (T10): setup-pstack writes config/models.json (package-local)
+    # instead of ~/.cursor/rules/pstack-models.mdc; poteto-mode reads it.
+    # Stage B (T9): why/reflect/recall discovery sections rewritten to
+    # hermes-native mechanisms (session_search, session tool catalog).
+    T10_MAP = [
+        ('Detects your available models and writes an always-applied rule that overrides the skill defaults.',
+         'Detects your available models and writes config/models.json that overrides the skill defaults.'),
+        ('Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack\'s model per role. The skills read it and fall back to their inline defaults when a line is absent, so this is an override layer, not a requirement.',
+         'Write `config/models.json` in this plugin\'s directory (next to plugin.json); it sets pstack\'s model per role. poteto-mode reads it and falls back to `inherit-parent` (the parent chat model) when a role is absent, so this is an override layer, not a requirement.'),
+        ('Enumerate the model slugs you can pass to a `delegate_task` subagent in this session; that is the dependable source. If Cursor also exposes a models API or CLI that lists the user\'s entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.',
+         'Enumerate the model slugs available in this session (the configured providers\' catalog); that is the dependable source. If you cannot detect any, ask the user via `clarify` to paste the slugs they have access to. Never write a real slug you have not confirmed is available. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic).'),
+        ('The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.',
+         'The default role-to-model mapping is the shape shown in step 5 below. If `config/models.json` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.'),
+        ('offering the detected models plus `inherit-parent` and `auto` (both mean: this role runs on the parent chat model, which is how Auto users stay on Auto) as the options.',
+         'offering the detected models plus `inherit-parent` (this role runs on the parent chat model) as the options.'),
+        ('Every real slug written must be in the detected set; `inherit-parent` and `auto` always pass.',
+         'Every real slug written must be in the detected set; `inherit-parent` always passes.'),
+        ('''### 5. Write the rule
+
+Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+
+```
+---
+description: pstack per-role model choices (overrides skill defaults)
+alwaysApply: true
+---
+# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
+# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
+feature, refactoring: grok-4.6-fast-xhigh
+bug-fix: gpt-5.6-sol-max
+perf-issue: gpt-5.6-sol-max
+hillclimb: gpt-5.6-sol-max
+judgment and prose: claude-fable-5-thinking-max
+hardest tasks: claude-fable-5-thinking-max
+how explorer: grok-4.6-fast-xhigh
+how explainer: claude-fable-5-thinking-max
+how critics: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+why investigators: grok-4.6-fast-xhigh
+why synthesizer: claude-fable-5-thinking-max
+reflect tooling: gpt-5.6-sol-max
+reflect judgment, divergent, synthesizer: claude-fable-5-thinking-max
+arena runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+arena cross-judge pool: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+swarm workers: grok-4.6-fast-xhigh
+architect runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+interrogate reviewers: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+```''',
+         '''### 5. Write the config
+
+Write `config/models.json` in this plugin's directory with one entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+
+```json
+{
+  "roles": {
+    "feature, refactoring": "inherit-parent",
+    "bug-fix": "inherit-parent",
+    "perf-issue": "inherit-parent",
+    "hillclimb": "inherit-parent",
+    "judgment and prose": "inherit-parent",
+    "hardest tasks": "inherit-parent",
+    "how explorer": "inherit-parent",
+    "how explainer": "inherit-parent",
+    "how critics": ["inherit-parent"],
+    "why investigators": "inherit-parent",
+    "why synthesizer": "inherit-parent",
+    "reflect tooling": "inherit-parent",
+    "reflect judgment, divergent, synthesizer": "inherit-parent",
+    "arena runners": ["inherit-parent"],
+    "arena cross-judge pool": ["inherit-parent"],
+    "swarm workers": "inherit-parent",
+    "architect runners": ["inherit-parent"],
+    "interrogate reviewers": ["inherit-parent"]
+  }
+}
+```
+Panel roles (how critics, arena runners, arena cross-judge pool, architect runners, interrogate reviewers) take an ARRAY; one subagent runs per entry, so the list length sets the count. `swarm workers` is the default for every worker unless a race assigns another model per arm.'''),
+        ('On yes, invoke `/create-verification-skill` (resolves wherever pstack is installed \u2014 workspace, user, or plugin).',
+         'On yes, load the create-verification-skill skill via skill_view (it ships in this plugin) and follow it.'),
+    ]
+    T9_MAP = [
+        ('Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.',
+         'Before spawning investigators, list the MCP tools available in this session (the configured MCP servers\' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.'),
+        ('- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)',
+         '- `model`: the why-investigators role model from `config/models.json` (fallback: the parent chat model)'),
+        ('- `model`: your configured why-synthesizer model (default `claude-fable-5-thinking-max`)',
+         '- `model`: the why-synthesizer role model from `config/models.json` (fallback: the parent chat model)'),
+        ('''### 1. Locate the active transcript
+
+The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory; use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
+
+```bash
+ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10
+```
+
+Three transcript layouts: legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`).
+
+For each candidate, read the first JSONL line and check that `message.content[0].text` contains the conversation's opening user prompt. Take the matching path. If no path resolves, write a tight digest of the session and pass that instead.''',
+         '''### 1. Locate the active transcript
+
+The parent locates the current session via `session_search` (hermes stores sessions in its SQLite store; there are no JSONL transcript files). Query for the active conversation and take the most recent matching session id. If the exact session cannot be resolved, write a tight digest of the conversation and pass that instead.'''),
+        ('| Judgment | your configured reflect-judgment model (default `claude-fable-5-thinking-max`) | `references/judgment-reviewer.md` |',
+         '| Judgment | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/judgment-reviewer.md` |'),
+        ('| Tooling | your configured reflect-tooling model (default `gpt-5.6-sol-max`) | `references/tooling-reviewer.md` |',
+         '| Tooling | the reflect-tooling role model from `config/models.json` (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
+        ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-thinking-max`) | `references/divergent-reviewer.md` |',
+         '| Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
+        ('One `delegate_task` call, `delegate_task` (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-thinking-max`), agent mode (`readonly: false`).',
+         'One `delegate_task` call, `delegate_task` (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
+        ('- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor\'s built-in `create-skill` skill and run its draft / test / iterate loop.',
+         '- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill\'s guidance, or `skill_manage(action=\'create\')`) and run its draft / test / iterate loop.'),
+        ('- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to `create-skill` and run its description-optimization loop.',
+         '- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to the hermes skill-authoring flow\'s description pass.'),
+        ('- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.',
+         '- `new skill: <kebab-name>`: hand creation to the hermes skill-authoring flow. Do not invent the shape ad hoc.'),
+        ('Transcripts live at `~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl`, where `<slug>` is the workspace path with the leading slash dropped and each "/" turned into "-" (so `/Users/you/proj` becomes `Users-you-proj`). Every line is one chat message.',
+         'Sessions live in hermes\' SQLite store; there are no JSONL transcript files. Query them via `session_search` (topic + recency filters).'),
+        ('One specific prior chat to resume is the `session-pickup` playbook, not this.',
+         'One specific prior chat to resume is the session-pickup playbook (in this plugin\'s playbooks/), not this.'),
+        ('Tell every subagent to order candidates by real modification time (`ls -t`) and never by UUID name, grep the topic first and then read only the matching chats and only their relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).',
+         'Tell every subagent to query `session_search` by topic and recency, read only the matching sessions\' relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).'),
+    ]
+    t910 = 0
+    for p in sorted((out / "skills").rglob("*.md")):
+        t = p.read_text(encoding="utf-8")
+        t0 = t
+        for old, new in T10_MAP + T9_MAP:
+            if old in t:
+                t = t.replace(old, new)
+                t910 += 1
+        if t != t0:
+            p.write_bytes(t.encode("utf-8"))
+    cfg_dir = out / "config"
+    cfg_dir.mkdir(exist_ok=True)
+    cfg = cfg_dir / "models.json"
+    if not cfg.exists():
+        import json as _json
+        roles = {
+            "feature, refactoring": "inherit-parent", "bug-fix": "inherit-parent",
+            "perf-issue": "inherit-parent", "hillclimb": "inherit-parent",
+            "judgment and prose": "inherit-parent", "hardest tasks": "inherit-parent",
+            "how explorer": "inherit-parent", "how explainer": "inherit-parent",
+            "how critics": ["inherit-parent"], "why investigators": "inherit-parent",
+            "why synthesizer": "inherit-parent", "reflect tooling": "inherit-parent",
+            "reflect judgment, divergent, synthesizer": "inherit-parent",
+            "arena runners": ["inherit-parent"], "arena cross-judge pool": ["inherit-parent"],
+            "swarm workers": "inherit-parent", "architect runners": ["inherit-parent"],
+            "interrogate reviewers": ["inherit-parent"],
+        }
+        cfg.write_bytes((_json.dumps({"roles": roles}, indent=2) + "\n").encode("utf-8"))
+        st.fixes.append("T10: config/models.json shipped with inherit-parent defaults")
+    if t910:
+        st.fixes.append(f"T9/T10: {t910} hermes-native discovery/config fixes applied "
+                        "(setup-pstack models.json, why/reflect/recall session_search)")
+
+    # --- T11: hardcoded-path cleanup (path audit 2026-08-30) ---
+    # Cursor-specific paths, /tmp scratch dirs, and malformed links across the
+    # package. worktree-audit.sh keeps its Cursor transcript path (graceful
+    # skip on hermes) with a note; provenance is by-design; github.ts:352 was
+    # a regex false positive in the audit.
+    T11_MAP = [
+        ('Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.',
+         'Use `arena runners` from `config/models.json` when present.'),
+        ('Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry,',
+         'Use the `interrogate reviewers` list from `config/models.json` when present, one reviewer per entry,'),
+        ('Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user\'s handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.',
+         'Look recursively for `*-mode/SKILL.md` matching the user\'s handle: in this plugin\'s `skills/` directory, in `~/.hermes/skills/`, or wherever the user\'s mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level.'),
+        ('Locate the active workspace\'s transcripts before fanning out. The system prompt names the workspace\'s `agent-transcripts/` directory. Use only that path. Don\'t glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.',
+         'Locate the active session history before fanning out. Query `session_search` for the active conversation\'s sessions; hermes stores them in its SQLite store. Don\'t read sessions from unrelated projects or users.'),
+        ('- Path: preserve an existing mode skill\'s category. For a new mode, use `.cursor/skills/<handle>/<handle>-mode/SKILL.md` when the repo has an established personal category for that handle; otherwise default to `.cursor/skills/<handle>-mode/SKILL.md` in the project (or `~/.cursor/skills/<handle>-mode/` if the user prefers a personal skill).',
+         '- Path: preserve an existing mode skill\'s category. For a new mode, use `skills/<handle>/<handle>-mode/SKILL.md` when the plugin has an established personal category for that handle; otherwise default to `~/.hermes/skills/<handle>-mode/SKILL.md` (a personal skill location).'),
+        ('Read each candidate\'s local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`; that crosses workspace boundaries and reads private chats from unrelated projects.',
+         'Verify each candidate\'s trail via `session_search` over the hermes session store (query the candidate\'s topic and read the matching session\'s relevant regions). Hermes sessions cross project boundaries only when the work did.'),
+        ('1. Locate the prior trail. A local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path; do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.',
+         '1. Locate the prior trail. The hermes session store (query `session_search` for the prior conversation), a cloud-agent URL, or a pushed branch.'),
+        ('Read this run\'s transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path). Don\'t glob across `~/.cursor/projects/*/`; that reads unrelated private chats.',
+         'Read this run\'s history via `session_search` over the hermes session store (query this conversation). Don\'t read unrelated private sessions.'),
+        ('- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)',
+         '- `read_file` calls against any `SKILL.md` file (this plugin\'s `skills/`, `~/.hermes/skills/`, or other configured skills locations)'),
+        ('otherwise `/tmp/arena-<slug>/candidate-<n>/`',
+         'otherwise a scratch directory under the system temp (`arena-<slug>/candidate-<n>/`)'),
+        ('Save every screenshot to `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the report.',
+         'Save every screenshot to a scratch directory under the system temp (`swarm-<pr-id>/worker-<n>/<slug>.png`) and return the paths with the report.'),
+        ('write it to a file like `/tmp/<slug>-resume.md`',
+         'write it to a resume file in the system temp directory (`<slug>-resume.md`)'),
+        ('Use a worktree, branch, or `/tmp/swarm-<slug>/worker-<n>/`.',
+         'Use a worktree, branch, or a scratch directory under the system temp (`swarm-<slug>/worker-<n>/`).'),
+        ('Set `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` so concurrent runs do not share state.',
+         'Set `NOTES_DATA_DIR` to a scratch directory under the system temp (e.g. `notes-verify-$RUN_ID`) so concurrent runs do not share state.'),
+        ('6. Simulators and other reclaimers.',
+         '6. Simulators and other reclaimers (macOS/Xcode).'),
+        ('reading local transcripts under `agent-transcripts/`',
+         'reading session history from the local hermes store'),
+        ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
+         '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts (Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
+    ]
+    t11 = 0
+    for p in sorted((out / "skills").rglob("*.md")):
+        t = p.read_text(encoding="utf-8")
+        t0 = t
+        for old, new in T11_MAP:
+            if old in t:
+                t = t.replace(old, new)
+                t11 += 1
+        if t != t0:
+            p.write_bytes(t.encode("utf-8"))
+    st.fixes.append(f"T11: {t11} hardcoded-path fixes applied (.cursor rules/projects/skills "
+                    "paths, agent-transcripts recipes, /tmp scratch dirs, malformed-link "
+                    "checks, worktree-cleanup macOS note)")
+
     # --- T7: playbook delegation escape hatch (G1 fix, preserves review
     # --- separation: in-thread authoring + independent delegate reviewer) ---
     G1_FEATURE_OLD = ("Mandatory: no skip-with-reason escape, and Laziness Protocol does not override it "

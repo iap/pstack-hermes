@@ -1,8 +1,8 @@
 package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone)
 source_commit: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
-converted_at: 2026-08-31T07:31:18Z
-converter: convert.py (sha256[:16]=7a3b5cee1db5540b)
+converted_at: 2026-08-31T13:05:13Z
+converter: convert.py (sha256[:16]=cff4a785e4583504)
 schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
 fixes:
   - F-publish: skills/make-bot-ui excluded (Tailscale privilege-escalation scan; F33)
@@ -14,6 +14,9 @@ fixes:
   - F-publish: 3 localhost endpoint literals neutralized in feature-map example docs (install-scanner network findings)
   - T8: 12 factual fixes from the hermes deep review (readonly-MCP rationale x3, swarm Cursor params x2, tool-name mappings x2, model-panel path x1, principle cross-link, adaptation note)
   - Phase-2A: delegation translation applied across 17 skill files (subagent_type/Task/AskQuestion/run_in_background/cloud -> delegate_task + clarify + background execution)
+  - T10: config/models.json shipped with inherit-parent defaults
+  - T9/T10: 22 hermes-native discovery/config fixes applied (setup-pstack models.json, why/reflect/recall session_search)
+  - T11: 18 hardcoded-path fixes applied (.cursor rules/projects/skills paths, agent-transcripts recipes, /tmp scratch dirs, malformed-link checks, worktree-cleanup macOS note)
   - G1: delegation escape hatch added to feature.md + poteto-mode Subagents (in-thread authoring allowed for resident surgical edits, with mandatory independent delegate review)
   - F-publish: automations/benny excluded (scanner persistence verdict) and skills/make-bot-ui excluded (scanner privilege verdict; F33)
   - plugin.json: injected exact agent-plugins-v1 $schema at ROOT (9 whitelisted fields; displayName/category/tags/agents/skills omitted)
