@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions about the method
+    url: https://github.com/cursor/plugins/tree/main/pstack
+    about: The upstream pstack method by Lauren Tan — read the poteto-mode skill first; many questions are answered by it.
