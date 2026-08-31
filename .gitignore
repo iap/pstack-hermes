@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# validate.py runtime scratch (GOLD+ loader data_root; empty/regenerable)
+.validate-data/
+
+# convert.py atomic-build leftovers (never present after a clean run)
+pstack.tmp-build/
+pstack.prev-build/

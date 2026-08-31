@@ -1,0 +1,3 @@
+# The package enforces LF-only text (validate.py fails on any CRLF/BOM);
+# keep the working copy byte-identical to the converter output.
+* text=auto eol=lf
