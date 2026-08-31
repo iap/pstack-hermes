@@ -339,6 +339,35 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     else:
         rep.ok("T8: readonly-MCP rationale, swarm params, tool names, doc links all fixed")
 
+    # T9/T10: hermes-native discovery + config
+    t9_bad = []
+    t9_toks = {"~/.cursor/projects": "Cursor transcript path",
+               "available-tools map": "Cursor MCP discovery",
+               "agent-transcripts": "Cursor transcripts dir",
+               "ls -t <": "Cursor ls recipe",
+               "create-skill": "Cursor skill-creation ref"}
+    for p in (pkg / "skills").rglob("*.md"):
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for tok, label in t9_toks.items():
+            if tok in t:
+                t9_bad.append(f"{p.relative_to(pkg)}:{tok} ({label})")
+    if t9_bad:
+        rep.fail(f"T9: Cursor discovery tokens remain: {t9_bad}")
+    else:
+        rep.ok("T9: discovery sections hermes-native (no Cursor tokens)")
+    cfg = pkg / "config" / "models.json"
+    if not cfg.is_file():
+        rep.fail("T10: config/models.json missing")
+    else:
+        try:
+            roles = json.loads(cfg.read_text(encoding="utf-8")).get("roles", {})
+            if len(roles) == 18 and all("inherit-parent" in str(v) for v in roles.values()):
+                rep.ok(f"T10: config/models.json present, {len(roles)} roles, inherit-parent defaults")
+            else:
+                rep.fail("T10: config/models.json shape unexpected")
+        except Exception as exc:
+            rep.fail(f"T10: config/models.json unparseable: {exc}")
+
     # G1: delegation escape hatch present in both files
     g1_targets = [pkg / "skills" / "poteto-mode" / "playbooks" / "feature.md",
                   pkg / "skills" / "poteto-mode" / "SKILL.md"]
