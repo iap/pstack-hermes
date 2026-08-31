@@ -834,6 +834,20 @@ def source_commit(source: Path) -> str:
         return f"unknown (git rev-parse failed: {exc})"
 
 
+def source_url(source: Path) -> str:
+    """Public origin URL of the source clone (credentials stripped), or local."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(source), "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=30, check=True,
+        )
+        url = out.stdout.strip()
+        # strip credentials (user:pass@) if present
+        return re.sub(r"^[a-z]+://[^/@]+@", lambda m: m.group(0).split("://")[0] + "://", url)
+    except Exception:
+        return "(local build; no origin remote)"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--source", default=str(DEFAULT_SOURCE), help="pstack clone root (read-only)")
@@ -1048,6 +1062,7 @@ Nothing else in any SKILL.md was modified.
     )
     provenance = f"""package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: {source}
+source_url: {source_url(source)}
 source_commit: {commit}
 converted_at: {_converted_at()}
 converter: convert.py (sha256[:16]={conv_sha})

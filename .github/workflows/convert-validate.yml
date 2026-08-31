@@ -1,0 +1,58 @@
+﻿name: convert-validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  convert-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone upstream pstack at the pinned commit
+        run: |
+          git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+
+      - name: Convert (apply all transforms)
+        run: |
+          python3 convert.py \
+            --source "$RUNNER_TEMP/cursor-plugins/pstack" \
+            --out "$GITHUB_WORKSPACE/pstack" \
+            --build-note "CI build $GITHUB_SHA"
+
+      - name: Validate (static + structural checks)
+        run: |
+          python3 validate.py --package "$GITHUB_WORKSPACE/pstack"
+
+      - name: Scanner gate (community source must be safe)
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          # hermes-side check runs on the maintainer machine; in CI we assert the
+          # scanner-clean invariants statically instead (the package must not
+          # contain the constructs that produced findings in the first scan).
+          import pathlib
+          pkg = pathlib.Path("pstack")
+          banned = ["tailscale.com/install.sh", "FOR_AGENTS.md", "subagent_type",
+                    "generalPurpose", "http://127.0.0.1:4173"]
+          bad = []
+          for p in pkg.rglob("*"):
+              if p.is_file() and p.suffix in {".md", ".json", ".txt"}:
+                  t = p.read_text(encoding="utf-8", errors="replace")
+                  for b in banned:
+                      if b in t:
+                          bad.append(f"{p}: {b}")
+          assert not bad, f"banned constructs present: {bad}"
+          print("scanner-clean invariants: OK")
+          PY
+
+      - name: Upload converted package
+        uses: actions/upload-artifact@v4
+        with:
+          name: pstack-hermes-${{ github.sha }}
+          path: pstack/
