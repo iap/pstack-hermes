@@ -1,0 +1,13 @@
+[project]
+name = "pstack-hermes-plugin-tools"
+version = "0.3.0"
+description = "Converter and validator tooling for the pstack Cursor->hermes port (the shipped package itself is content-only and needs no Python)."
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pyyaml>=6.0"]
+
+[tool.uv]
+# Tooling repo, not an installable package.
+package = false
