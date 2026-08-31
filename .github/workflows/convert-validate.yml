@@ -17,12 +17,35 @@ jobs:
           git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
           git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
 
+      - name: Verify pinned upstream SHA (re-check)
+        run: |
+          got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
+          want="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
+          if [ "$got" != "$want" ]; then
+            echo "::error::pinned SHA mismatch: got $got, want $want"
+            exit 1
+          fi
+          echo "pinned upstream SHA verified: $got"
+
       - name: Convert (apply all transforms)
         run: |
           python3 convert.py \
             --source "$RUNNER_TEMP/cursor-plugins/pstack" \
             --out "$GITHUB_WORKSPACE/pstack" \
             --build-note "CI build $GITHUB_SHA"
+
+      - name: Verify provenance consistency (source_commit == pinned SHA)
+        run: |
+          pin="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
+          if [ ! -f pstack/.build-provenance.txt ]; then
+            echo "::error::.build-provenance.txt missing from the converted package"
+            exit 1
+          fi
+          if ! grep -q "source_commit: $pin" pstack/.build-provenance.txt; then
+            echo "::error::provenance source_commit does not match the pinned upstream SHA"
+            exit 1
+          fi
+          echo "provenance consistency verified: source_commit == $pin"
 
       - name: Validate (static + structural checks)
         run: |

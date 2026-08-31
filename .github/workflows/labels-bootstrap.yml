@@ -1,0 +1,40 @@
+# Bootstrap the labels .github/labeler.yml expects.
+# Run ONCE after the repo is public: Actions -> "labels-bootstrap" -> Run workflow.
+# Idempotent: existing labels keep their colors; missing ones are created.
+
+name: labels-bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          create() {
+            local name="$1" color="$2" desc="$3"
+            if gh label list --json name --jq '.[].name' | grep -qxF "$name"; then
+              echo "exists: $name"
+            else
+              gh label create "$name" --color "$color" --description "$desc"
+              echo "created: $name"
+            fi
+          }
+          create "pstack-core"        "0E8A16" "Core manifest/config changes"
+          create "skills"             "1D76DB" "Workflow/mode skill changes"
+          create "principles"         "5319E7" "Principle skill changes"
+          create "cursor-dual-load"   "FBCA04" "Cursor dual-load surface (inert on hermes)"
+          create "tooling"            "C2E0C6" "Converter, validator, CI tooling"
+          create "documentation"      "0075CA" "Documentation"
+          create "scanner-clean"      "BFD4F2" "Verified: install-scanner safe verdict"
+          create "hermes-compat"      "D93F0B" "Hermes compatibility fix"
+          create "port"               "E4E669" "Cursor -> hermes port work"

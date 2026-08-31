@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a problem with the pstack plugin on hermes (or Cursor dual-load)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Before opening: search existing issues, and note
+        whether the problem happens on **hermes**, on **Cursor**, or both —
+        the plugin is a dual-load package and some surfaces differ by platform.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - hermes (portable plugin path)
+        - hermes (external_dirs slash commands)
+        - Cursor (dual-load)
+        - Both platforms
+    validations:
+      required: true
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Affected skill or surface
+      options:
+        - poteto-mode (router)
+        - a playbook (which one?)
+        - a workflow skill (how/why/tdd/…)
+        - a principle skill
+        - admin dashboard
+        - setup-pstack
+        - install / loader
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, what happened instead? Include the exact command or step.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Log lines, error output, or a minimal reproduction. On hermes, `hermes plugins doctor <package> --ci` output helps.
+    validations:
+      required: false
