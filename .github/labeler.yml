@@ -1,0 +1,49 @@
+# Path-based PR labels (actions/labeler v5).
+# Labels must exist in the repo before this matches — run
+# .github/workflows/labels-bootstrap.yml once after publishing to create them.
+#
+# Matches are additive: a PR gets every label whose head matches.
+
+pstack-core:
+  - head: "*.json"
+  - head: "*.yml"
+  - changed-files:
+      - any-glob-to-any-file: "plugin.json"
+      - any-glob-to-any-file: "config/**"
+
+skills:
+  - changed-files:
+      - any-glob-to-any-file: "skills/poteto-mode/**"
+      - any-glob-to-any-file: "skills/how/**"
+      - any-glob-to-any-file: "skills/why/**"
+      - any-glob-to-any-file: "skills/interrogate/**"
+      - any-glob-to-any-file: "skills/reflect/**"
+      - any-glob-to-any-file: "skills/swarm/**"
+      - any-glob-to-any-file: "skills/arena/**"
+      - any-glob-to-any-file: "skills/blast-radius/**"
+      - any-glob-to-any-file: "skills/figure-it-out/**"
+      - any-glob-to-any-file: "skills/recall/**"
+
+principles:
+  - changed-files:
+      - any-glob-to-any-file: "skills/principle-*/**"
+
+cursor-dual-load:
+  - changed-files:
+      - any-glob-to-any-file: ".cursor-plugin/**"
+      - any-glob-to-any-file: "agents/**"
+      - any-glob-to-any-file: "automations/**"
+
+tooling:
+  - changed-files:
+      - any-glob-to-any-file: "tools/**"
+      - any-glob-to-any-file: "convert.py"
+      - any-glob-to-any-file: "validate.py"
+      - any-glob-to-any-file: ".github/workflows/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "README.md"
+      - any-glob-to-any-file: "PATCHES.md"
+      - any-glob-to-any-file: "docs/**"
+      - any-glob-to-any-file: "**/*.md"
