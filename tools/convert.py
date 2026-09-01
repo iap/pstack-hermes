@@ -43,9 +43,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_SOURCE = Path(
-    r"(local clone)"
-)
 DEFAULT_OUT = REPO_ROOT / "pstack"
 
 SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
@@ -852,7 +849,8 @@ def source_url(source: Path) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--source", default=str(DEFAULT_SOURCE), help="pstack clone root (read-only)")
+    ap.add_argument("--source", required=True,
+                    help="pstack clone root (read-only), e.g. a checkout of github.com/cursor/plugins")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="package dir to build (rebuilt each run)")
     args = ap.parse_args()
 
@@ -1063,7 +1061,7 @@ Nothing else in any SKILL.md was modified.
         f"CRLF fixed: {st.crlf_fixed})"
     )
     provenance = f"""package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
-source: {source}
+source: (local clone; public origin in source_url)
 source_url: {source_url(source)}
 source_commit: {commit}
 converted_at: {_converted_at()}
