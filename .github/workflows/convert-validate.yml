@@ -1,4 +1,4 @@
-﻿name: convert-validate
+name: convert-validate
 
 on:
   push:
@@ -7,9 +7,19 @@ on:
 
 jobs:
   convert-and-validate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+
+      # Same epoch on both legs -> cross-platform byte-determinism is provable.
+      # HEAD commit time: identical on every runner for a given event.
+      - name: Record HEAD commit time as SOURCE_DATE_EPOCH
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Set up uv (pinned interpreter + lockfile)
         uses: astral-sh/setup-uv@v5
@@ -17,12 +27,14 @@ jobs:
           enable-cache: true
 
       - name: Clone upstream pstack at the pinned commit
+        shell: bash
         run: |
           git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
           git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
           git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
 
       - name: Verify pinned upstream SHA (re-check)
+        shell: bash
         run: |
           got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
           want="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
@@ -33,12 +45,14 @@ jobs:
           echo "pinned upstream SHA verified: $got"
 
       - name: Convert (apply all transforms)
+        shell: bash
         run: |
           uv run --frozen tools/convert.py \
             --source "$RUNNER_TEMP/cursor-plugins/pstack" \
             --out "$GITHUB_WORKSPACE/pstack"
 
       - name: Verify provenance consistency (source_commit == pinned SHA)
+        shell: bash
         run: |
           pin="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
           if [ ! -f pstack/.build-provenance.txt ]; then
@@ -52,14 +66,14 @@ jobs:
           echo "provenance consistency verified: source_commit == $pin"
 
       - name: Validate (static + repo YAML + structural checks)
+        shell: bash
         run: |
           uv run --frozen tools/validate.py --package "$GITHUB_WORKSPACE/pstack"
 
       - name: Scanner gate (community source must be safe)
+        shell: bash
         run: |
-          python3 - <<'PY'
-          import sys
-          sys.path.insert(0, ".")
+          uv run --frozen python - <<'PY'
           # hermes-side check runs on the maintainer machine; in CI we assert the
           # scanner-clean invariants statically instead (the package must not
           # contain the constructs that produced findings in the first scan).
@@ -78,8 +92,53 @@ jobs:
           print("scanner-clean invariants: OK")
           PY
 
-      - name: Upload converted package
+      - name: Upload converted package (per-OS, consumed by verify-determinism)
         uses: actions/upload-artifact@v4
         with:
-          name: pstack-hermes-${{ github.sha }}
+          name: pstack-hermes-${{ matrix.os }}-${{ github.sha }}
           path: pstack/
+
+  # The real payoff of the matrix: prove the converter is byte-deterministic
+  # across platforms (LF discipline, no BOM, no path leakage) — not just that
+  # each platform passes in isolation.
+  verify-determinism:
+    runs-on: ubuntu-latest
+    needs: convert-and-validate
+    steps:
+      - name: Download both platform builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pstack-hermes-*-${{ github.sha }}
+          merge-multiple: false
+          path: artifacts
+
+      - name: Compare builds byte-for-byte (excluding per-build provenance)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t legs < <(find artifacts -mindepth 1 -maxdepth 1 -type d | sort)
+          if [ "${#legs[@]}" -ne 2 ]; then
+            echo "::error::expected 2 platform artifacts, got ${#legs[@]}"
+            exit 1
+          fi
+          tree_hash() {
+            ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
+                | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
+          }
+          h1="$(tree_hash "${legs[0]}")"
+          h2="$(tree_hash "${legs[1]}")"
+          echo "tree A: $h1"
+          echo "tree B: $h2"
+          if [ "$h1" != "$h2" ]; then
+            echo "::error::platform builds diverge - the converter is NOT byte-deterministic across OS"
+            diff <(cd "${legs[0]}" && find . -type f ! -name ".build-provenance.txt" | sort) \
+                 <(cd "${legs[1]}" && find . -type f ! -name ".build-provenance.txt" | sort) || true
+            exit 1
+          fi
+          p1="$(grep '^source_commit:' "${legs[0]}"/*/.build-provenance.txt 2>/dev/null || grep '^source_commit:' "${legs[0]}"/.build-provenance.txt)"
+          p2="$(grep '^source_commit:' "${legs[1]}"/*/.build-provenance.txt 2>/dev/null || grep '^source_commit:' "${legs[1]}"/.build-provenance.txt)"
+          if [ "$p1" != "$p2" ]; then
+            echo "::error::provenance source_commit differs between platforms"
+            exit 1
+          fi
+          echo "cross-platform determinism: OK (byte-identical, excluding per-build provenance metadata)"
