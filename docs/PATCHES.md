@@ -6,7 +6,7 @@ kept here because the portable-plugin work surfaced the gaps. Apply manually
 with `git apply <patch>` inside the hermes clone; none of them are required
 for the pstack package to load and validate.
 
-## hermes-fork-portable-diagnostics.patch
+## patches/hermes-fork-portable-diagnostics.patch
 
 `hermes_cli/agent_plugins.py` — when a manifest carries Cursor-only top-level
 fields (`agents`, `commands`, `hooks`, `automations`, `rules`), the loader's
@@ -17,7 +17,7 @@ success is the dangerous failure mode for Cursor ports.
 
 Status: independent of the other two patches; safe to apply at any time.
 
-## hermes-fork-oneshot-cwd.patch (v1) vs hermes-fork-oneshot-cwd-v2.patch
+## patches/hermes-fork-oneshot-cwd.patch (v1) vs patches/hermes-fork-oneshot-cwd-v2.patch
 
 Two mechanisms for the same observed failure: in `hermes -z` (oneshot) mode,
 "create a file in the current directory" resolved to the wrong location
