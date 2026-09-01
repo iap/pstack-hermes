@@ -23,7 +23,8 @@ Contract implemented (study Ch3 sections 3.1-3.2 + subagent_03a loader facts):
 Usage:
     python tools/convert.py [--source <pstack-clone-path>] [--out <package-dir>]
 
-Defaults: --source = the study clone, --out = ./pstack next to this script.
+Defaults: --source = the study clone, --out = ./pstack at the repo root
+(this script lives in tools/).
 This script NEVER executes anything from the pstack repo (pure file copy).
 """
 
@@ -40,11 +41,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
+REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_SOURCE = Path(
     r"(local clone)"
 )
-DEFAULT_OUT = SCRIPT_DIR / "pstack"
+DEFAULT_OUT = REPO_ROOT / "pstack"
 
 SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 # agent_plugins.py:24-35 whitelist (extensions intentionally NOT emitted: pstack has none,
