@@ -21,7 +21,7 @@ Contract implemented (study Ch3 sections 3.1-3.2 + subagent_03a loader facts):
   - Provenance (source commit) written to .build-provenance.txt.
 
 Usage:
-    python convert.py [--source <pstack-clone-path>] [--out <package-dir>]
+    python tools/convert.py [--source <pstack-clone-path>] [--out <package-dir>]
 
 Defaults: --source = the study clone, --out = ./pstack next to this script.
 This script NEVER executes anything from the pstack repo (pure file copy).
@@ -963,7 +963,7 @@ def main() -> int:
 Phase-0 conversion of **pstack v{manifest['version']}** for the Hermes Agent platform's
 portable plugin path. Upstream: <https://github.com/cursor/plugins/tree/main/pstack>
 (MIT, Copyright (c) 2026 Lauren Tan). Conversion provenance: see `.build-provenance.txt`;
-regenerate with `python convert.py --source <pstack-clone> --out <package-dir>`.
+regenerate with `python tools/convert.py --source <pstack-clone> --out <package-dir>`.
 
 ## What hermes loads
 

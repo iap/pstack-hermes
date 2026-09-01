@@ -13,16 +13,7 @@ pstack-core:
 
 skills:
   - changed-files:
-      - any-glob-to-any-file: "skills/poteto-mode/**"
-      - any-glob-to-any-file: "skills/how/**"
-      - any-glob-to-any-file: "skills/why/**"
-      - any-glob-to-any-file: "skills/interrogate/**"
-      - any-glob-to-any-file: "skills/reflect/**"
-      - any-glob-to-any-file: "skills/swarm/**"
-      - any-glob-to-any-file: "skills/arena/**"
-      - any-glob-to-any-file: "skills/blast-radius/**"
-      - any-glob-to-any-file: "skills/figure-it-out/**"
-      - any-glob-to-any-file: "skills/recall/**"
+      - any-glob-to-any-file: "skills/**"
 
 principles:
   - changed-files:
@@ -37,8 +28,7 @@ cursor-dual-load:
 tooling:
   - changed-files:
       - any-glob-to-any-file: "tools/**"
-      - any-glob-to-any-file: "convert.py"
-      - any-glob-to-any-file: "validate.py"
+      - any-glob-to-any-file: "tools/**"
       - any-glob-to-any-file: ".github/workflows/**"
 
 documentation:
