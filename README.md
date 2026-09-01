@@ -40,7 +40,7 @@ tools/convert.py   Cursor → hermes converter (T1–T11 transforms, atomic buil
 tools/validate.py  verification ladder: static → repo YAML → gold loader → doctor
 patches/           the 4 hermes-fork patches the port depends on
 docs/              PATCHES.md (fork patch docs), UPSTREAM-PR.md (drafted PR)
-.github/           CI (convert-validate + SHA gates), PR labeler, issue templates
+.github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism), PR labeler, issue templates
 ```
 
 ## Verification
