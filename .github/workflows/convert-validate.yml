@@ -34,10 +34,9 @@ jobs:
 
       - name: Convert (apply all transforms)
         run: |
-          uv run --frozen convert.py \
+          uv run --frozen tools/convert.py \
             --source "$RUNNER_TEMP/cursor-plugins/pstack" \
-            --out "$GITHUB_WORKSPACE/pstack" \
-            --build-note "CI build $GITHUB_SHA"
+            --out "$GITHUB_WORKSPACE/pstack"
 
       - name: Verify provenance consistency (source_commit == pinned SHA)
         run: |
@@ -54,7 +53,7 @@ jobs:
 
       - name: Validate (static + repo YAML + structural checks)
         run: |
-          uv run --frozen validate.py --package "$GITHUB_WORKSPACE/pstack"
+          uv run --frozen tools/validate.py --package "$GITHUB_WORKSPACE/pstack"
 
       - name: Scanner gate (community source must be safe)
         run: |

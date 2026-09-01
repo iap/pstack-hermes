@@ -25,12 +25,26 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_PACKAGE = SCRIPT_DIR / "pstack"
+SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
+REPO_ROOT = SCRIPT_DIR.parent
+DEFAULT_PACKAGE = REPO_ROOT / "pstack"
 
 HERMES_SRC = Path(r"%LOCALAPPDATA%\hermes\hermes-agent")
 VENV_PY = HERMES_SRC / ".venv" / "Scripts" / "python.exe"
 VENV_HERMES = HERMES_SRC / ".venv" / "Scripts" / "hermes.exe"
+
+
+def expected_count(pkg: Path) -> int:
+    """Expected skill count per the converter's discovery rule:
+    immediate children of <pkg>/skills/ containing a SKILL.md."""
+    return sum(1 for d in (pkg / "skills").iterdir()
+               if d.is_dir() and (d / "SKILL.md").is_file())
+
+
+def expected_principles(pkg: Path) -> int:
+    return sum(1 for d in (pkg / "skills").iterdir()
+               if d.is_dir() and d.name.startswith("principle-")
+               and (d / "SKILL.md").is_file())
 
 SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 WHITELIST = {"$schema", "name", "version", "description", "author", "homepage",
@@ -189,9 +203,10 @@ def check_skills(pkg: Path, rep: Report) -> None:
     workflow = [n for n in loaded if not n.startswith("principle-")]
     rep.note(f"skills discovered: {len(loaded)} "
              f"({len(workflow)} workflow/mode + {len(principles)} principle-*)")
-    if len(loaded) != 44 or len(principles) != 21 or len(workflow) != 23:
-        rep.fail(f"expected 44 loaded skills (23 workflow/mode + 21 principle), got "
-                 f"{len(loaded)} ({len(workflow)} + {len(principles)})")
+    expected, exp_principles = expected_count(pkg), expected_principles(pkg)
+    if len(loaded) != expected or len(principles) != exp_principles or len(workflow) != expected - exp_principles:
+        rep.fail(f"expected {expected} loaded skills ({expected - exp_principles} workflow/mode + "
+                 f"{exp_principles} principle), got {len(loaded)} ({len(workflow)} + {len(principles)})")
     benny = sorted(str(p.relative_to(pkg)) for p in (pkg / "automations").glob("benny/skills/*/SKILL.md")) if (pkg / "automations").is_dir() else []
     if benny or (pkg / "automations").exists():
         rep.fail("F-publish: automations/ present — excluded by publisher contract (install-scanner persistence verdict)")
@@ -202,9 +217,9 @@ def check_skills(pkg: Path, rep: Report) -> None:
     else:
         rep.ok("F-publish: make-bot-ui excluded (privilege-escalation scan, F33)")
     total_skill_md = len(list(pkg.glob("skills/*/SKILL.md")))
-    rep.note(f"SKILL.md files on disk: {total_skill_md} (expected 44)")
-    if total_skill_md != 44:
-        rep.fail(f"expected 44 SKILL.md on disk, found {total_skill_md}")
+    rep.note(f"SKILL.md files on disk: {total_skill_md} (expected {expected})")
+    if total_skill_md != expected:
+        rep.fail(f"expected {expected} SKILL.md on disk, found {total_skill_md}")
 
 
 def check_encoding(pkg: Path, rep: Report) -> None:
@@ -233,12 +248,19 @@ def check_encoding(pkg: Path, rep: Report) -> None:
 def check_layout(pkg: Path, rep: Report) -> None:
     for rel, label in [("agents", "agents/ (expected-ignored by hermes portable path)"),
                        (".cursor-plugin/plugin.json", ".cursor-plugin/plugin.json (Cursor dual-load manifest)"),
-                       ("LICENSE", "LICENSE"), ("README.md", "README.md"),
+                       ("README.md", "README.md"),
                        (".build-provenance.txt", ".build-provenance.txt")]:
         if (pkg / rel).exists():
             rep.ok(f"present: {label}")
         else:
             rep.fail(f"missing: {label}")
+    # LICENSE moved to the repo root (repo layout v2); either location satisfies.
+    if (pkg / "LICENSE").exists():
+        rep.ok("present: LICENSE (package)")
+    elif (REPO_ROOT / "LICENSE").exists():
+        rep.ok("present: LICENSE (repo root)")
+    else:
+        rep.fail("missing: LICENSE")
     if (pkg / "automations").exists():
         rep.fail("F-publish: automations/ present (must be excluded)")
     agents_files = sorted(p.name for p in (pkg / "agents").glob("*")) if (pkg / "agents").is_dir() else []
@@ -535,8 +557,9 @@ def main() -> int:
             print(f"  manifest round-trip: name={data.get('name')!r} version={data.get('version')!r} "
                   f"root={data.get('root')}")
             names = parsed.get("skill_names") or []
-            if parsed.get("skill_count") == 44 and not parsed.get("diagnostics"):
-                print("  GOLD+: all 44 skills discovered by the real loader, zero component diagnostics.")
+            if parsed.get("skill_count") == expected_count(pkg) and not parsed.get("diagnostics"):
+                print(f"  GOLD+: all {expected_count(pkg)} skills discovered by the real loader, "
+                      "zero component diagnostics.")
             else:
                 print("  GOLD+: UNEXPECTED — see skill_names/diagnostics above")
             print(f"  skill names: {names}")
@@ -550,7 +573,8 @@ def main() -> int:
             rep.note(f"plugins doctor exited {doc.get('exit_code')} — recorded as finding (signature "
                      "being verified in parallel), not a package failure")
 
-        load_ok = load.get("status") == "ok" and load.get("parsed", {}).get("skill_count") == 44 \
+        load_ok = load.get("status") == "ok" \
+            and load.get("parsed", {}).get("skill_count") == expected_count(pkg) \
             and not load.get("parsed", {}).get("diagnostics")
 
         # Optional: repo YAML structural check (only when pyyaml is available,
@@ -561,7 +585,7 @@ def main() -> int:
         except ImportError:
             yaml = None
         if yaml is not None:
-            repo = Path(__file__).resolve().parent
+            repo = REPO_ROOT
             gh = repo / ".github"
             ymls = sorted(gh.rglob("*.yml")) if gh.is_dir() else []
             bad_yml = []

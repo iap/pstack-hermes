@@ -3,7 +3,7 @@
 Phase-0 conversion of **pstack v0.14.4** for the Hermes Agent platform's
 portable plugin path. Upstream: <https://github.com/cursor/plugins/tree/main/pstack>
 (MIT, Copyright (c) 2026 Lauren Tan). Conversion provenance: see `.build-provenance.txt`;
-regenerate with `python convert.py --source <pstack-clone> --out <package-dir>`.
+regenerate with `python tools/convert.py --source <pstack-clone> --out <package-dir>`.
 
 ## What hermes loads
 
