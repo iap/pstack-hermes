@@ -72,6 +72,15 @@ uv run --frozen tools/validate.py
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 [docs/PATCHES.md](docs/PATCHES.md) for the fork patches the port relies on.
 
+## Naming
+
+| Thing | Name | Why |
+|---|---|---|
+| The package | `pstack` | upstream identity (plugin.json, v0.14.4) — preserved |
+| This repository | `pstack-hermes` | the published repo name (README title matches) |
+| Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
+| Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
+
 ## License
 
 MIT — upstream © 2026 Lauren Tan; port modifications © 2026 the
