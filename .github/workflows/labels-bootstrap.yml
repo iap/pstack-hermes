@@ -38,3 +38,5 @@ jobs:
           create "scanner-clean"      "BFD4F2" "Verified: install-scanner safe verdict"
           create "hermes-compat"      "D93F0B" "Hermes compatibility fix"
           create "port"               "E4E669" "Cursor -> hermes port work"
+          create "bug"                "D73A4A" "Something is broken"
+          create "enhancement"        "A2EEEF" "New feature or request"
