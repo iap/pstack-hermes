@@ -1,4 +1,4 @@
-name: convert-validate
+name: ci
 
 on:
   push:
