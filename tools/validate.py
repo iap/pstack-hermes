@@ -29,7 +29,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PACKAGE = REPO_ROOT / "pstack"
 
-HERMES_SRC = Path(r"%LOCALAPPDATA%\hermes\hermes-agent")
+_hermes_home = os.environ.get("HERMES_HOME") or str(Path.home() / "AppData" / "Local" / "hermes")
+HERMES_SRC = Path(_hermes_home) / "hermes-agent"
 VENV_PY = HERMES_SRC / ".venv" / "Scripts" / "python.exe"
 VENV_HERMES = HERMES_SRC / ".venv" / "Scripts" / "hermes.exe"
 
