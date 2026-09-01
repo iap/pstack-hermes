@@ -98,6 +98,56 @@ jobs:
           name: pstack-hermes-${{ matrix.os }}-${{ github.sha }}
           path: pstack/
 
+  # Anti-hand-edit / anti-drift gate: the committed pstack/ must be exactly
+  # what the converter produces from the pinned upstream (provenance excluded,
+  # whose source field is a runner-local path by design).
+  verify-committed-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record HEAD commit time as SOURCE_DATE_EPOCH
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Set up uv (pinned interpreter + lockfile)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Clone upstream pstack at the pinned commit
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+
+      - name: Rebuild the package to a scratch dir (never touch the checkout)
+        shell: bash
+        run: |
+          uv run --frozen tools/convert.py \
+            --source "$RUNNER_TEMP/cursor-plugins/pstack" \
+            --out "$RUNNER_TEMP/pstack-rebuilt"
+
+      - name: Compare committed package vs fresh rebuild (excluding provenance)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tree_hash() {
+            ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
+                | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
+          }
+          committed="$(tree_hash "$GITHUB_WORKSPACE/pstack")"
+          rebuilt="$(tree_hash "$RUNNER_TEMP/pstack-rebuilt")"
+          echo "committed: $committed"
+          echo "rebuilt:   $rebuilt"
+          if [ "$committed" != "$rebuilt" ]; then
+            echo "::error::committed pstack/ drifts from a fresh pipeline build - hand-edits or stale package"
+            diff -r --exclude=.build-provenance.txt "$GITHUB_WORKSPACE/pstack" "$RUNNER_TEMP/pstack-rebuilt" || true
+            exit 1
+          fi
+          echo "committed package freshness: OK (byte-identical to a fresh pipeline build)"
+
   # The real payoff of the matrix: prove the converter is byte-deterministic
   # across platforms (LF discipline, no BOM, no path leakage) — not just that
   # each platform passes in isolation.
