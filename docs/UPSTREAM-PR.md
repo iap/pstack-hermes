@@ -1,6 +1,6 @@
 # Upstream PR draft — NousResearch/hermes-agent
 
-> Prepared 2026-08-31. Branch: `fix/portable-plugin-diagnostics-and-cwd`
+> Prepared 2026-08-31. Branch: `fix/portable-plugin-hardening`
 > (contains 4 commits from `iap/hermes-agent` main). Open the PR from that
 > branch to `NousResearch/hermes-agent:main` after pushing.
 > Each change is evidence-backed from a real Cursor-plugin port (pstack →
