@@ -608,14 +608,23 @@ def main() -> int:
             print(f"HARD FAILURES: {len(rep.failed)}")
             for m in rep.failed:
                 print(f"  - {m}")
+        gold_available = gold.get("status") != "unavailable"
+        load_available = load.get("status") not in ("skipped", "unavailable")
+        if gold_available and load_available:
+            print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
+                  f"gold manifest: {'PASS' if gold_ok else 'FAIL'}; "
+                  f"gold load: {'PASS' if load_ok else 'FAIL'}")
+            if rep.failed:
+                return 1
+            if not (gold_ok and load_ok):
+                return 2
+            return 0
+        # hermes not present (e.g. CI runners): gold checks cannot run -> skip
+        # them instead of failing. Static + repo YAML gates remain authoritative;
+        # the maintainer machine supplies gold evidence per CONTRIBUTING.md.
         print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
-              f"gold manifest: {'PASS' if gold_ok else 'FAIL/unavailable'}; "
-              f"gold load: {'PASS' if load_ok else 'FAIL/unavailable'}")
-        if rep.failed:
-            return 1
-        if not (gold_ok and load_ok):
-            return 2
-        return 0
+              "gold: SKIPPED (hermes not available on this machine)")
+        return 1 if rep.failed else 0
 
 
 if __name__ == "__main__":

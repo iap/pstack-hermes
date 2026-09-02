@@ -32,7 +32,7 @@ Cursor (dual-load, optional): point Cursor at the package root — the
   (all Cursor `Task`/`subagent_type`/`run_in_background` vocabulary removed),
   discovery rewritten to hermes-native `session_search`/`session` tools,
   config shipped as hermes `config/models.json`.
-- **Admin dashboard** and setup flow adapted for hermes profiles.
+- **setup-pstack onboarding flow** adapted for hermes profiles and `config/models.json`.
 
 ## Repository layout
 
