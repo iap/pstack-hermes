@@ -43,7 +43,7 @@ or dependency drift.
 
 ## Pull requests
 
-The [PR template](.github/pull_request_template.md) requires: convert clean, validate
+The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, validate
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, provenance
 consistency. CI runs all of it plus the pinned-SHA re-check on every push and
 PR; PRs are auto-labeled by path (labels are created once via the
