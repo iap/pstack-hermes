@@ -685,6 +685,15 @@ The parent locates the current session via `session_search` (hermes stores sessi
          'reading session history from the local hermes store'),
         ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
          '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts (Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
+        ('a project-local skill (`.cursor/skills/verify-<app>/`)',
+         'a project-local skill in your harness\'s skills directory (`%LOCALAPPDATA%\\hermes\\skills\\verify-<app>/` '
+         'on hermes, `.cursor/skills/verify-<app>/` on Cursor)'),
+        ('Write `.cursor/skills/verify-<app>/SKILL.md` with YAML frontmatter',
+         'Write `verify-<app>/SKILL.md` in that skills directory with YAML frontmatter'),
+        ('Create `.cursor/skills/verify-<app>/features/README.md` plus one file per user-facing feature',
+         'Create `verify-<app>/features/README.md` in that skills directory plus one file per user-facing feature'),
+        ('(usually `.cursor/skills/verify-*/`)',
+         '(usually `verify-*/` in your harness\'s skills directory)'),
     ]
     t11 = 0
     for p in sorted((out / "skills").rglob("*.md")):
