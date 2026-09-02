@@ -1,4 +1,6 @@
-# pstack-hermes
+# Pstack Hermes
+
+*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.14.4)*
 
 **pstack** — Lauren Tan's rigorous, deeply-methodical agent engineering method
 ("if you want to go fast, go deep first") — ported to the **Hermes Agent**
@@ -77,7 +79,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 | Thing | Name | Why |
 |---|---|---|
 | The package | `pstack` | upstream identity (plugin.json, v0.14.4) — preserved |
-| This repository | `pstack-hermes` | the published repo name (README title matches) |
+| This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes) |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
