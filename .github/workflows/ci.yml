@@ -108,6 +108,7 @@ jobs:
         with:
           name: pstack-hermes-${{ matrix.os }}-${{ github.sha }}
           path: pstack/
+          include-hidden-files: true
 
   # Anti-hand-edit / anti-drift gate: the committed pstack/ must be exactly
   # what the converter produces from the pinned upstream (provenance excluded,
