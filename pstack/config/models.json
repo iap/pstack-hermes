@@ -1,32 +1,45 @@
 {
   "roles": {
-    "feature, refactoring": "inherit-parent",
-    "bug-fix": "inherit-parent",
-    "perf-issue": "inherit-parent",
-    "hillclimb": "inherit-parent",
-    "judgment and prose": "inherit-parent",
-    "hardest tasks": "inherit-parent",
-    "how explorer": "inherit-parent",
-    "how explainer": "inherit-parent",
+    "feature, refactoring": "z-ai/glm-5.2:free",
+    "bug-fix": "z-ai/glm-5.2:free",
+    "perf-issue": "z-ai/glm-5.2:free",
+    "hillclimb": "z-ai/glm-5.2:free",
+    "judgment and prose": "meituan/longcat-2.0-free",
+    "hardest tasks": "z-ai/glm-5.2:free",
+    "how explorer": "meituan/longcat-2.0:free",
+    "how explainer": "meituan/longcat-2.0-free",
     "how critics": [
-      "inherit-parent"
+      "meituan/longcat-2.0-free",
+      "muse-spark-1.2-contributor-free"
     ],
-    "why investigators": "inherit-parent",
-    "why synthesizer": "inherit-parent",
-    "reflect tooling": "inherit-parent",
-    "reflect judgment, divergent, synthesizer": "inherit-parent",
+    "why investigators": "meituan/longcat-2.0:free",
+    "why synthesizer": "z-ai/glm-5.2:free",
+    "reflect tooling": "Qwen/Qwen2.5-7B-Instruct",
+    "reflect judgment, divergent, synthesizer": [
+      "z-ai/glm-5.2:free",
+      "muse-spark-1.2-contributor-free"
+    ],
     "arena runners": [
-      "inherit-parent"
+      "meituan/longcat-2.0-free",
+      "muse-spark-1.2-contributor-free",
+      "meituan/longcat-2.0:free"
     ],
     "arena cross-judge pool": [
-      "inherit-parent"
+      "z-ai/glm-5.2:free",
+      "meituan/longcat-2.0:free"
     ],
-    "swarm workers": "inherit-parent",
+    "swarm workers": [
+      "meituan/longcat-2.0-free",
+      "meituan/longcat-2.0:free"
+    ],
     "architect runners": [
-      "inherit-parent"
+      "z-ai/glm-5.2:free",
+      "muse-spark-1.2-contributor-free"
     ],
     "interrogate reviewers": [
-      "inherit-parent"
+      "z-ai/glm-5.2:free",
+      "meituan/longcat-2.0-free",
+      "muse-spark-1.2-contributor-free"
     ]
   }
 }
