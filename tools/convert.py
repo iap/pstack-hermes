@@ -639,8 +639,24 @@ The parent locates the current session via `session_search` (hermes stores sessi
             "swarm workers": "inherit-parent", "architect runners": ["inherit-parent"],
             "interrogate reviewers": ["inherit-parent"],
         }
+        # Stage-D: the model panel is repo-owned content (tools/assets/).
+        # When present it replaces the inherit-parent defaults wholesale; the
+        # role set must match exactly or the build fails loudly.
+        panel = SCRIPT_DIR / "assets" / "model-panel.json"
+        if panel.is_file():
+            imported = _json.loads(panel.read_text(encoding="utf-8")).get("roles", {})
+            if sorted(imported) != sorted(roles):
+                diff = sorted(set(imported) ^ set(roles))
+                raise ConvertError(
+                    f"model panel roles mismatch the pstack role set: {diff}")
+            roles = imported
         cfg.write_bytes((_json.dumps({"roles": roles}, indent=2) + "\n").encode("utf-8"))
-        st.fixes.append("T10: config/models.json shipped with inherit-parent defaults")
+        if panel.is_file():
+            st.fixes.append(
+                "Stage-D: config/models.json shipped with the model panel (18 roles)")
+        else:
+            st.fixes.append(
+                "T10: config/models.json shipped with inherit-parent defaults")
     if t910:
         st.fixes.append(f"T9/T10: {t910} hermes-native discovery/config fixes applied "
                         "(setup-pstack models.json, why/reflect/recall session_search)")
