@@ -75,21 +75,32 @@ jobs:
         run: |
           uv run --frozen python - <<'PY'
           # hermes-side check runs on the maintainer machine; in CI we assert the
-          # scanner-clean invariants statically instead (the package must not
-          # contain the constructs that produced findings in the first scan).
+          # scanner-clean invariants statically instead. Two ban classes:
+          #   security bans  -> package-wide (no exceptions)
+          #   delegation vocab (Cursor API names) -> hermes-facing surface only;
+          #      the Cursor dual-load surface (agents/, .cursor-plugin/) and the
+          #      build provenance (which documents the fixes by name) are exempt.
           import pathlib
           pkg = pathlib.Path("pstack")
-          banned = ["tailscale.com/install.sh", "FOR_AGENTS.md", "subagent_type",
-                    "generalPurpose", "http://127.0.0.1:4173"]
+          text_files = [p for p in pkg.rglob("*")
+                        if p.is_file() and p.suffix in {".md", ".json", ".txt"}]
+          security_bans = ["tailscale.com/install.sh", "FOR_AGENTS.md",
+                           "http://127.0.0.1:4173"]
+          vocab_bans = ["subagent_type", "generalPurpose"]
+          exempt = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
           bad = []
-          for p in pkg.rglob("*"):
-              if p.is_file() and p.suffix in {".md", ".json", ".txt"}:
-                  t = p.read_text(encoding="utf-8", errors="replace")
-                  for b in banned:
+          for p in text_files:
+              rel = p.as_posix()
+              t = p.read_text(encoding="utf-8", errors="replace")
+              for b in security_bans:
+                  if b in t:
+                      bad.append(f"{rel}: {b} (security, package-wide)")
+              if not rel.startswith(exempt):
+                  for b in vocab_bans:
                       if b in t:
-                          bad.append(f"{p}: {b}")
+                          bad.append(f"{rel}: {b} (delegation vocab, hermes-facing)")
           assert not bad, f"banned constructs present: {bad}"
-          print("scanner-clean invariants: OK")
+          print(f"scanner-clean invariants: OK ({len(text_files)} text files scanned)")
           PY
 
       - name: Upload converted package (per-OS, consumed by verify-determinism)
