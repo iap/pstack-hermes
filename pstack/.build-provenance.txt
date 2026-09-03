@@ -2,11 +2,12 @@ package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone; public origin in source_url)
 source_url: https://github.com/cursor/plugins.git
 source_commit: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
-converted_at: 2026-09-02T10:41:54Z
-converter: convert.py (sha256[:16]=65d49cab4f37ea3a)
+converted_at: 2026-09-03T18:20:51Z
+converter: convert.py (sha256[:16]=151f8b65dc17ed15)
 schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
 fixes:
   - F-publish: skills/grokbot/make-bot-ui excluded (Tailscale privilege-escalation scan; F33)
+  - F-publish: make-bot-ui slot filled by hermes-native skills/hermesbot (tools/assets/hermesbot/SKILL.md; hermes gateway webhook/peer/send stack)
   - skills/poteto-mode/SKILL.md: frontmatter name 'Poteto Mode' -> 'poteto-mode'
   - R1: poteto-mode principles index regenerated from 21 leaves (single source of truth; hand-maintained wording replaced)
   - F16: check-plan.mjs lane slug env-overridable via PSTACK_FAST_LANE
@@ -21,10 +22,10 @@ fixes:
   - G1: delegation escape hatch added to feature.md + poteto-mode Subagents (in-thread authoring allowed for resident surgical edits, with mandatory independent delegate review)
   - F-publish: automations/benny excluded (scanner persistence verdict) and skills/make-bot-ui excluded (scanner privilege verdict; F33)
   - plugin.json: injected exact agent-plugins-v1 $schema at ROOT (9 whitelisted fields; displayName/category/tags/agents/skills omitted)
-  - text normalization: UTF-8 without BOM, LF line endings (files normalized: 124, BOM stripped: 0, CRLF fixed: 125)
+  - text normalization: UTF-8 without BOM, LF line endings (files normalized: 125, BOM stripped: 0, CRLF fixed: 0)
 counts:
-  skills_loaded: 44 (23 workflow/mode + 21 principle)
-  skill_md_on_disk: 44 (skills/ only; automations/benny + make-bot-ui excluded for the install scanner)
+  skills_loaded: 45 (24 workflow/mode + 21 principle)
+  skill_md_on_disk: 45 (skills/ only; automations/benny + make-bot-ui excluded for the install scanner)
   agents_files: 2
 notes:
   - agents/ is inert on the hermes portable path (kept for Cursor dual-load / Phase 2)
