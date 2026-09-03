@@ -90,7 +90,7 @@ jobs:
           exempt = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
           bad = []
           for p in text_files:
-              rel = p.as_posix()
+              rel = p.relative_to(pkg).as_posix()
               t = p.read_text(encoding="utf-8", errors="replace")
               for b in security_bans:
                   if b in t:
