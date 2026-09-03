@@ -890,6 +890,7 @@ def main() -> int:
     skills_dst = out / "skills"
     grokbot = skills_src / "grokbot"
     flattened: list[str] = []
+    excluded_make_bot_ui = False
     for child in sorted(p for p in skills_src.iterdir()):
         if not child.is_dir():
             raise ConvertError(f"unexpected non-directory under skills/: {child.name}")
@@ -900,6 +901,7 @@ def main() -> int:
             # flattened the container themselves - both layouts are handled.
             for inner in sorted(p for p in child.iterdir()):
                 if inner.name == "make-bot-ui":
+                    excluded_make_bot_ui = True
                     st.fixes.append("F-publish: skills/grokbot/make-bot-ui excluded "
                                     "(Tailscale privilege-escalation scan; F33)")
                     continue
@@ -907,6 +909,7 @@ def main() -> int:
             flattened.append("(grokbot container skipped)")
         elif child.name == "make-bot-ui":
             # Current upstream layout: the container is gone; exclude directly.
+            excluded_make_bot_ui = True
             st.fixes.append("F-publish: skills/make-bot-ui excluded "
                             "(Tailscale privilege-escalation scan; F33; upstream "
                             "flattened the grokbot container)")
@@ -915,6 +918,23 @@ def main() -> int:
             copy_tree(child, skills_dst / child.name, st)
     if flattened:
         st.warnings.append(f"excluded containers: {flattened}")
+
+    # (a2) F-publish replacement: the excluded make-bot-ui slot (webhook-waked
+    # control surface) is filled by a hermes-native skill built on the hermes
+    # gateway's own stack (webhook subscriptions with X-Webhook-Signature-V2
+    # HMAC, `hermes send`, `hermes peer`) - no Tailscale, no third-party bot
+    # runtime. The asset lives in this repo so the build stays reproducible
+    # without touching the upstream tree.
+    if excluded_make_bot_ui:
+        asset = SCRIPT_DIR / "assets" / "hermesbot" / "SKILL.md"
+        if not asset.is_file():
+            raise ConvertError(f"hermesbot replacement asset missing: {asset}")
+        hermesbot_dst = out / "skills" / "hermesbot"
+        hermesbot_dst.mkdir(parents=True, exist_ok=True)
+        copy_file(asset, hermesbot_dst / "SKILL.md", st)
+        st.fixes.append("F-publish: make-bot-ui slot filled by hermes-native "
+                        "skills/hermesbot (tools/assets/hermesbot/SKILL.md; "
+                        "hermes gateway webhook/peer/send stack)")
 
     # (b) exactly two frontmatter name fixes
     for dirname, (old, new) in FRONTMATTER_FIXES.items():
@@ -992,7 +1012,9 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   flags its copy-instructions as persistence patterns (verdict: dangerous),
   and Phase 4 rebuilds it as hermes cron/loop jobs anyway.
 - `skills/make-bot-ui/` — **excluded**: its Tailscale setup script trips the
-  privilege-escalation scanner (F33); deepest vendor coupling.
+  privilege-escalation scanner (F33); deepest vendor coupling. The slot is
+  filled by `skills/hermesbot/` — a hermes-native control-surface skill
+  injected from `tools/assets/hermesbot/SKILL.md` at build time.
 - Executable scripts shipped inside skills (e.g. `skills/poteto-mode/scripts/`) —
   copied verbatim; the loader never executes them.
 
@@ -1044,6 +1066,11 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    the hermes install scanner blocks packages whose scan verdict is
    "dangerous" (benny copy-instructions + make-bot-ui Tailscale), --force
    cannot override, and both are Phase-4/what-not-to-port items anyway.
+   The make-bot-ui slot is filled by hermes-native `skills/hermesbot/`
+   (injected from `tools/assets/hermesbot/SKILL.md`): a control-surface
+   skill on the hermes gateway's own webhook stack (`X-Webhook-Signature-V2`
+   HMAC routes), `hermes send`, and `hermes peer` — no Tailscale, no
+   third-party bot runtime.
 9. **G1**: a delegation escape hatch added to the Feature playbook and the
    poteto-mode Subagents section — surgical, fully-specified edits to files
    already resident in context may be implemented in-thread, provided a leaf
