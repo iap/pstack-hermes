@@ -7,8 +7,8 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
 
 ## What hermes loads
 
-- **44 skills** via the agent-plugins-v1 portable path
-  (23 workflow/mode skills + 21 `principle-*` skills):
+- **45 skills** via the agent-plugins-v1 portable path
+  (24 workflow/mode skills + 21 `principle-*` skills):
   single-level `skills/<dir>/SKILL.md`, immediate children only.
 - Root `plugin.json` — the strict agent-plugins-v1 manifest hermes probes at the
   package root: exact `$schema` URL, 9 whitelisted fields
@@ -23,7 +23,9 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   flags its copy-instructions as persistence patterns (verdict: dangerous),
   and Phase 4 rebuilds it as hermes cron/loop jobs anyway.
 - `skills/make-bot-ui/` — **excluded**: its Tailscale setup script trips the
-  privilege-escalation scanner (F33); deepest vendor coupling.
+  privilege-escalation scanner (F33); deepest vendor coupling. The slot is
+  filled by `skills/hermesbot/` — a hermes-native control-surface skill
+  injected from `tools/assets/hermesbot/SKILL.md` at build time.
 - Executable scripts shipped inside skills (e.g. `skills/poteto-mode/scripts/`) —
   copied verbatim; the loader never executes them.
 
@@ -37,7 +39,7 @@ directory keeps the name `pstack`).
 
 Optional slash-command route (no code): add this package's `skills` directory to
 `skills.external_dirs` in `%LOCALAPPDATA%\hermes\config.yaml` and the hub scanner
-registers all 44 skills as `/<name>` slash commands (agent/skill_commands.py:424).
+registers all 45 skills as `/<name>` slash commands (agent/skill_commands.py:424).
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
 plugin namespace; the portable path itself registers zero commands
 (plugins.py:5088-5138).
@@ -75,6 +77,11 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    the hermes install scanner blocks packages whose scan verdict is
    "dangerous" (benny copy-instructions + make-bot-ui Tailscale), --force
    cannot override, and both are Phase-4/what-not-to-port items anyway.
+   The make-bot-ui slot is filled by hermes-native `skills/hermesbot/`
+   (injected from `tools/assets/hermesbot/SKILL.md`): a control-surface
+   skill on the hermes gateway's own webhook stack (`X-Webhook-Signature-V2`
+   HMAC routes), `hermes send`, and `hermes peer` — no Tailscale, no
+   third-party bot runtime.
 9. **G1**: a delegation escape hatch added to the Feature playbook and the
    poteto-mode Subagents section — surgical, fully-specified edits to files
    already resident in context may be implemented in-thread, provided a leaf

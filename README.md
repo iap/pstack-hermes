@@ -31,9 +31,13 @@ Cursor (dual-load, optional): point Cursor at the package root — the
 
 ## What's inside
 
-- **44 skills** (23 workflow/mode + 21 `principle-*`) — the full method:
+- **45 skills** (24 workflow/mode + 21 `principle-*`) — the full method:
   `poteto-mode` router, verification playbooks, interrogation/reflect/recall
   loops, swarm/arena parallel workflows, and the principle library.
+- **hermesbot** fills the excluded `make-bot-ui` slot: a hermes-native
+  control-surface skill (webhook-waked UI) on the hermes gateway's own
+  webhook (`X-Webhook-Signature-V2` HMAC), `hermes send`, and `hermes peer`
+  stack — no Tailscale, no third-party bot runtime.
 - **Hermes-native rewrites**: delegation translated to hermes `delegate_task`
   (all Cursor `Task`/`subagent_type`/`run_in_background` vocabulary removed),
   discovery rewritten to hermes-native `session_search`/`session` tools,
