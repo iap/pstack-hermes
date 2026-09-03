@@ -930,7 +930,15 @@ def main() -> int:
         if not asset.is_file():
             raise ConvertError(f"hermesbot replacement asset missing: {asset}")
         hermesbot_dst = out / "skills" / "hermesbot"
-        hermesbot_dst.mkdir(parents=True, exist_ok=True)
+        if hermesbot_dst.exists():
+            # The slot must contain ONLY repository-owned content: if upstream
+            # ever ships its own skills/hermesbot/, the traversal above copied
+            # it — remove the whole tree so nothing upstream survives inside
+            # the replacement skill.
+            shutil.rmtree(hermesbot_dst)
+            st.fixes.append("F-publish: upstream skills/hermesbot tree removed; "
+                            "slot replaced wholesale by the repository-owned asset")
+        hermesbot_dst.mkdir(parents=True)
         copy_file(asset, hermesbot_dst / "SKILL.md", st)
         st.fixes.append("F-publish: make-bot-ui slot filled by hermes-native "
                         "skills/hermesbot (tools/assets/hermesbot/SKILL.md; "

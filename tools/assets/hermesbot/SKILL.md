@@ -94,6 +94,12 @@ hermes peer dm <name>/<profile> "..."           # named profile on a multiplexed
 hermes peer run <name> "..."                    # async turn; check with `hermes peer status`
 ```
 
+`API_SERVER_KEY` is a reusable gateway credential. Treat the `http://` form
+as a loopback-only example: for any peer across a network, use an `https://`
+endpoint or front the gateway with an authenticated encrypted tunnel (SSH
+forward or similar). Never send the key over a link you would not trust with
+the gateway itself.
+
 Use peers for cross-machine delegation (swarm arms or arena runners on other
 boxes). Announce messages as coming from your bot name.
 
