@@ -29,10 +29,20 @@ SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PACKAGE = REPO_ROOT / "pstack"
 
-_hermes_home = os.environ.get("HERMES_HOME") or str(Path.home() / "AppData" / "Local" / "hermes")
+def _hermes_home_default() -> str:
+    if sys.platform == "win32":
+        return str(Path.home() / "AppData" / "Local" / "hermes")
+    return str(Path.home() / ".hermes")
+
+
+_hermes_home = os.environ.get("HERMES_HOME") or _hermes_home_default()
 HERMES_SRC = Path(_hermes_home) / "hermes-agent"
-VENV_PY = HERMES_SRC / ".venv" / "Scripts" / "python.exe"
-VENV_HERMES = HERMES_SRC / ".venv" / "Scripts" / "hermes.exe"
+if sys.platform == "win32":
+    VENV_PY = HERMES_SRC / ".venv" / "Scripts" / "python.exe"
+    VENV_HERMES = HERMES_SRC / ".venv" / "Scripts" / "hermes.exe"
+else:
+    VENV_PY = HERMES_SRC / ".venv" / "bin" / "python"
+    VENV_HERMES = HERMES_SRC / ".venv" / "bin" / "hermes"
 
 
 def expected_count(pkg: Path) -> int:
