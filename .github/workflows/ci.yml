@@ -196,8 +196,12 @@ jobs:
                  <(cd "${legs[1]}" && find . -type f ! -name ".build-provenance.txt" | sort) || true
             exit 1
           fi
-          p1="$(grep '^source_commit:' "${legs[0]}"/*/.build-provenance.txt 2>/dev/null || grep '^source_commit:' "${legs[0]}"/.build-provenance.txt)"
-          p2="$(grep '^source_commit:' "${legs[1]}"/*/.build-provenance.txt 2>/dev/null || grep '^source_commit:' "${legs[1]}"/.build-provenance.txt)"
+          p1="$(find "${legs[0]}" -name ".build-provenance.txt" -exec grep -h '^source_commit:' {} \; | head -n1)"
+          p2="$(find "${legs[1]}" -name ".build-provenance.txt" -exec grep -h '^source_commit:' {} \; | head -n1)"
+          if [ -z "$p1" ] || [ -z "$p2" ]; then
+            echo "::error::provenance not found in one of the artifacts"
+            exit 1
+          fi
           if [ "$p1" != "$p2" ]; then
             echo "::error::provenance source_commit differs between platforms"
             exit 1
