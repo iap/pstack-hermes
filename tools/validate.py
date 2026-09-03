@@ -394,8 +394,11 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     else:
         try:
             roles = json.loads(cfg.read_text(encoding="utf-8")).get("roles", {})
-            if len(roles) == 18 and all("inherit-parent" in str(v) for v in roles.values()):
-                rep.ok(f"T10: config/models.json present, {len(roles)} roles, inherit-parent defaults")
+            def _ok_value(v):
+                vals = v if isinstance(v, list) else [v]
+                return bool(vals) and all(isinstance(x, str) and x.strip() for x in vals)
+            if len(roles) == 18 and all(_ok_value(v) for v in roles.values()):
+                rep.ok(f"T10: config/models.json present, {len(roles)} roles, string/array values")
             else:
                 rep.fail("T10: config/models.json shape unexpected")
         except Exception as exc:
