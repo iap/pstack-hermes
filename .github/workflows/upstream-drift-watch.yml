@@ -1,0 +1,70 @@
+# Upstream drift watch: cursor/plugins moves on, the package is built from a
+# pinned commit. This workflow notices when upstream pstack/ changes past the
+# pin and opens/updates ONE tracking issue (idempotent by title), so a pin
+# bump is a deliberate decision instead of a surprise.
+
+name: upstream-drift-watch
+
+on:
+  schedule:
+    - cron: "23 6 * * 1" # weekly, Monday 06:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UPSTREAM_PIN: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+  ISSUE_TITLE: "upstream pstack drift: cursor/plugins moved past the pinned SHA"
+
+jobs:
+  check-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check upstream pstack for movement past the pin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          head="$(git ls-remote https://github.com/cursor/plugins.git HEAD | cut -f1)"
+          echo "upstream HEAD: $head"
+          if [ "$head" = "$UPSTREAM_PIN" ]; then
+            echo "no drift: upstream HEAD still at the pin"
+            exit 0
+          fi
+
+          # Blobless clone: diff the pinned tree against HEAD for pstack/ only.
+          rm -rf "$RUNNER_TEMP/upstream"
+          git clone --no-checkout --filter=blob:none \
+            https://github.com/cursor/plugins.git "$RUNNER_TEMP/upstream"
+          git -C "$RUNNER_TEMP/upstream" fetch --depth 1 origin "$UPSTREAM_PIN" "$head"
+          if git -C "$RUNNER_TEMP/upstream" diff --quiet "$UPSTREAM_PIN" "$head" -- pstack; then
+            echo "upstream moved ($UPSTREAM_PIN -> $head) but pstack/ is unchanged"
+            exit 0
+          fi
+
+          {
+            echo "Upstream HEAD is now \`$head\` (pin: \`$UPSTREAM_PIN\`)."
+            echo ""
+            echo "### Changed files (pstack/)"
+            echo '```'
+            git -C "$RUNNER_TEMP/upstream" diff --stat "$UPSTREAM_PIN" "$head" -- pstack
+            echo '```'
+            echo ""
+            echo "Rebuild against the new upstream, update the transform maps for any"
+            echo "reworded anchors (the converter's anchor audit will name them), bump"
+            echo "UPSTREAM_PIN in ci.yml / upstream-drift-watch.yml, and re-run the"
+            echo "pipeline."
+          } > "$RUNNER_TEMP/drift-body.md"
+
+          existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+                        --json number --jq '.[0].number' || true)"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"
+            echo "updated tracking issue #$existing"
+          else
+            gh issue create --title "$ISSUE_TITLE" \
+              --body-file "$RUNNER_TEMP/drift-body.md"
+            echo "opened tracking issue"
+          fi
