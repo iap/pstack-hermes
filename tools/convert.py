@@ -11,8 +11,8 @@ Contract implemented (study Ch3 sections 3.1-3.2 + subagent_03a loader facts):
     since pstack has none), exact $schema URL.
   - skills/ single level: flatten skills/grokbot/make-bot-ui -> skills/make-bot-ui,
     delete the now-empty grokbot container.
-  - Fix exactly two SKILL.md frontmatter names so name == directory name in
-    kebab-case (agent_plugins.py:158-168). Nothing else in any SKILL.md changes.
+  - Fix SKILL.md frontmatter names so name == directory name in
+    kebab-case (agent_plugins.py:158-168).
   - agents/ and automations/ copied unchanged (inert on hermes portable path;
     kept for Cursor dual-load and Phase 2).
   - Every copied text file normalized to UTF-8 WITHOUT BOM, LF line endings.
@@ -38,7 +38,7 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
@@ -67,7 +67,7 @@ SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 TEXT_EXTS = {
     ".md", ".markdown", ".txt", ".yaml", ".yml", ".json", ".toml",
     ".ts", ".tsx", ".mjs", ".js", ".cjs", ".py", ".sh", ".bash", ".ps1",
-    ".html", ".css", ".csv", ".tsv", ".lock", ".cfg", ".ini", ".gitignore",
+    ".html", ".css", ".csv", ".tsv", ".lock", ".cfg", ".ini",
 }
 
 # The conversion gate (study 3.2 fixes 2): frontmatter name must equal the
@@ -185,6 +185,9 @@ class Stats:
         self.crlf_fixed = 0
         self.fixes: list[str] = []
         self.warnings: list[str] = []
+        # (map_name, anchor_index) -> occurrences replaced package-wide
+        self.anchor_hits: dict[tuple[str, int], int] = {}
+        self.anchor_audited = 0
 
 
 def normalize_text(data: bytes, st: Stats) -> str | None:
@@ -333,13 +336,23 @@ def build_principles_index(skills_dir: Path) -> tuple[str, list[str]]:
             parts.append(f"- **{title}** (**{slug}**). {entry}\n")
         parts.append("\n")
     block = "".join(parts).rstrip("\n") + "\n"
-    for slug, (title, _desc) in entries.items():
+    for slug, (_title, _desc) in entries.items():
         if f"(**{slug}**)" not in block:
             drift.append(f"missing entry: {slug}")
     return block, drift
 
 
-def apply_phase1_transforms(out: Path, st: "Stats") -> None:
+def t11_targets(out: Path) -> list[Path]:
+    """T11 pass scope: every skill markdown plus shell scripts.
+
+    worktree-audit.sh carries the one Cursor-only transcript comment the T11
+    map annotates; scripts were out of scope before, which silently skipped
+    that fix for the package's entire history.
+    """
+    return sorted((out / "skills").rglob("*.md")) + sorted((out / "skills").rglob("*.sh"))
+
+
+def apply_phase1_transforms(out: Path, st: Stats) -> None:
     """Apply R1/F16/F10-F12 hygiene to the copied package. Fail-loud on any
     anchor mismatch so a silent no-op can never masquerade as a fix."""
     # --- T1: regenerate the principles index from the leaves (R1) ---
@@ -442,16 +455,9 @@ def apply_phase1_transforms(out: Path, st: "Stats") -> None:
         ('[Guard the Context Window](../principle-guard-the-context-window/SKILL.md)',
          'the **guard-the-context-window** principle skill'),
     ]
-    t8_changed = 0
-    for p in sorted((out / "skills").rglob("*.md")):
-        t = p.read_text(encoding="utf-8")
-        t0 = t
-        for old, new in T8_MAP:
-            if old in t:
-                t = t.replace(old, new)
-                t8_changed += 1
-        if t != t0:
-            p.write_bytes(t.encode("utf-8"))
+    t8_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                         T8_MAP, map_name="T8_MAP", st=st)
+    note_added = False
     # adaptation note for why's source playbooks (Cursor MCP tool names are examples)
     sp = out / "skills" / "why" / "references" / "source-playbook.md"
     if sp.is_file():
@@ -459,11 +465,13 @@ def apply_phase1_transforms(out: Path, st: "Stats") -> None:
         note = "\n\n> Hermes note: the tool names in these source playbooks (Linear, Notion, Slack, Datadog, Sentry, Databricks) are Cursor MCP examples - adapt them to your configured MCP servers' schemas.\n"
         if "Cursor MCP examples" not in sp_text:
             sp.write_bytes((sp_text.rstrip("\n") + note).encode("utf-8"))
-            t8_changed += 1
-    if t8_changed:
-        st.fixes.append(f"T8: {t8_changed} factual fixes from the hermes deep review "
-                        "(readonly-MCP rationale x3, swarm Cursor params x2, tool-name "
-                        "mappings x2, model-panel path x1, principle cross-link, adaptation note)")
+            note_added = True
+    if t8_files or note_added:
+        st.fixes.append(f"T8: factual fixes from the hermes deep review applied to "
+                        f"{t8_files} skill file(s)"
+                        + (" + the source-playbook adaptation note" if note_added else "")
+                        + " (readonly-MCP rationale, swarm Cursor params, tool-name "
+                        "mappings, model-panel path, principle cross-link)")
 
     # --- T6: delegation translation (Phase-2A) ---
     apply_delegation_translation(out, st)
@@ -612,21 +620,14 @@ The parent locates the current session via `session_search` (hermes stores sessi
         ('Tell every subagent to order candidates by real modification time (`ls -t`) and never by UUID name, grep the topic first and then read only the matching chats and only their relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).',
          'Tell every subagent to query `session_search` by topic and recency, read only the matching sessions\' relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).'),
     ]
-    t910 = 0
-    for p in sorted((out / "skills").rglob("*.md")):
-        t = p.read_text(encoding="utf-8")
-        t0 = t
-        for old, new in T10_MAP + T9_MAP:
-            if old in t:
-                t = t.replace(old, new)
-                t910 += 1
-        if t != t0:
-            p.write_bytes(t.encode("utf-8"))
+    t910 = apply_map(sorted((out / "skills").rglob("*.md")),
+                     T10_MAP, map_name="T10_MAP", st=st)
+    t910 += apply_map(sorted((out / "skills").rglob("*.md")),
+                      T9_MAP, map_name="T9_MAP", st=st)
     cfg_dir = out / "config"
     cfg_dir.mkdir(exist_ok=True)
     cfg = cfg_dir / "models.json"
     if not cfg.exists():
-        import json as _json
         roles = {
             "feature, refactoring": "inherit-parent", "bug-fix": "inherit-parent",
             "perf-issue": "inherit-parent", "hillclimb": "inherit-parent",
@@ -644,13 +645,13 @@ The parent locates the current session via `session_search` (hermes stores sessi
         # role set must match exactly or the build fails loudly.
         panel = SCRIPT_DIR / "assets" / "model-panel.json"
         if panel.is_file():
-            imported = _json.loads(panel.read_text(encoding="utf-8")).get("roles", {})
+            imported = json.loads(panel.read_text(encoding="utf-8")).get("roles", {})
             if sorted(imported) != sorted(roles):
                 diff = sorted(set(imported) ^ set(roles))
                 raise ConvertError(
                     f"model panel roles mismatch the pstack role set: {diff}")
             roles = imported
-        cfg.write_bytes((_json.dumps({"roles": roles}, indent=2) + "\n").encode("utf-8"))
+        cfg.write_bytes((json.dumps({"roles": roles}, indent=2) + "\n").encode("utf-8"))
         if panel.is_file():
             st.fixes.append(
                 "Stage-D: config/models.json shipped with the model panel (18 roles)")
@@ -658,70 +659,13 @@ The parent locates the current session via `session_search` (hermes stores sessi
             st.fixes.append(
                 "T10: config/models.json shipped with inherit-parent defaults")
     if t910:
-        st.fixes.append(f"T9/T10: {t910} hermes-native discovery/config fixes applied "
+        st.fixes.append(f"T9/T10: hermes-native discovery/config fixes applied across "
+                        f"{t910} skill file pass(es) "
                         "(setup-pstack models.json, why/reflect/recall session_search)")
 
-    # --- T11: hardcoded-path cleanup (path audit 2026-08-30) ---
-    # Cursor-specific paths, /tmp scratch dirs, and malformed links across the
-    # package. worktree-audit.sh keeps its Cursor transcript path (graceful
-    # skip on hermes) with a note; provenance is by-design; github.ts:352 was
-    # a regex false positive in the audit.
-    T11_MAP = [
-        ('Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.',
-         'Use `arena runners` from `config/models.json` when present.'),
-        ('Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry,',
-         'Use the `interrogate reviewers` list from `config/models.json` when present, one reviewer per entry,'),
-        ('Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user\'s handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.',
-         'Look recursively for `*-mode/SKILL.md` matching the user\'s handle: in this plugin\'s `skills/` directory, in `~/.hermes/skills/`, or wherever the user\'s mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level.'),
-        ('Locate the active workspace\'s transcripts before fanning out. The system prompt names the workspace\'s `agent-transcripts/` directory. Use only that path. Don\'t glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.',
-         'Locate the active session history before fanning out. Query `session_search` for the active conversation\'s sessions; hermes stores them in its SQLite store. Don\'t read sessions from unrelated projects or users.'),
-        ('- Path: preserve an existing mode skill\'s category. For a new mode, use `.cursor/skills/<handle>/<handle>-mode/SKILL.md` when the repo has an established personal category for that handle; otherwise default to `.cursor/skills/<handle>-mode/SKILL.md` in the project (or `~/.cursor/skills/<handle>-mode/` if the user prefers a personal skill).',
-         '- Path: preserve an existing mode skill\'s category. For a new mode, use `skills/<handle>/<handle>-mode/SKILL.md` when the plugin has an established personal category for that handle; otherwise default to `~/.hermes/skills/<handle>-mode/SKILL.md` (a personal skill location).'),
-        ('Read each candidate\'s local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`; that crosses workspace boundaries and reads private chats from unrelated projects.',
-         'Verify each candidate\'s trail via `session_search` over the hermes session store (query the candidate\'s topic and read the matching session\'s relevant regions). Hermes sessions cross project boundaries only when the work did.'),
-        ('1. Locate the prior trail. A local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path; do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.',
-         '1. Locate the prior trail. The hermes session store (query `session_search` for the prior conversation), a cloud-agent URL, or a pushed branch.'),
-        ('Read this run\'s transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path). Don\'t glob across `~/.cursor/projects/*/`; that reads unrelated private chats.',
-         'Read this run\'s history via `session_search` over the hermes session store (query this conversation). Don\'t read unrelated private sessions.'),
-        ('- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)',
-         '- `read_file` calls against any `SKILL.md` file (this plugin\'s `skills/`, `~/.hermes/skills/`, or other configured skills locations)'),
-        ('otherwise `/tmp/arena-<slug>/candidate-<n>/`',
-         'otherwise a scratch directory under the system temp (`arena-<slug>/candidate-<n>/`)'),
-        ('Save every screenshot to `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the report.',
-         'Save every screenshot to a scratch directory under the system temp (`swarm-<pr-id>/worker-<n>/<slug>.png`) and return the paths with the report.'),
-        ('write it to a file like `/tmp/<slug>-resume.md`',
-         'write it to a resume file in the system temp directory (`<slug>-resume.md`)'),
-        ('Use a worktree, branch, or `/tmp/swarm-<slug>/worker-<n>/`.',
-         'Use a worktree, branch, or a scratch directory under the system temp (`swarm-<slug>/worker-<n>/`).'),
-        ('Set `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` so concurrent runs do not share state.',
-         'Set `NOTES_DATA_DIR` to a scratch directory under the system temp (e.g. `notes-verify-$RUN_ID`) so concurrent runs do not share state.'),
-        ('6. Simulators and other reclaimers.',
-         '6. Simulators and other reclaimers (macOS/Xcode).'),
-        ('reading local transcripts under `agent-transcripts/`',
-         'reading session history from the local hermes store'),
-        ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
-         '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts (Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
-        ('a project-local skill (`.cursor/skills/verify-<app>/`)',
-         'a project-local skill in your harness\'s skills directory (`%LOCALAPPDATA%\\hermes\\skills\\verify-<app>/` '
-         'on hermes, `.cursor/skills/verify-<app>/` on Cursor)'),
-        ('Write `.cursor/skills/verify-<app>/SKILL.md` with YAML frontmatter',
-         'Write `verify-<app>/SKILL.md` in that skills directory with YAML frontmatter'),
-        ('Create `.cursor/skills/verify-<app>/features/README.md` plus one file per user-facing feature',
-         'Create `verify-<app>/features/README.md` in that skills directory plus one file per user-facing feature'),
-        ('(usually `.cursor/skills/verify-*/`)',
-         '(usually `verify-*/` in your harness\'s skills directory)'),
-    ]
-    t11 = 0
-    for p in sorted((out / "skills").rglob("*.md")):
-        t = p.read_text(encoding="utf-8")
-        t0 = t
-        for old, new in T11_MAP:
-            if old in t:
-                t = t.replace(old, new)
-                t11 += 1
-        if t != t0:
-            p.write_bytes(t.encode("utf-8"))
-    st.fixes.append(f"T11: {t11} hardcoded-path fixes applied (.cursor rules/projects/skills "
+    t11_files = apply_map(t11_targets(out), T11_MAP, map_name="T11_MAP", st=st)
+    st.fixes.append(f"T11: hardcoded-path fixes applied to {t11_files} skill file(s) "
+                    "(.cursor rules/projects/skills "
                     "paths, agent-transcripts recipes, /tmp scratch dirs, malformed-link "
                     "checks, worktree-cleanup macOS note)")
 
@@ -757,20 +701,79 @@ The parent locates the current session via `session_search` (hermes stores sessi
                     "Subagents (in-thread authoring allowed for resident surgical "
                     "edits, with mandatory independent delegate review)")
 
+    # Dead-anchor audit: every audited transform must have matched somewhere
+    # in this build (fail-loud replacement for the historical silent no-op).
+    audit_anchor_hits(
+        {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
+         "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP},
+        st,
+    )
+
 
 # --- T6 (Phase-2A): delegation translation --------------------------------
 # Cursor Task/subagent vocabulary -> hermes delegate_task vocabulary, applied to
 # every package markdown file. Ordered most-specific first; the final global pair
 # catches remaining backticked `Task` tool references. agents/*.md are EXCLUDED
 # (they are the Cursor-side persona definitions, kept verbatim for dual-load).
+# --- T11: hardcoded-path cleanup (path audit 2026-08-30) ---
+# Cursor-specific paths, /tmp scratch dirs, and malformed links across the
+# package. worktree-audit.sh keeps its Cursor transcript path (graceful
+# skip on hermes) with a note; provenance is by-design; github.ts:352 was
+# a regex false positive in the audit.
+T11_MAP = [
+    ('Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.',
+     'Use `arena runners` from `config/models.json` when present.'),
+    ('Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry,',
+     'Use the `interrogate reviewers` list from `config/models.json` when present, one reviewer per entry,'),
+    ('Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user\'s handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.',
+     'Look recursively for `*-mode/SKILL.md` matching the user\'s handle: in this plugin\'s `skills/` directory, in `~/.hermes/skills/`, or wherever the user\'s mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level.'),
+    ('Locate the active workspace\'s transcripts before fanning out. The system prompt names the workspace\'s `agent-transcripts/` directory. Use only that path. Don\'t glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.',
+     'Locate the active session history before fanning out. Query `session_search` for the active conversation\'s sessions; hermes stores them in its SQLite store. Don\'t read sessions from unrelated projects or users.'),
+    ('- Path: preserve an existing mode skill\'s category. For a new mode, use `.cursor/skills/<handle>/<handle>-mode/SKILL.md` when the repo has an established personal category for that handle; otherwise default to `.cursor/skills/<handle>-mode/SKILL.md` in the project (or `~/.cursor/skills/<handle>-mode/` if the user prefers a personal skill).',
+     '- Path: preserve an existing mode skill\'s category. For a new mode, use `skills/<handle>/<handle>-mode/SKILL.md` when the plugin has an established personal category for that handle; otherwise default to `~/.hermes/skills/<handle>-mode/SKILL.md` (a personal skill location).'),
+    ('Read each candidate\'s local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`; that crosses workspace boundaries and reads private chats from unrelated projects.',
+     'Verify each candidate\'s trail via `session_search` over the hermes session store (query the candidate\'s topic and read the matching session\'s relevant regions). Hermes sessions cross project boundaries only when the work did.'),
+    ('1. Locate the prior trail. A local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path; do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.',
+     '1. Locate the prior trail. The hermes session store (query `session_search` for the prior conversation), a cloud-agent URL, or a pushed branch.'),
+    ('Read this run\'s transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path). Don\'t glob across `~/.cursor/projects/*/`; that reads unrelated private chats.',
+     'Read this run\'s history via `session_search` over the hermes session store (query this conversation). Don\'t read unrelated private sessions.'),
+    ('- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)',
+     '- `read_file` calls against any `SKILL.md` file (this plugin\'s `skills/`, `~/.hermes/skills/`, or other configured skills locations)'),
+    ('otherwise `/tmp/arena-<slug>/candidate-<n>/`',
+     'otherwise a scratch directory under the system temp (`arena-<slug>/candidate-<n>/`)'),
+    ('Save every screenshot to `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the report.',
+     'Save every screenshot to a scratch directory under the system temp (`swarm-<pr-id>/worker-<n>/<slug>.png`) and return the paths with the report.'),
+    ('write it to a file like `/tmp/<slug>-resume.md`',
+     'write it to a resume file in the system temp directory (`<slug>-resume.md`)'),
+    ('Use a worktree, branch, or `/tmp/swarm-<slug>/worker-<n>/`.',
+     'Use a worktree, branch, or a scratch directory under the system temp (`swarm-<slug>/worker-<n>/`).'),
+    ('Set `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` so concurrent runs do not share state.',
+     'Set `NOTES_DATA_DIR` to a scratch directory under the system temp (e.g. `notes-verify-$RUN_ID`) so concurrent runs do not share state.'),
+    ('6. Simulators and other reclaimers.',
+     '6. Simulators and other reclaimers (macOS/Xcode).'),
+    ('reading local transcripts under `agent-transcripts/`',
+     'reading session history from the local hermes store'),
+    ('a project-local skill (`.cursor/skills/verify-<app>/`)',
+     'a project-local skill in your harness\'s skills directory (`%LOCALAPPDATA%\\hermes\\skills\\verify-<app>/` '
+     'on hermes, `.cursor/skills/verify-<app>/` on Cursor)'),
+    ('Write `.cursor/skills/verify-<app>/SKILL.md` with YAML frontmatter',
+     'Write `verify-<app>/SKILL.md` in that skills directory with YAML frontmatter'),
+    ('Create `.cursor/skills/verify-<app>/features/README.md` plus one file per user-facing feature',
+     'Create `verify-<app>/features/README.md` in that skills directory plus one file per user-facing feature'),
+    ('(usually `.cursor/skills/verify-*/`)',
+     '(usually `verify-*/` in your harness\'s skills directory)'),
+    ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
+     '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts '
+     '(Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
+]
+
+
 DELEGATION_MAP = [
     ('`subagent_type`: `generalPurpose`', '`delegate_task`: role `leaf`'),
     ('Spawn `Task` with `subagent_type: "Comment Sicko"`',
      'Spawn a delegate with `delegate_task` (role: `leaf`, persona: Comment Sicko)'),
-    ('`subagent_type: "generalPurpose"`', '`delegate_task` (role: `leaf`)'),
     ('`subagent_type: generalPurpose`', '`delegate_task` (role: `leaf`)'),
     ('`subagent_type: "poteto-agent"`', '`delegate_task` (role: `leaf`, persona: poteto-agent)'),
-    ('`subagent_type: "Comment Sicko"`', '`delegate_task` (role: `leaf`, persona: Comment Sicko)'),
     ('`environment: "cloud"`, ', ''),
     ('`environment: "cloud"`', 'local execution'),
     ('`run_in_background: true`', 'background execution'),
@@ -785,16 +788,55 @@ DELEGATION_FORBIDDEN = ("subagent_type", "generalPurpose", "AskQuestion",
                         "`Task`", "run_in_background", 'environment: "cloud"')
 
 
-def apply_delegation_translation(out: Path, st: "Stats") -> None:
+def apply_map(files: list[Path], mapping: list[tuple[str, str]],
+              *, map_name: str, st: Stats) -> int:
+    """Apply an ordered (old, new) mapping to each file; count per-anchor hits.
+
+    Replacement order within a file follows the mapping order, matching the
+    historical inline loops exactly. Occurrences are recorded in
+    st.anchor_hits for the post-build dead-anchor audit.
+    """
     changed = 0
-    for p in sorted((out / "skills").rglob("*.md")):
+    for p in files:
         t = p.read_text(encoding="utf-8")
         t0 = t
-        for old, new in DELEGATION_MAP:
-            t = t.replace(old, new)
+        for i, (old, new) in enumerate(mapping):
+            if old in t:
+                st.anchor_hits[(map_name, i)] = (
+                    st.anchor_hits.get((map_name, i), 0) + t.count(old)
+                )
+                t = t.replace(old, new)
         if t != t0:
             p.write_bytes(t.encode("utf-8"))
             changed += 1
+    return changed
+
+
+def audit_anchor_hits(maps: dict[str, list[tuple[str, str]]], st: Stats) -> None:
+    """Fail loudly when an audited transform anchor never matched upstream.
+
+    Audited anchors are expected at the pinned source: zero hits package-wide
+    means the passage the anchor fixes is gone or reworded and the transform
+    silently did nothing - the failure mode this prohibits. Dead anchors must
+    be pruned from the map (or the map updated) at pin-bump time.
+    """
+    st.anchor_audited = sum(len(m) for m in maps.values())
+    dead = []
+    for map_name, mapping in maps.items():
+        for i, (old, _new) in enumerate(mapping):
+            if st.anchor_hits.get((map_name, i), 0) == 0:
+                dead.append(f"{map_name}[{i}] {old[:80]!r}")
+    if dead:
+        raise ConvertError(
+            f"anchor audit: {len(dead)} transform anchor(s) never matched - "
+            "upstream drifted; update or prune the map(s):\n  "
+            + "\n  ".join(dead)
+        )
+
+
+def apply_delegation_translation(out: Path, st: Stats) -> None:
+    changed = apply_map(sorted((out / "skills").rglob("*.md")),
+                        DELEGATION_MAP, map_name="DELEGATION_MAP", st=st)
     leftovers = []
     for p in sorted((out / "skills").rglob("*.md")):
         t = p.read_text(encoding="utf-8")
@@ -843,8 +885,8 @@ def _converted_at() -> str:
     """Build timestamp; SOURCE_DATE_EPOCH makes builds fully deterministic."""
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch and epoch.isdigit():
-        return datetime.fromtimestamp(int(epoch), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return datetime.fromtimestamp(int(epoch), tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def source_commit(source: Path) -> str:
@@ -904,7 +946,6 @@ def main() -> int:
     # (a) skills/ with the grokbot flatten
     skills_src = source / "skills"
     skills_dst = out / "skills"
-    grokbot = skills_src / "grokbot"
     flattened: list[str] = []
     excluded_make_bot_ui = False
     for child in sorted(p for p in skills_src.iterdir()):
@@ -960,7 +1001,7 @@ def main() -> int:
                         "skills/hermesbot (tools/assets/hermesbot/SKILL.md; "
                         "hermes gateway webhook/peer/send stack)")
 
-    # (b) exactly two frontmatter name fixes
+    # (b) frontmatter name fixes (name == dir name, kebab-case)
     for dirname, (old, new) in FRONTMATTER_FIXES.items():
         p = skills_dst / dirname / "SKILL.md"
         text = p.read_text(encoding="utf-8")  # already normalized by copy_file
@@ -988,7 +1029,7 @@ def main() -> int:
     (out / ".cursor-plugin").mkdir()
     copy_file(src_manifest, out / ".cursor-plugin" / "plugin.json", st)
 
-    # (d) root plugin.json: strict 10-field whitelist manifest (hermes probes root only)
+    # (d) root plugin.json: strict whitelisted-field manifest (9 fields; hermes probes root only)
     manifest = build_root_manifest(src_manifest)
     manifest_text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
     (out / "plugin.json").write_bytes(manifest_text.encode("utf-8"))
@@ -1120,6 +1161,11 @@ Nothing else in any SKILL.md was modified.
         f"(files normalized: {st.text_normalized}, BOM stripped: {st.bom_stripped}, "
         f"CRLF fixed: {st.crlf_fixed})"
     )
+    if st.anchor_audited:
+        fix_lines += (
+            f"\n  - anchor audit: {len(st.anchor_hits)}/{st.anchor_audited} transform "
+            f"anchors applied (0 dead; the converter fails loudly on upstream drift)"
+        )
     provenance = f"""package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone; public origin in source_url)
 source_url: {source_url(source)}
@@ -1149,7 +1195,15 @@ notes:
         shutil.rmtree(prev)
     if final_out.exists():
         final_out.rename(prev)
-    out.rename(final_out)
+    try:
+        out.rename(final_out)
+    except OSError:
+        # Never leave the install target absent: restore the previous
+        # package when one was moved aside (a fresh-target build has none),
+        # then surface the original failure instead of masking it.
+        if prev.exists():
+            prev.rename(final_out)
+        raise
     out = final_out
     if prev.exists():
         shutil.rmtree(prev, ignore_errors=True)

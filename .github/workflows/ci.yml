@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token: no job in this workflow writes to the repo.
+permissions:
+  contents: read
+
+env:
+  # The pinned upstream commit the package is built from. Single source of
+  # truth for the clone, verify, and provenance steps below.
+  UPSTREAM_PIN: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+
 jobs:
   convert-and-validate:
     runs-on: ${{ matrix.os }}
@@ -14,6 +23,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # Same epoch on both legs -> cross-platform byte-determinism is provable.
       # HEAD commit time: identical on every runner for a given event.
@@ -30,16 +41,15 @@ jobs:
         shell: bash
         run: |
           git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
-          git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin "$UPSTREAM_PIN"
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout "$UPSTREAM_PIN"
 
       - name: Verify pinned upstream SHA (re-check)
         shell: bash
         run: |
           got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
-          want="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
-          if [ "$got" != "$want" ]; then
-            echo "::error::pinned SHA mismatch: got $got, want $want"
+          if [ "$got" != "$UPSTREAM_PIN" ]; then
+            echo "::error::pinned SHA mismatch: got $got, want $UPSTREAM_PIN"
             exit 1
           fi
           echo "pinned upstream SHA verified: $got"
@@ -54,16 +64,15 @@ jobs:
       - name: Verify provenance consistency (source_commit == pinned SHA)
         shell: bash
         run: |
-          pin="799151d91b6e12ee7dbd09f708eec108d7de9b3b"
           if [ ! -f pstack/.build-provenance.txt ]; then
             echo "::error::.build-provenance.txt missing from the converted package"
             exit 1
           fi
-          if ! grep -q "source_commit: $pin" pstack/.build-provenance.txt; then
+          if ! grep -q "source_commit: $UPSTREAM_PIN" pstack/.build-provenance.txt; then
             echo "::error::provenance source_commit does not match the pinned upstream SHA"
             exit 1
           fi
-          echo "provenance consistency verified: source_commit == $pin"
+          echo "provenance consistency verified: source_commit == $UPSTREAM_PIN"
 
       - name: Validate (static + repo YAML + structural checks)
         shell: bash
@@ -73,35 +82,10 @@ jobs:
       - name: Scanner gate (community source must be safe)
         shell: bash
         run: |
-          uv run --frozen python - <<'PY'
-          # hermes-side check runs on the maintainer machine; in CI we assert the
-          # scanner-clean invariants statically instead. Two ban classes:
-          #   security bans  -> package-wide (no exceptions)
-          #   delegation vocab (Cursor API names) -> hermes-facing surface only;
-          #      the Cursor dual-load surface (agents/, .cursor-plugin/) and the
-          #      build provenance (which documents the fixes by name) are exempt.
-          import pathlib
-          pkg = pathlib.Path("pstack")
-          text_files = [p for p in pkg.rglob("*")
-                        if p.is_file() and p.suffix in {".md", ".json", ".txt"}]
-          security_bans = ["tailscale.com/install.sh", "FOR_AGENTS.md",
-                           "http://127.0.0.1:4173"]
-          vocab_bans = ["subagent_type", "generalPurpose"]
-          exempt = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
-          bad = []
-          for p in text_files:
-              rel = p.relative_to(pkg).as_posix()
-              t = p.read_text(encoding="utf-8", errors="replace")
-              for b in security_bans:
-                  if b in t:
-                      bad.append(f"{rel}: {b} (security, package-wide)")
-              if not rel.startswith(exempt):
-                  for b in vocab_bans:
-                      if b in t:
-                          bad.append(f"{rel}: {b} (delegation vocab, hermes-facing)")
-          assert not bad, f"banned constructs present: {bad}"
-          print(f"scanner-clean invariants: OK ({len(text_files)} text files scanned)")
-          PY
+          # Ban definitions live in tools/bans.py (shared with validate.py);
+          # the scan covers every UTF-8-decodable file, mirroring the real
+          # hermes install scanner.
+          uv run --frozen tools/scanner_gate.py --package "$GITHUB_WORKSPACE/pstack"
 
       - name: Upload converted package (per-OS, consumed by verify-determinism)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -117,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Record HEAD commit time as SOURCE_DATE_EPOCH
         shell: bash
@@ -131,8 +117,8 @@ jobs:
         shell: bash
         run: |
           git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin 799151d91b6e12ee7dbd09f708eec108d7de9b3b
-          git -C "$RUNNER_TEMP/cursor-plugins" checkout 799151d91b6e12ee7dbd09f708eec108d7de9b3b
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin "$UPSTREAM_PIN"
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout "$UPSTREAM_PIN"
 
       - name: Rebuild the package to a scratch dir (never touch the checkout)
         shell: bash
@@ -208,3 +194,22 @@ jobs:
             exit 1
           fi
           echo "cross-platform determinism: OK (byte-identical, excluding per-build provenance metadata)"
+
+  # Unit tests + lint for the converter/validator tooling itself (pytest + ruff).
+  lint-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up uv (pinned interpreter + lockfile)
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Lint (ruff)
+        run: uv run --frozen ruff check tools
+
+      - name: Unit tests (pytest)
+        run: uv run --frozen pytest -q

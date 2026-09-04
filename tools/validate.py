@@ -11,8 +11,9 @@ Layers:
       findings to record, not package failures — the doctor signature is verified in parallel)
 
 Usage: python validate.py [--package <package-dir>]
-Exit codes: 0 = all hard checks + GOLD passed; 1 = hard failure; 2 = degraded (GOLD unavailable,
-static checks passed).
+Exit codes: 0 = all hard checks passed (GOLD checks skipped when hermes is unavailable
+on this machine); 1 = hard static failure; 2 = GOLD checks RAN and failed (hermes
+present, loader diagnostics non-zero).
 """
 
 from __future__ import annotations
@@ -28,6 +29,11 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PACKAGE = REPO_ROOT / "pstack"
+
+sys.path.insert(0, str(SCRIPT_DIR))
+from bans import find_violations  # noqa: E402
+from convert import MANIFEST_NAME_RE, SCHEMA_URL, SKILL_NAME_RE, TEXT_EXTS  # noqa: E402
+
 
 def _hermes_home_default() -> str:
     if sys.platform == "win32":
@@ -57,16 +63,11 @@ def expected_principles(pkg: Path) -> int:
                if d.is_dir() and d.name.startswith("principle-")
                and (d / "SKILL.md").is_file())
 
-SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
-WHITELIST = {"$schema", "name", "version", "description", "author", "homepage",
-             "repository", "license", "keywords", "extensions"}
-MANIFEST_NAME_RE = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
-SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-
-TEXT_SUFFIXES = {".md", ".markdown", ".txt", ".yaml", ".yml", ".json", ".toml",
-                 ".ts", ".tsx", ".mjs", ".js", ".cjs", ".py", ".sh", ".bash", ".ps1",
-                 ".csv", ".tsv", ".lock", ".cfg", ".ini", ".html", ".css"}
-# Filenames normalize_text() touches even without a text suffix (mirrors convert.py TEXT_EXTS).
+# The loader TOLERATES one more manifest field than convert.py emits ("extensions");
+# this is validate's superset whitelist, distinct from the converter's 9-field output set.
+LOADER_WHITELIST = {"$schema", "name", "version", "description", "author", "homepage",
+                    "repository", "license", "keywords", "extensions"}
+# Filenames the encoding check touches even without a text suffix (dotfiles carry none).
 TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
 
 
@@ -140,11 +141,11 @@ def check_manifest(pkg: Path, rep: Report) -> dict:
         rep.fail(f"$schema must be exactly {SCHEMA_URL!r}, got {m.get('$schema')!r}")
     else:
         rep.ok("$schema exact-match agent-plugins.org v1")
-    unknown = sorted(set(m) - WHITELIST)
+    unknown = sorted(set(m) - LOADER_WHITELIST)
     if unknown:
         rep.fail(f"manifest has non-whitelisted fields (loader would emit ignored-field diagnostics): {unknown}")
     else:
-        rep.ok(f"manifest keys subset of 10-field whitelist (fields present: {len(m)})")
+        rep.ok(f"manifest keys subset of the 10-field loader whitelist (fields present: {len(m)})")
     name = m.get("name")
     if not isinstance(name, str) or not (1 <= len(name) <= 64) or not MANIFEST_NAME_RE.match(name):
         rep.fail(f"manifest name fails loader rules: {name!r}")
@@ -238,7 +239,7 @@ def check_encoding(pkg: Path, rep: Report) -> None:
     for p in pkg.rglob("*"):
         if not p.is_file():
             continue
-        if p.suffix.lower() not in TEXT_SUFFIXES and p.name not in TEXT_NAMES:
+        if p.suffix.lower() not in TEXT_EXTS and p.name not in TEXT_NAMES:
             continue
         data = p.read_bytes()
         checked += 1
@@ -284,7 +285,6 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     """Phase-1 hygiene checks: R1 index generation, F16 slug override, F10-F12 portability."""
     # R1: the shipped index must equal what the leaves generate
     try:
-        sys.path.insert(0, str(SCRIPT_DIR))
         from convert import build_principles_index  # noqa: PLC0415
         generated, drift = build_principles_index(pkg / "skills")
         if drift:
@@ -414,23 +414,50 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     else:
         rep.ok("G1: delegation escape hatch present (in-thread + independent delegate review)")
 
-    # F-publish: no scanner-flagged constructs anywhere in the shipped package
-    flagged = []
-    for p in pkg.rglob("*"):
-        if not p.is_file():
-            continue
-        try:
-            t = p.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        if "tailscale.com/install.sh" in t:
-            flagged.append(str(p.relative_to(pkg)) + " (privilege: curl|sudo sh)")
-        elif "FOR_AGENTS.md" in t:
-            flagged.append(str(p.relative_to(pkg)) + " (persistence: copy-instructions)")
-    if flagged:
-        rep.fail(f"F-publish: scanner-flagged constructs present: {flagged}")
+    # F-publish: no banned constructs anywhere in the shipped package
+    # (definitions shared with the CI scanner gate via tools/bans.py)
+    violations = find_violations(pkg)
+    if violations:
+        for v in violations:
+            rep.fail(f"F-publish: banned construct present: {v}")
     else:
-        rep.ok("F-publish: no scanner-flagged constructs (tailscale install.sh, FOR_AGENTS.md) in package")
+        rep.ok("F-publish: no banned constructs in any decodable package file "
+               "(security bans package-wide, delegation vocab hermes-facing)")
+
+
+def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None:
+    """Stage-D consistency: shipped config/models.json == the repo-owned panel."""
+    if asset is None:
+        asset = SCRIPT_DIR / "assets" / "model-panel.json"
+    if not asset.is_file():
+        rep.note("no repo-owned model panel asset present; shipped config not compared")
+        return
+    cfg = pkg / "config" / "models.json"
+    if not cfg.is_file():
+        rep.fail("Stage-D: config/models.json missing while a repo model panel exists")
+        return
+    try:
+        panel_roles = json.loads(asset.read_text(encoding="utf-8")).get("roles", {})
+        cfg_roles = json.loads(cfg.read_text(encoding="utf-8")).get("roles", {})
+    except Exception as exc:
+        rep.fail(f"Stage-D: model panel / config not parseable JSON: {exc}")
+        return
+    if panel_roles != cfg_roles:
+        details = []
+        only_panel = sorted(set(panel_roles) - set(cfg_roles))
+        only_cfg = sorted(set(cfg_roles) - set(panel_roles))
+        differing = sorted(k for k in set(panel_roles) & set(cfg_roles)
+                           if panel_roles[k] != cfg_roles[k])
+        if only_panel:
+            details.append(f"roles only in panel: {only_panel}")
+        if only_cfg:
+            details.append(f"roles only in config: {only_cfg}")
+        if differing:
+            details.append(f"values differ: {differing}")
+        rep.fail("Stage-D: shipped config/models.json does not match the repo model "
+                 "panel (" + "; ".join(details) + ")")
+    else:
+        rep.ok(f"Stage-D: config/models.json == repo model panel ({len(cfg_roles)} roles)")
 
 
 def subprocess_env() -> dict:
@@ -540,6 +567,7 @@ def main() -> int:
         check_encoding(pkg, rep)
         check_layout(pkg, rep)
         check_phase1(pkg, rep)
+        check_model_panel(pkg, rep)
 
         print("-- [1..3] static checks (stdlib replication of agent_plugins.py rules) --")
         for msg in rep.passed:
