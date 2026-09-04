@@ -11,3 +11,6 @@ __pycache__/
 # convert.py atomic-build leftovers (never present after a clean run)
 pstack.tmp-build/
 pstack.prev-build/
+
+# pytest scratch (basetemp)
+.pytest-tmp/
