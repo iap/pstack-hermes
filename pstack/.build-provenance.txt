@@ -1,12 +1,12 @@
 package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone; public origin in source_url)
 source_url: https://github.com/cursor/plugins.git
-source_commit: 799151d91b6e12ee7dbd09f708eec108d7de9b3b
-converted_at: 2026-09-03T22:37:08Z
-converter: convert.py (sha256[:16]=416c96f9b444b3e2)
+source_commit: 93b00b89ef425a9c1bac0d0b317dfc49c930ac99
+converted_at: 2026-09-04T21:17:36Z
+converter: convert.py (sha256[:16]=64db05c26b25c6e7)
 schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
 fixes:
-  - F-publish: skills/grokbot/make-bot-ui excluded (Tailscale privilege-escalation scan; F33)
+  - F-publish: skills/make-bot-ui excluded (Tailscale privilege-escalation scan; F33; upstream flattened the grokbot container)
   - F-publish: make-bot-ui slot filled by hermes-native skills/hermesbot (tools/assets/hermesbot/SKILL.md; hermes gateway webhook/peer/send stack)
   - skills/poteto-mode/SKILL.md: frontmatter name 'Poteto Mode' -> 'poteto-mode'
   - R1: poteto-mode principles index regenerated from 21 leaves (single source of truth; hand-maintained wording replaced)
@@ -22,7 +22,7 @@ fixes:
   - G1: delegation escape hatch added to feature.md + poteto-mode Subagents (in-thread authoring allowed for resident surgical edits, with mandatory independent delegate review)
   - F-publish: automations/benny excluded (scanner persistence verdict) and skills/make-bot-ui excluded (scanner privilege verdict; F33)
   - plugin.json: injected exact agent-plugins-v1 $schema at ROOT (9 whitelisted fields; displayName/category/tags/agents/skills omitted)
-  - text normalization: UTF-8 without BOM, LF line endings (files normalized: 125, BOM stripped: 0, CRLF fixed: 125)
+  - text normalization: UTF-8 without BOM, LF line endings (files normalized: 125, BOM stripped: 0, CRLF fixed: 0)
   - anchor audit: 78/78 transform anchors applied (0 dead; the converter fails loudly on upstream drift)
 counts:
   skills_loaded: 45 (24 workflow/mode + 21 principle)
