@@ -506,23 +506,23 @@ alwaysApply: true
 # pstack model configuration. One line per role. Delete a line to fall back to the skill default.
 # `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
 feature, refactoring: grok-4.6-fast-xhigh
-bug-fix: gpt-5.6-sol-max
-perf-issue: gpt-5.6-sol-max
-hillclimb: gpt-5.6-sol-max
-judgment and prose: claude-fable-5-thinking-max
-hardest tasks: claude-fable-5-thinking-max
+bug-fix: claude-fable-5-1-thinking-max
+perf-issue: claude-fable-5-1-thinking-max
+hillclimb: claude-fable-5-1-thinking-max
+judgment and prose: claude-fable-5-1-thinking-max
+hardest tasks: claude-fable-5-1-thinking-max
 how explorer: grok-4.6-fast-xhigh
-how explainer: claude-fable-5-thinking-max
-how critics: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+how explainer: claude-fable-5-1-thinking-max
+how critics: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
 why investigators: grok-4.6-fast-xhigh
-why synthesizer: claude-fable-5-thinking-max
+why synthesizer: claude-fable-5-1-thinking-max
 reflect tooling: gpt-5.6-sol-max
-reflect judgment, divergent, synthesizer: claude-fable-5-thinking-max
-arena runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-arena cross-judge pool: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+reflect judgment, divergent, synthesizer: claude-fable-5-1-thinking-max
+arena runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+arena cross-judge pool: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
 swarm workers: grok-4.6-fast-xhigh
-architect runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-interrogate reviewers: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+architect runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+interrogate reviewers: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
 ```''',
          '''### 5. Write the config
 
@@ -583,7 +583,7 @@ Panel roles (how critics, arena runners, arena cross-judge pool, architect runne
          'Before spawning investigators, list the MCP tools available in this session (the configured MCP servers\' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.'),
         ('- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)',
          '- `model`: the why-investigators role model from `config/models.json` (fallback: the parent chat model)'),
-        ('- `model`: your configured why-synthesizer model (default `claude-fable-5-thinking-max`)',
+        ('- `model`: your configured why-synthesizer model (default `claude-fable-5-1-thinking-max`)',
          '- `model`: the why-synthesizer role model from `config/models.json` (fallback: the parent chat model)'),
         ('''### 1. Locate the active transcript
 
@@ -599,13 +599,13 @@ For each candidate, read the first JSONL line and check that `message.content[0]
          '''### 1. Locate the active transcript
 
 The parent locates the current session via `session_search` (hermes stores sessions in its SQLite store; there are no JSONL transcript files). Query for the active conversation and take the most recent matching session id. If the exact session cannot be resolved, write a tight digest of the conversation and pass that instead.'''),
-        ('| Judgment | your configured reflect-judgment model (default `claude-fable-5-thinking-max`) | `references/judgment-reviewer.md` |',
+        ('| Judgment | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/judgment-reviewer.md` |',
          '| Judgment | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/judgment-reviewer.md` |'),
         ('| Tooling | your configured reflect-tooling model (default `gpt-5.6-sol-max`) | `references/tooling-reviewer.md` |',
          '| Tooling | the reflect-tooling role model from `config/models.json` (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
-        ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-thinking-max`) | `references/divergent-reviewer.md` |',
+        ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/divergent-reviewer.md` |',
          '| Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
-        ('One `delegate_task` call, `delegate_task` (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-thinking-max`), agent mode (`readonly: false`).',
+        ('One `delegate_task` call, `delegate_task` (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
          'One `delegate_task` call, `delegate_task` (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
         ('- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor\'s built-in `create-skill` skill and run its draft / test / iterate loop.',
          '- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill\'s guidance, or `skill_manage(action=\'create\')`) and run its draft / test / iterate loop.'),
@@ -1092,16 +1092,19 @@ first 8 hex chars of the sha256 of the plugin key (stable while the install
 directory keeps the name `pstack`).
 
 Optional slash-command route (no code): add this package's `skills` directory to
-`skills.external_dirs` in `%LOCALAPPDATA%\\hermes\\config.yaml` and the hub scanner
+`skills.external_dirs` in the hermes `config.yaml` (`%LOCALAPPDATA%\\hermes\\config.yaml` on
+Windows, `~/.hermes/config.yaml` on macOS/Linux) and the hub scanner
 registers all {len(discovered)} skills as `/<name>` slash commands (agent/skill_commands.py:424).
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
 plugin namespace; the portable path itself registers zero commands
 (plugins.py:5088-5138).
 
-## Install path (Windows)
+## Install path
 
-Copy this package directory to `%LOCALAPPDATA%\\hermes\\plugins\\pstack`, then add
-`pstack` to `plugins.enabled` in `%LOCALAPPDATA%\\hermes\\config.yaml`.
+Copy this package directory to the hermes plugins directory —
+`%LOCALAPPDATA%\\hermes\\plugins\\pstack` on Windows, `~/.hermes/plugins/pstack` on
+macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yaml`
+(`%LOCALAPPDATA%\\hermes\\config.yaml` on Windows, `~/.hermes/config.yaml` on macOS/Linux).
 
 ## Cursor dual-load
 
