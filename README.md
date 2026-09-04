@@ -71,14 +71,20 @@ failure:
 
 CI additionally enforces: the **pinned upstream SHA** (re-checked after clone),
 **provenance consistency** (`source_commit` == pinned SHA), the scanner-clean
-invariant set, and byte-reproducible builds (`SOURCE_DATE_EPOCH`).
+invariant set (`tools/bans.py`, scanned across every UTF-8-decodable file),
+byte-reproducible builds (`SOURCE_DATE_EPOCH`), and unit tests + lint
+(`pytest` + `ruff`) for the tooling itself. A weekly
+[upstream-drift-watch](.github/workflows/upstream-drift-watch.yml) workflow
+opens a tracking issue when upstream `pstack/` changes past the pin.
 
 ## Development
 
 ```sh
-uv sync          # pinned CPython 3.11 + dev group (pyyaml)
+uv sync          # pinned CPython 3.11 + dev group (pyyaml, pytest, ruff)
 uv run --frozen tools/convert.py  --source <pstack-clone> --out pstack
 uv run --frozen tools/validate.py
+uv run --frozen pytest -q             # tooling unit tests
+uv run --frozen ruff check tools      # lint
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
