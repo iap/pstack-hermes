@@ -1199,8 +1199,10 @@ notes:
         out.rename(final_out)
     except OSError:
         # Never leave the install target absent: restore the previous
-        # package, then surface the failure.
-        prev.rename(final_out)
+        # package when one was moved aside (a fresh-target build has none),
+        # then surface the original failure instead of masking it.
+        if prev.exists():
+            prev.rename(final_out)
         raise
     out = final_out
     if prev.exists():
