@@ -1,6 +1,6 @@
 # pstack (hermes agent-plugins-v1 package)
 
-Phase-0 conversion of **pstack v0.14.4** for the Hermes Agent platform's
+Phase-0 conversion of **pstack v0.14.8** for the Hermes Agent platform's
 portable plugin path. Upstream: <https://github.com/cursor/plugins/tree/main/pstack>
 (MIT, Copyright (c) 2026 Lauren Tan). Conversion provenance: see `.build-provenance.txt`;
 regenerate with `python tools/convert.py --source <pstack-clone> --out <package-dir>`.
@@ -38,16 +38,19 @@ first 8 hex chars of the sha256 of the plugin key (stable while the install
 directory keeps the name `pstack`).
 
 Optional slash-command route (no code): add this package's `skills` directory to
-`skills.external_dirs` in `%LOCALAPPDATA%\hermes\config.yaml` and the hub scanner
+`skills.external_dirs` in the hermes `config.yaml` (`%LOCALAPPDATA%\hermes\config.yaml` on
+Windows, `~/.hermes/config.yaml` on macOS/Linux) and the hub scanner
 registers all 45 skills as `/<name>` slash commands (agent/skill_commands.py:424).
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
 plugin namespace; the portable path itself registers zero commands
 (plugins.py:5088-5138).
 
-## Install path (Windows)
+## Install path
 
-Copy this package directory to `%LOCALAPPDATA%\hermes\plugins\pstack`, then add
-`pstack` to `plugins.enabled` in `%LOCALAPPDATA%\hermes\config.yaml`.
+Copy this package directory to the hermes plugins directory —
+`%LOCALAPPDATA%\hermes\plugins\pstack` on Windows, `~/.hermes/plugins/pstack` on
+macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yaml`
+(`%LOCALAPPDATA%\hermes\config.yaml` on Windows, `~/.hermes/config.yaml` on macOS/Linux).
 
 ## Cursor dual-load
 
