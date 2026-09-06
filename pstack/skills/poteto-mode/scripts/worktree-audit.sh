@@ -13,7 +13,10 @@ if stat -c '%Y' / >/dev/null 2>&1; then
 else
 	stat_mtime() { stat -f '%m' "$1" 2>/dev/null; }
 fi
-if date -d @0 '+%Y-%m-%d' >/dev/null 2>&1; then
+# Epoch probe: GNU date prints the epoch itself for -d @0 ('0'); BSD date's
+# -d flag means something unrelated (kernel DST), so it never prints '0'.
+# A plain exit-status probe on '-d @0' is NOT safe: BSD date may accept it.
+if [ "$(date -d @0 '+%s' 2>/dev/null)" = "0" ]; then
 	date_epoch() { date -d "@$1" '+%Y-%m-%d' 2>/dev/null; }
 else
 	date_epoch() { date -r "$1" '+%Y-%m-%d' 2>/dev/null; }

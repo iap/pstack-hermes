@@ -66,3 +66,13 @@ def test_audit_passes_when_every_anchor_hit():
     convert.audit_anchor_hits(
         {"A": [("x", "y")], "B": [("p", "q"), ("r", "s")]}, st
     )
+
+
+def test_worktree_helpers_use_unambiguous_epoch_probe():
+    """BSD date's -d has unrelated (kernel DST) semantics, so the GNU/BSD
+    discriminator must compare epoch output ('+%s' == 0), not exit status.
+    Both halves are pinned — the command substitution and the comparison —
+    so an exit-status-only rewording cannot pass as the safe form."""
+    assert "\"$(date -d @0 '+%s'" in convert.WORKTREE_HELPERS
+    assert '= "0" ]' in convert.WORKTREE_HELPERS
+    assert "date -d @0 '+%Y-%m-%d'" not in convert.WORKTREE_HELPERS
