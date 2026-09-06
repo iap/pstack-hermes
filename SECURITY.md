@@ -16,7 +16,7 @@ ready.
 - The shipped package (`pstack/`) performs no network calls, no telemetry,
   and no code execution beyond the scripts documented in each skill.
 - The install-scanner contract (community-source safety verdict) is enforced
-  in CI; the banned-construct list lives in `.github/workflows/ci.yml`.
+  in CI; the banned-construct list lives in `tools/bans.py` (single source of truth shared by validate.py and the CI scanner gate).
 - Upstream (pstack, MIT © Lauren Tan) issues that also affect the original
   should be reported upstream first:
   <https://github.com/cursor/plugins/tree/main/pstack>

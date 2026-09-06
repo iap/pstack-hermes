@@ -21,10 +21,10 @@ Contract implemented (study Ch3 sections 3.1-3.2 + subagent_03a loader facts):
   - Provenance (source commit) written to .build-provenance.txt.
 
 Usage:
-    python tools/convert.py [--source <pstack-clone-path>] [--out <package-dir>]
+    python tools/convert.py --source <pstack-clone-path> [--out <package-dir>]
 
-Defaults: --source = the study clone, --out = ./pstack at the repo root
-(this script lives in tools/).
+Defaults: --out = ./pstack at the repo root (this script lives in tools/);
+--source is required (there is no built-in default clone path).
 This script NEVER executes anything from the pstack repo (pure file copy).
 """
 
@@ -150,7 +150,10 @@ WORKTREE_HELPERS = (
     "else\n"
     "\tstat_mtime() { stat -f '%m' \"$1\" 2>/dev/null; }\n"
     "fi\n"
-    "if date -d @0 '+%Y-%m-%d' >/dev/null 2>&1; then\n"
+    "# Epoch probe: GNU date prints the epoch itself for -d @0 ('0'); BSD date's\n"
+    "# -d flag means something unrelated (kernel DST), so it never prints '0'.\n"
+    "# A plain exit-status probe on '-d @0' is NOT safe: BSD date may accept it.\n"
+    "if [ \"$(date -d @0 '+%s' 2>/dev/null)\" = \"0\" ]; then\n"
     "\tdate_epoch() { date -d \"@$1\" '+%Y-%m-%d' 2>/dev/null; }\n"
     "else\n"
     "\tdate_epoch() { date -r \"$1\" '+%Y-%m-%d' 2>/dev/null; }\n"
