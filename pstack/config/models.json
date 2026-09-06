@@ -1,45 +1,45 @@
 {
   "roles": {
-    "feature, refactoring": "z-ai/glm-5.2:free",
-    "bug-fix": "z-ai/glm-5.2:free",
-    "perf-issue": "z-ai/glm-5.2:free",
-    "hillclimb": "z-ai/glm-5.2:free",
-    "judgment and prose": "meituan/longcat-2.0-free",
-    "hardest tasks": "z-ai/glm-5.2:free",
-    "how explorer": "meituan/longcat-2.0:free",
-    "how explainer": "meituan/longcat-2.0-free",
+    "feature, refactoring": "z-ai/glm-5.2",
+    "bug-fix": "z-ai/glm-5.2",
+    "perf-issue": "z-ai/glm-5.2",
+    "hillclimb": "z-ai/glm-5.2",
+    "judgment and prose": "meituan/longcat-2.0",
+    "hardest tasks": "z-ai/glm-5.2",
+    "how explorer": "meituan/longcat-2.0",
+    "how explainer": "meituan/longcat-2.0",
     "how critics": [
-      "meituan/longcat-2.0-free",
-      "muse-spark-1.2-contributor-free"
+      "meituan/longcat-2.0",
+      "meta/muse-spark-1.2-contributor"
     ],
-    "why investigators": "meituan/longcat-2.0:free",
-    "why synthesizer": "z-ai/glm-5.2:free",
-    "reflect tooling": "Qwen/Qwen2.5-7B-Instruct",
+    "why investigators": "meituan/longcat-2.0",
+    "why synthesizer": "z-ai/glm-5.2",
+    "reflect tooling": "qwen/qwen-2.5-7b-instruct",
     "reflect judgment, divergent, synthesizer": [
-      "z-ai/glm-5.2:free",
-      "muse-spark-1.2-contributor-free"
+      "z-ai/glm-5.2",
+      "meta/muse-spark-1.2-contributor"
     ],
     "arena runners": [
-      "meituan/longcat-2.0-free",
-      "muse-spark-1.2-contributor-free",
-      "meituan/longcat-2.0:free"
+      "meituan/longcat-2.0",
+      "meta/muse-spark-1.2-contributor",
+      "meituan/longcat-2.0"
     ],
     "arena cross-judge pool": [
-      "z-ai/glm-5.2:free",
-      "meituan/longcat-2.0:free"
+      "z-ai/glm-5.2",
+      "meituan/longcat-2.0"
     ],
     "swarm workers": [
-      "meituan/longcat-2.0-free",
-      "meituan/longcat-2.0:free"
+      "meituan/longcat-2.0",
+      "meituan/longcat-2.0"
     ],
     "architect runners": [
-      "z-ai/glm-5.2:free",
-      "muse-spark-1.2-contributor-free"
+      "z-ai/glm-5.2",
+      "meta/muse-spark-1.2-contributor"
     ],
     "interrogate reviewers": [
-      "z-ai/glm-5.2:free",
-      "meituan/longcat-2.0-free",
-      "muse-spark-1.2-contributor-free"
+      "z-ai/glm-5.2",
+      "meituan/longcat-2.0",
+      "meta/muse-spark-1.2-contributor"
     ]
   }
 }
