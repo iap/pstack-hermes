@@ -69,6 +69,11 @@ LOADER_WHITELIST = {"$schema", "name", "version", "description", "author", "home
                     "repository", "license", "keywords", "extensions"}
 # Filenames the encoding check touches even without a text suffix (dotfiles carry none).
 TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
+# Model slugs in the repo-owned panel must be provider-qualified and lowercase
+# (vendor/model[:variant], e.g. z-ai/glm-5.2 or …:free) or the inherit-parent
+# selector. Catches hand-edit slips like a missing vendor prefix or `-free`
+# where the catalog's free suffix is `:free`.
+MODEL_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9._-]*(:[a-z0-9_-]+)?$")
 
 
 class Report:
@@ -325,9 +330,22 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     if wa.is_file():
         wa_text = wa.read_text(encoding="utf-8")
         bad = [s for s in ("stat -f '%m %N'", 'date -r "$last_ts"', "awk '/^worktree /{print $2}") if s in wa_text]
+        # The GNU/BSD date discriminator must be an output-comparing epoch probe:
+        # BSD `date -d` exists with unrelated (kernel DST) semantics, so a plain
+        # exit-status probe on `-d @0` can misdetect and silently pick GNU syntax.
+        ambiguous_probe = "date -d @0 '+%Y-%m-%d'" in wa_text
+        # Must be the output-comparing form: an exit-status-only probe on
+        # `date -d @0 '+%s'` would still misdetect on BSD and pass a bare
+        # substring check, so the command substitution AND the `= "0"` test
+        # are both required.
+        strict_probe = ("\"$(date -d @0 '+%s'" in wa_text
+                        and '= "0" ]' in wa_text)
         good = [s for s in ("stat_mtime", "date_epoch") if s in wa_text]
         if bad:
             rep.fail(f"F10-F12: BSD-only constructs survived in worktree-audit.sh: {bad}")
+        elif ambiguous_probe or not strict_probe:
+            rep.fail("F10-F12: date_epoch uses an ambiguous GNU/BSD probe (exit-status "
+                     "on 'date -d @0'); the epoch-comparing probe ('+%s' == 0) is required")
         elif len(good) < 2:
             rep.fail("F10-F12: portable helpers missing from worktree-audit.sh")
         else:
@@ -442,6 +460,25 @@ def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None
     except Exception as exc:
         rep.fail(f"Stage-D: model panel / config not parseable JSON: {exc}")
         return
+
+    def bad_slugs(roles: dict) -> list[str]:
+        bad = []
+        for role, value in roles.items():
+            for slug in value if isinstance(value, list) else [value]:
+                # Non-string JSON values (numbers, nulls) are reported, never
+                # handed to the regex — a TypeError here would abort the whole
+                # validation instead of returning the malformed config.
+                if not isinstance(slug, str) or not (
+                    slug == "inherit-parent" or MODEL_SLUG_RE.match(slug)
+                ):
+                    bad.append(f"{role}: {slug!r}")
+        return bad
+
+    slug_problems = [f"panel {s}" for s in bad_slugs(panel_roles)] + \
+                    [f"config {s}" for s in bad_slugs(cfg_roles)]
+    if slug_problems:
+        rep.fail("Stage-D: model slugs not provider-qualified lowercase "
+                 f"vendor/model[:variant]: {slug_problems}")
     if panel_roles != cfg_roles:
         details = []
         only_panel = sorted(set(panel_roles) - set(cfg_roles))
