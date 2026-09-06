@@ -1084,7 +1084,8 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   filled by `skills/hermesbot/` — a hermes-native control-surface skill
   injected from `tools/assets/hermesbot/SKILL.md` at build time.
 - Executable scripts shipped inside skills (e.g. `skills/poteto-mode/scripts/`) —
-  copied verbatim; the loader never executes them.
+  shipped verbatim; the hermes loader never executes them itself, but the skills
+  instruct the agent to run them at runtime (they invoke the `bun` and `gh` CLIs).
 
 ## How to invoke on hermes
 
