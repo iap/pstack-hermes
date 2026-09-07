@@ -1,6 +1,8 @@
 # Bootstrap the labels .github/labeler.yml expects.
-# Run ONCE after the repo is public: Actions -> "labels-bootstrap" -> Run workflow.
-# Idempotent: existing labels keep their colors; missing ones are created.
+# Run from Actions -> "labels-bootstrap" -> Run workflow (or re-run any time
+# the palette changes): it is a create-or-update ensure — missing labels are
+# created, existing ones are recolored/re-described to match the declared
+# palette. Safe to run repeatedly.
 
 name: labels-bootstrap
 
@@ -20,23 +22,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          create() {
+          ensure() {
             local name="$1" color="$2" desc="$3"
             if gh label list --json name --jq '.[].name' | grep -qxF "$name"; then
-              echo "exists: $name"
+              gh label edit "$name" --color "$color" --description "$desc" >/dev/null
+              echo "updated: $name"
             else
-              gh label create "$name" --color "$color" --description "$desc"
+              gh label create "$name" --color "$color" --description "$desc" >/dev/null
               echo "created: $name"
             fi
           }
-          create "pstack-core"        "0E8A16" "Core manifest/config changes"
-          create "skills"             "1D76DB" "Workflow/mode skill changes"
-          create "principles"         "5319E7" "Principle skill changes"
-          create "cursor-dual-load"   "FBCA04" "Cursor dual-load surface (inert on hermes)"
-          create "tooling"            "D93F0B" "Converter, validator, CI tooling"
-          create "documentation"      "0075CA" "Documentation"
-          create "scanner-clean"      "BFD4F2" "Verified: install-scanner safe verdict"
-          create "hermes-compat"      "F9D0C4" "Hermes compatibility fix"
-          create "port"               "E4E669" "Cursor -> hermes port work"
-          create "bug"                "D73A4A" "Something is broken"
-          create "enhancement"        "A2EEEF" "New feature or request"
+          ensure "pstack-core"        "0E8A16" "Core manifest/config changes"
+          ensure "skills"             "1D76DB" "Workflow/mode skill changes"
+          ensure "principles"         "5319E7" "Principle skill changes"
+          ensure "cursor-dual-load"   "FBCA04" "Cursor dual-load surface (inert on hermes)"
+          ensure "tooling"            "D93F0B" "Converter, validator, CI tooling"
+          ensure "documentation"      "0075CA" "Documentation"
+          ensure "scanner-clean"      "BFD4F2" "Verified: install-scanner safe verdict"
+          ensure "hermes-compat"      "F9D0C4" "Hermes compatibility fix"
+          ensure "port"               "E4E669" "Cursor -> hermes port work"
+          ensure "bug"                "D73A4A" "Something is broken"
+          ensure "enhancement"        "A2EEEF" "New feature or request"
