@@ -59,7 +59,10 @@ exit 0, doctor exit 0 (install-relevant), banned-construct scan, provenance
 consistency. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
 and a weekly upstream-drift check
 ([upstream-drift-watch](.github/workflows/upstream-drift-watch.yml)) that opens
-a tracking issue when upstream `pstack/` changes past the pin; PRs are
+a tracking issue when upstream `pstack/` changes past the pin; a weekly
+[model-drift-watch](.github/workflows/model-drift-watch.yml) re-verifies every
+configured model slug against the provider catalog (`tools/slug_drift.py`).
+PRs are
 auto-labeled by path (labels are created once via the `labels-bootstrap`
 workflow after the repo goes public).
 
