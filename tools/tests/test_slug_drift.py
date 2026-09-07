@@ -11,6 +11,16 @@ def _catalog(tmp_path, ids):
     return p
 
 
+def test_empty_catalog_fails_closed(tmp_path):
+    # An empty provider response ("data": []) must raise — reporting every
+    # configured slug as missing would post a false actionable alert on a
+    # transient fetch hiccup. main() turns the ValueError into exit 2.
+    import pytest
+
+    with pytest.raises(ValueError, match="no model ids"):
+        slug_drift.load_catalog_file(_catalog(tmp_path, []))
+
+
 def _roles_file(tmp_path, name, roles):
     p = tmp_path / name
     p.write_text(json.dumps({"roles": roles}), encoding="utf-8")

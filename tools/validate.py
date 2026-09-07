@@ -480,14 +480,18 @@ def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None
         rep.fail("Stage-D: model slugs not provider-qualified lowercase "
                  f"vendor/model[:variant]: {slug_problems}")
 
-    # One subagent runs per array entry, so a duplicate slug inside a role
-    # spawns an identical lane — always an accident (e.g. two spellings of
-    # the same model normalized to one slug), never a real fan-out choice.
+    # One subagent runs per array entry, so a duplicate concrete slug inside a
+    # role spawns an identical lane — always an accident (e.g. two spellings
+    # of the same model normalized to one slug), never a real fan-out choice.
+    # The "inherit-parent" selector is exempt: repeated selector entries are a
+    # deliberate multi-lane configuration (each entry still spawns its own lane
+    # on the parent's model), and the token is not a provider slug.
     dup_problems = []
     for source, roles in (("panel", panel_roles), ("config", cfg_roles)):
         for role, value in roles.items():
             if isinstance(value, list):
-                strs = [s for s in value if isinstance(s, str)]
+                strs = [s for s in value
+                        if isinstance(s, str) and s != "inherit-parent"]
                 dupes = sorted({s for s in strs if strs.count(s) > 1})
                 if dupes:
                     dup_problems.append(f"{source} '{role}': {dupes}")

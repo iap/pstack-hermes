@@ -123,3 +123,19 @@ def test_duplicate_lanes_in_a_role_array_fail(tmp_path):
     joined = "\n".join(rep.failed)
     assert "duplicate" in joined
     assert "arena runners" in joined
+
+
+def test_repeated_selector_entries_are_a_deliberate_multi_lane(tmp_path):
+    # "inherit-parent" is a selector, not a provider slug: repeating it is how
+    # a role asks for multiple lanes on the parent's model. The duplicate guard
+    # must not flag it (only concrete duplicated slugs are accidents).
+    payload = {"roles": {"arena runners": ["inherit-parent", "inherit-parent"]}}
+    asset = _write_asset(tmp_path, payload)
+    pkg = tmp_path / "pkg"
+    _write_config(pkg, payload)
+
+    rep = validate.Report()
+    validate.check_model_panel(pkg, rep, asset=asset)
+
+    joined = "\n".join(rep.failed)
+    assert "duplicate" not in joined

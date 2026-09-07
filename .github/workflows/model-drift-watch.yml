@@ -11,6 +11,13 @@ on:
     - cron: "43 6 * * 1" # weekly, Monday 06:43 UTC
   workflow_dispatch:
 
+# Serialize scheduled and manual runs: two overlapping runs could both see
+# "no tracking issue" and create duplicates. Queued (not cancelled) so the
+# older run always completes and posts before the newer one decides.
+concurrency:
+  group: model-drift-watch
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write
@@ -62,7 +69,7 @@ jobs:
 
           existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
                         --json number,title --jq '.[] | select(.title == $ENV.ISSUE_TITLE) | .number' \
-                        || true)"
+                        | head -1 || true)"
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"
             echo "updated tracking issue #$existing"
