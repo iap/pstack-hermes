@@ -479,6 +479,21 @@ def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None
     if slug_problems:
         rep.fail("Stage-D: model slugs not provider-qualified lowercase "
                  f"vendor/model[:variant]: {slug_problems}")
+
+    # One subagent runs per array entry, so a duplicate slug inside a role
+    # spawns an identical lane — always an accident (e.g. two spellings of
+    # the same model normalized to one slug), never a real fan-out choice.
+    dup_problems = []
+    for source, roles in (("panel", panel_roles), ("config", cfg_roles)):
+        for role, value in roles.items():
+            if isinstance(value, list):
+                strs = [s for s in value if isinstance(s, str)]
+                dupes = sorted({s for s in strs if strs.count(s) > 1})
+                if dupes:
+                    dup_problems.append(f"{source} '{role}': {dupes}")
+    if dup_problems:
+        rep.fail(f"Stage-D: duplicate slugs inside a role array: {dup_problems}")
+
     if panel_roles != cfg_roles:
         details = []
         only_panel = sorted(set(panel_roles) - set(cfg_roles))
