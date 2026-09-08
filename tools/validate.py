@@ -31,7 +31,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PACKAGE = REPO_ROOT / "pstack"
 
 sys.path.insert(0, str(SCRIPT_DIR))
-from bans import find_violations  # noqa: E402
+from bans import DELEGATION_VOCAB_BANS, find_violations  # noqa: E402
 from convert import MANIFEST_NAME_RE, SCHEMA_URL, SKILL_NAME_RE, TEXT_EXTS  # noqa: E402
 
 
@@ -353,11 +353,11 @@ def check_phase1(pkg: Path, rep: Report) -> None:
 
 
     # Phase-2A: delegation translation must be complete
-    cursor_tokens = ("subagent_type", "generalPurpose", "AskQuestion", "run_in_background")
+    # (DELEGATION_VOCAB_BANS is the canonical set, imported from bans.py)
     stragglers = []
     for p in (pkg / "skills").rglob("*.md"):
         t = p.read_text(encoding="utf-8", errors="replace")
-        for tok in cursor_tokens:
+        for tok in DELEGATION_VOCAB_BANS:
             if tok in t:
                 stragglers.append(f"{p.relative_to(pkg)}:{tok}")
     if stragglers:
@@ -480,14 +480,18 @@ def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None
         rep.fail("Stage-D: model slugs not provider-qualified lowercase "
                  f"vendor/model[:variant]: {slug_problems}")
 
-    # One subagent runs per array entry, so a duplicate slug inside a role
-    # spawns an identical lane — always an accident (e.g. two spellings of
-    # the same model normalized to one slug), never a real fan-out choice.
+    # One subagent runs per array entry, so a duplicate concrete slug inside a
+    # role spawns an identical lane — always an accident (e.g. two spellings
+    # of the same model normalized to one slug), never a real fan-out choice.
+    # The "inherit-parent" selector is exempt: repeated selector entries are a
+    # deliberate multi-lane configuration (each entry still spawns its own lane
+    # on the parent's model), and the token is not a provider slug.
     dup_problems = []
     for source, roles in (("panel", panel_roles), ("config", cfg_roles)):
         for role, value in roles.items():
             if isinstance(value, list):
-                strs = [s for s in value if isinstance(s, str)]
+                strs = [s for s in value
+                        if isinstance(s, str) and s != "inherit-parent"]
                 dupes = sorted({s for s in strs if strs.count(s) > 1})
                 if dupes:
                     dup_problems.append(f"{source} '{role}': {dupes}")

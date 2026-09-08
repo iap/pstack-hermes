@@ -70,3 +70,10 @@ def test_clean_panel_and_config_pass(tmp_path):
 
     assert findings == []
     assert checked == 4  # panel 3 real slugs + config 1 (its selector is skipped)
+
+
+def test_empty_catalog_is_an_error_not_a_clean_bill():
+    import pytest
+
+    with pytest.raises(ValueError):
+        slug_drift.catalog_ids({"data": []})

@@ -61,7 +61,8 @@ jobs:
           } > "$RUNNER_TEMP/drift-body.md"
 
           existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
-                        --json number,title --jq '.[] | select(.title == $ENV.ISSUE_TITLE) | .number' \
+                        --json number,title \
+                        --jq '[.[] | select(.title == $ENV.ISSUE_TITLE) | .number] | first // empty' \
                         || true)"
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"

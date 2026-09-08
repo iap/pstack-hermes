@@ -45,11 +45,22 @@ def collect_slugs(path: Path) -> dict[str, list[str]]:
 
 
 def catalog_ids(payload: dict) -> set[str]:
-    """Extract model ids from an OpenRouter-style {"data": [{"id": ...}]} payload."""
+    """Extract model ids from an OpenRouter-style {"data": [{"id": ...}]} payload.
+
+    An empty id set raises: a decodable but model-less catalog is a provider
+    hiccup, and reporting every slug missing off it would be a false alert.
+    """
     data = payload.get("data", [])
     if not isinstance(data, list):
         raise ValueError("catalog payload 'data' is not a list")
-    return {m["id"] for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)}
+    ids = {m["id"] for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)}
+    if not ids:
+        # Fail closed: an empty catalog means the fetch went sideways (transient
+        # provider hiccup, paginated empty page). Reporting every configured slug
+        # as missing would post a false actionable alert — treat it as an
+        # unavailable catalog instead.
+        raise ValueError("catalog payload contains no model ids (empty or malformed 'data')")
+    return ids
 
 
 def load_catalog_file(path: Path) -> set[str]:

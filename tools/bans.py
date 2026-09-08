@@ -22,7 +22,14 @@ SECURITY_BANS: tuple[tuple[str, str], ...] = (
 # Hermes-facing surface only. The Cursor dual-load surface (agents/,
 # .cursor-plugin/) and the build provenance (which documents the fixes by
 # name) are exempt.
-DELEGATION_VOCAB_BANS: tuple[str, ...] = ("subagent_type", "generalPurpose")
+DELEGATION_VOCAB_BANS: tuple[str, ...] = (
+    "subagent_type",
+    "generalPurpose",
+    "AskQuestion",
+    "`Task`",
+    "run_in_background",
+    'environment: "cloud"',
+)
 VOCAB_EXEMPT_PREFIXES: tuple[str, ...] = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
 
 
