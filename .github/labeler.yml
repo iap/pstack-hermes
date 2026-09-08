@@ -24,6 +24,10 @@ cursor-dual-load:
       - any-glob-to-any-file: "pstack/agents/**"
       - any-glob-to-any-file: "pstack/automations/**"
 
+port:
+  - changed-files:
+      - any-glob-to-any-file: "patches/**"
+
 tooling:
   - changed-files:
       - any-glob-to-any-file: "tools/**"
@@ -36,4 +40,5 @@ documentation:
   - changed-files:
       - any-glob-to-any-file: "README.md"
       - any-glob-to-any-file: "CONTRIBUTING.md"
+      - any-glob-to-any-file: "SECURITY.md"
       - any-glob-to-any-file: "docs/**"

@@ -15,3 +15,6 @@ jobs:
       - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5
         with:
           configuration-path: .github/labeler.yml
+          # Keep labels accurate as the PR evolves: stale labels are removed
+          # on synchronize, not just added.
+          syncLabels: true
