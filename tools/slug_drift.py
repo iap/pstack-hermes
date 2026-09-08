@@ -100,18 +100,18 @@ def main() -> int:
     ap.add_argument("--catalog-file", default=None,
                     help="read catalog ids from a JSON file instead of the network")
     args = ap.parse_args()
+    paths = [Path(args.panel), Path(args.config)]
 
     try:
         if args.catalog_file:
             ids = load_catalog_file(Path(args.catalog_file))
         else:
             ids = load_catalog_url(args.catalog_url)
+        findings, checked = check(paths, ids)
     except Exception as exc:
-        print(f"slug drift: catalog unavailable: {exc}", file=sys.stderr)
+        print(f"slug drift: tool error: {exc}", file=sys.stderr)
         return 2
 
-    paths = [Path(args.panel), Path(args.config)]
-    findings, checked = check(paths, ids)
     for f in findings:
         print(f"MISSING {f}")
     if findings:
