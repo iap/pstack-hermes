@@ -1032,6 +1032,13 @@ def main() -> int:
     (out / ".cursor-plugin").mkdir()
     copy_file(src_manifest, out / ".cursor-plugin" / "plugin.json", st)
 
+    # (e2) assets/ (e.g. assets/logo.png referenced by .cursor-plugin/plugin.json)
+    # copied verbatim so the Cursor manifest's local asset paths resolve.
+    if (source / "assets").is_dir():
+        assets_n = copy_tree(source / "assets", out / "assets", st)
+        st.fixes.append(f"assets/: {assets_n} file(s) copied verbatim "
+                        "(logo referenced by the Cursor manifest)")
+
     # (d) root plugin.json: strict whitelisted-field manifest (9 fields; hermes probes root only)
     manifest = build_root_manifest(src_manifest)
     manifest_text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
