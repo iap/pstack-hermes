@@ -1032,6 +1032,35 @@ def main() -> int:
     (out / ".cursor-plugin").mkdir()
     copy_file(src_manifest, out / ".cursor-plugin" / "plugin.json", st)
 
+    # (e2) assets/ copied verbatim + manifest-asset validation (fail loud on
+    # dangling references: if upstream deletes/renames an asset while the Cursor
+    # manifest still references it, the packaged manifest would ship broken).
+    cp_manifest = json.loads(src_manifest.read_text(encoding="utf-8"))
+
+    def _local_asset_refs(obj):
+        refs = []
+        if isinstance(obj, str):
+            if re.match(r"^[A-Za-z0-9_\-./]+\.(png|jpg|jpeg|svg|gif|ico|webp)$", obj):
+                refs.append(obj)
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                refs += _local_asset_refs(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                refs += _local_asset_refs(v)
+        return refs
+
+    manifest_refs = _local_asset_refs(cp_manifest)
+    if (source / "assets").is_dir():
+        assets_n = copy_tree(source / "assets", out / "assets", st)
+        st.fixes.append(f"assets/: {assets_n} file(s) copied verbatim "
+                        "(referenced by the Cursor manifest)")
+    missing_refs = [r for r in manifest_refs if not (out / r).exists()]
+    if missing_refs:
+        raise ConvertError(
+            "Cursor manifest references missing assets: "
+            + ", ".join(missing_refs))
+
     # (d) root plugin.json: strict whitelisted-field manifest (9 fields; hermes probes root only)
     manifest = build_root_manifest(src_manifest)
     manifest_text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
