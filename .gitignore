@@ -14,3 +14,6 @@ pstack.prev-build/
 
 # pytest scratch (basetemp)
 .pytest-tmp/
+
+# Agent session artifacts (plans/notes) belong outside the repo
+docs/superpowers/
