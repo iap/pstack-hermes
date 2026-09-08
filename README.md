@@ -75,7 +75,9 @@ invariant set (`tools/bans.py`, scanned across every UTF-8-decodable file),
 byte-reproducible builds (`SOURCE_DATE_EPOCH`), and unit tests + lint
 (`pytest` + `ruff`) for the tooling itself. A weekly
 [upstream-drift-watch](.github/workflows/upstream-drift-watch.yml) workflow
-opens a tracking issue when upstream `pstack/` changes past the pin.
+opens a tracking issue when upstream `pstack/` changes past the pin, and a
+weekly [model-drift-watch](.github/workflows/model-drift-watch.yml) workflow
+re-verifies every configured model slug against the provider catalog.
 
 ## Development
 

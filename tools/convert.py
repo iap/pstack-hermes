@@ -787,8 +787,9 @@ DELEGATION_MAP = [
     ('the Task tool', 'delegate_task'),
     ('`Task`', '`delegate_task`'),
 ]
-DELEGATION_FORBIDDEN = ("subagent_type", "generalPurpose", "AskQuestion",
-                        "`Task`", "run_in_background", 'environment: "cloud"')
+# Re-exported from bans.py (single source of truth) so the converter's
+# leftover check and the scanner gate can never drift apart.
+from bans import DELEGATION_VOCAB_BANS as DELEGATION_FORBIDDEN  # noqa: E402
 
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],

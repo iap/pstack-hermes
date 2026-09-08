@@ -1,0 +1,86 @@
+# Model-slug drift watch: the panel/config name provider model slugs that
+# were verified against the catalog when written. Providers deprecate slugs
+# (free tiers especially); this notices and opens/updates ONE tracking
+# issue (idempotent by title), so a panel refresh is a deliberate decision
+# instead of a broken role surfacing in a live run.
+
+name: model-drift-watch
+
+on:
+  schedule:
+    - cron: "43 6 * * 1" # weekly, Monday 06:43 UTC
+  workflow_dispatch:
+
+# Serialize scheduled and manual runs: two overlapping runs could both see
+# "no tracking issue" and create duplicates. Queued (not cancelled) so the
+# older run always completes and posts before the newer one decides.
+concurrency:
+  group: model-drift-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  ISSUE_TITLE: "model panel drift: a configured slug left the provider catalog"
+
+jobs:
+  check-slugs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up uv (pinned interpreter + lockfile)
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Check configured slugs against the live catalog
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status=0
+          uv run --frozen tools/slug_drift.py | tee "$RUNNER_TEMP/drift-findings.txt" || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "no drift: every configured slug is in the catalog"
+            exit 0
+          fi
+          if [ "$status" -ne 1 ]; then
+            echo "::error::slug drift tool failed (catalog unreachable or unparseable)"
+            exit 1
+          fi
+
+          {
+            echo "Configured model slugs missing from the provider catalog:"
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/drift-findings.txt"
+            echo '```'
+            echo ""
+            echo "Verify replacements against the catalog, update"
+            echo "\`tools/assets/model-panel.json\`, rebuild the package"
+            echo "(\`tools/convert.py\` per CONTRIBUTING.md), and re-run the pipeline."
+          } > "$RUNNER_TEMP/drift-body.md"
+
+          lookup_status=0
+          existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+                        --json number,title \
+                        --jq '[.[] | select(.title == $ENV.ISSUE_TITLE) | .number] | first // empty' \
+                        || lookup_status=$?)"
+          if [ "$lookup_status" -ne 0 ]; then
+            echo "::error::issue lookup failed (gh exit $lookup_status); not creating a possible duplicate"
+            exit 1
+          fi
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"
+            echo "updated tracking issue #$existing"
+          else
+            gh issue create --title "$ISSUE_TITLE" \
+              --body-file "$RUNNER_TEMP/drift-body.md"
+            echo "opened tracking issue"
+          fi

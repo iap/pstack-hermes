@@ -109,3 +109,31 @@ def test_non_string_slugs_reported_not_fatal(tmp_path):
     assert "None" in joined
     # the one valid slug in the same payload is not reported
     assert "s: 'z-ai/glm-5.2'" not in joined
+
+
+def test_duplicate_lanes_in_a_role_array_fail(tmp_path):
+    payload = {"roles": {"arena runners": ["m/a", "m/b", "m/a"]}}
+    asset = _write_asset(tmp_path, payload)
+    pkg = tmp_path / "pkg"
+    _write_config(pkg, payload)
+
+    rep = validate.Report()
+    validate.check_model_panel(pkg, rep, asset=asset)
+
+    joined = "\n".join(rep.failed)
+    assert "duplicate" in joined
+    assert "arena runners" in joined
+
+
+def test_repeated_inherit_parent_selectors_are_allowed(tmp_path):
+    """N copies of the selector = N lanes on the parent model (supported
+    fan-out shape); only duplicate PROVIDER slugs are accidental."""
+    payload = {"roles": {"how critics": ["inherit-parent", "inherit-parent"]}}
+    asset = _write_asset(tmp_path, payload)
+    pkg = tmp_path / "pkg"
+    _write_config(pkg, payload)
+
+    rep = validate.Report()
+    validate.check_model_panel(pkg, rep, asset=asset)
+
+    assert not rep.failed
