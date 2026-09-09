@@ -14,17 +14,30 @@ and dual-loads on Cursor unchanged.
 ## Install
 
 ```sh
-# hermes (portable plugin path) — verified subdir flow (scanner-clean)
+# hermes (portable plugin path) — shorthand form (recommended)
 hermes plugins install iap/pstack-hermes/pstack --enable
+
+# Alternative: install from the pstack subdir URL directly
+# hermes plugins install https://github.com/iap/pstack-hermes/pstack --enable
 ```
 
-Once the plugin-index entry merges, the bare-name form also works:
-`hermes plugins install pstack`.
+> Note: the shorthand form `iap/pstack-hermes/pstack` is required — the full
+> URL form fails because hermes treats the path as a repo root, not a subdir.
 
 > Note: installing from the repo root or the release zip URL is blocked by the
 > install scanner **by design** — this repository ships its development tooling
 > (`tools/`, CI) alongside the package, and the scanner correctly refuses to
 > install a source tree that contains it. The `pstack` subdir is the plugin.
+
+Once the plugin-index entry merges, the bare-name form also works:
+`hermes plugins install pstack`.
+
+**Update:** plugins installed from git subdirs cannot be updated in-place
+(hermes strips the `.git` directory). To update, reinstall:
+```sh
+hermes plugins uninstall pstack
+hermes plugins install iap/pstack-hermes/pstack --enable
+```
 
 Cursor (dual-load, optional): point Cursor at the package root — the
 `.cursor-plugin/plugin.json` and `agents/` surfaces are inert on hermes.
