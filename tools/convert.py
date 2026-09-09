@@ -1104,7 +1104,7 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
 ## What stays inert on hermes (for now)
 
 - `agents/` (poteto-agent, comment-sicko) — the portable path discovers skills and
-  mcp.json only; no agent registration exists on hermes yet (expected in a future release). Kept for Cursor
+  mcp.json only; no agent registration exists on hermes yet. Kept for Cursor
   dual-load and a Phase-2 native wrapper.
 - `automations/benny/` — **excluded** from this package: the install scanner
   flags its copy-instructions as persistence patterns (verdict: dangerous),
