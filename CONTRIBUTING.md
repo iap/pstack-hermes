@@ -36,14 +36,7 @@ or dependency drift.
 - `pstack/` is **generated content** — never hand-edit; change the converter
   and rebuild. Provenance (`.build-provenance.txt`) must record the pinned
   upstream SHA at all times.
-- **Banned constructs** are defined once in `tools/bans.py` and enforced by
-  both `tools/validate.py` and the CI scanner gate (`tools/scanner_gate.py`,
-  which scans every UTF-8-decodable file, mirroring the real hermes install
-  scanner): `tailscale.com/install.sh`, `FOR_AGENTS.md`,
-  `http://127.0.0.1:4173` (package-wide), plus `subagent_type` /
-  `generalPurpose` on the hermes-facing surface. Inline legacy model slugs in
-  skill prose (e.g. the `PSTACK_FAST_LANE` default) are intentional fallback
-  documentation, not banned.
+- **Banned constructs** are defined once in `tools/bans.py` (6 delegation tokens: `subagent_type`, `generalPurpose`, `AskQuestion`, `` `Task` ``, `run_in_background`, `environment: "cloud"`, plus 3 security needles: `tailscale.com/install.sh`, `FOR_AGENTS.md`, `http://127.0.0.1:4173`). Enforced by `tools/validate.py` and the CI scanner gate (`tools/scanner_gate.py`). Inline legacy model slugs in skill prose (e.g. the `PSTACK_FAST_LANE` default) are intentional fallback documentation, not banned.
 - Encoding: LF-only, no BOM (`.gitattributes` enforces; validate.py fails on
   drift).
 - Attribution: upstream MIT (© Lauren Tan) is preserved everywhere; new port
