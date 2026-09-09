@@ -32,23 +32,10 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Cache upstream clone
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ runner.temp }}/cursor-plugins
-          key: upstream-${{ env.UPSTREAM_PIN }}-${{ runner.os }}-${{ hashFiles('tools/convert.py') }}
-          restore-keys: |
-            upstream-${{ env.UPSTREAM_PIN }}-${{ runner.os }}-
-
       - name: Clone upstream pstack at pin
         shell: bash
         run: |
-          if [ -d "$RUNNER_TEMP/cursor-plugins/.git" ]; then
-            echo "using cached upstream clone"
-            git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin "$UPSTREAM_PIN"
-          else
-            git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          fi
+          git clone https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
           git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
 
       - name: Verify pinned SHA
