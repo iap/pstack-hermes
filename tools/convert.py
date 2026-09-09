@@ -1104,7 +1104,7 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
 ## What stays inert on hermes (for now)
 
 - `agents/` (poteto-agent, comment-sicko) — the portable path discovers skills and
-  mcp.json only; no agent registration exists in hermes v0.20.5. Kept for Cursor
+  mcp.json only; no agent registration exists on hermes yet (expected in a future release). Kept for Cursor
   dual-load and a Phase-2 native wrapper.
 - `automations/benny/` — **excluded** from this package: the install scanner
   flags its copy-instructions as persistence patterns (verdict: dangerous),
@@ -1128,10 +1128,9 @@ directory keeps the name `pstack`).
 Optional slash-command route (no code): add this package's `skills` directory to
 `skills.external_dirs` in the hermes `config.yaml` (`%LOCALAPPDATA%\\hermes\\config.yaml` on
 Windows, `~/.hermes/config.yaml` on macOS/Linux) and the hub scanner
-registers all {len(discovered)} skills as `/<name>` slash commands (agent/skill_commands.py:424).
+registers all {len(discovered)} skills as `/<name>` slash commands.
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
-plugin namespace; the portable path itself registers zero commands
-(plugins.py:5088-5138).
+plugin namespace; the portable path itself registers zero commands.
 
 ## Install path
 
