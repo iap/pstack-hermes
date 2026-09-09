@@ -35,7 +35,8 @@ jobs:
       - name: Clone upstream pstack at pin
         shell: bash
         run: |
-          git clone https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
           git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
 
       - name: Verify pinned SHA
@@ -68,13 +69,15 @@ jobs:
             ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
                 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
           }
+          # Rebuild into a scratch directory to compare against the untouched checkout
+          uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out "$RUNNER_TEMP/pstack-rebuilt"
           committed="$(tree_hash "$GITHUB_WORKSPACE/pstack")"
-          rebuilt="$(tree_hash pstack)"
+          rebuilt="$(tree_hash "$RUNNER_TEMP/pstack-rebuilt")"
           echo "committed: $committed"
           echo "rebuilt:   $rebuilt"
           if [ "$committed" != "$rebuilt" ]; then
             echo "::error::committed pstack/ drifts from a fresh build - hand-edits or stale package"
-            diff -r --exclude=.build-provenance.txt "$GITHUB_WORKSPACE/pstack" pstack || true
+            diff -r --exclude=.build-provenance.txt "$GITHUB_WORKSPACE/pstack" "$RUNNER_TEMP/pstack-rebuilt" || true
             exit 1
           fi
           echo "reproducible build: OK (byte-identical to fresh rebuild)"

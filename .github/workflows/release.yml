@@ -36,8 +36,8 @@ jobs:
 
       - name: Clone upstream pstack at pin
         run: |
-          git clone --depth 1 https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch --depth 1 origin "$UPSTREAM_PIN"
+          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
           git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
 
       - name: Convert
@@ -51,14 +51,17 @@ jobs:
 
       - name: Package plugin
         run: |
-          zip -r pstack-${{ github.ref_name }}.zip pstack/
-          echo "packaged: $(ls -lh pstack-${{ github.ref_name }}.zip)"
+          zip -r pstack-"${TAG_NAME}".zip pstack/
+          echo "packaged: $(ls -lh pstack-"${TAG_NAME}".zip)"
+        env:
+          TAG_NAME: ${{ github.ref_name }}
 
       - name: Extract release notes
         run: |
-          VERSION="${{ github.ref_name }}"
+          # Strip leading 'v' from tag to match CHANGELOG version format
+          VERSION="${TAG_NAME#v}"
           # Extract the section for this version from CHANGELOG.md
-          awk -v ver="$VERSION" '
+          awk -v ver="[$VERSION]" '
             /^## / { if (seen) exit; if (index($0, ver)) seen=1; next }
             seen { print }
           ' CHANGELOG.md > RELEASE_NOTES.md
@@ -69,13 +72,16 @@ jobs:
             echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> RELEASE_NOTES.md
           fi
           cat RELEASE_NOTES.md
+        env:
+          TAG_NAME: ${{ github.ref_name }}
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          gh release create ${{ github.ref_name }} \
-            pstack-${{ github.ref_name }}.zip \
-            --title "pstack-hermes ${{ github.ref_name }}" \
+          gh release create "$TAG_NAME" \
+            pstack-"$TAG_NAME".zip \
+            --title "pstack-hermes $TAG_NAME" \
             --notes-file RELEASE_NOTES.md \
             --verify-tag
