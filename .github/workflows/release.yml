@@ -1,0 +1,87 @@
+# Release: create a GitHub Release with packaged plugin assets
+# Triggered on version tags (v*).
+#
+# Produces:
+#   - pstack-<version>.zip — portable plugin package
+#   - Release body from CHANGELOG section for that version
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_PIN: 93b00b89ef425a9c1bac0d0b317dfc49c930ac99
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Record SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+        with:
+          enable-cache: true
+
+      - name: Clone upstream pstack at pin
+        run: |
+          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
+
+      - name: Convert
+        run: uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out pstack
+
+      - name: Validate
+        run: uv run --frozen tools/validate.py --package pstack
+
+      - name: Scanner gate
+        run: uv run --frozen tools/scanner_gate.py --package pstack
+
+      - name: Package plugin
+        run: |
+          zip -r pstack-"${TAG_NAME}".zip pstack/
+          echo "packaged: $(ls -lh pstack-"${TAG_NAME}".zip)"
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+
+      - name: Extract release notes
+        run: |
+          # Strip leading 'v' from tag to match CHANGELOG version format
+          VERSION="${TAG_NAME#v}"
+          # Extract the section for this version from CHANGELOG.md
+          awk -v ver="[$VERSION]" '
+            /^## / { if (seen) exit; if (index($0, ver)) seen=1; next }
+            seen { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "No CHANGELOG section found for $VERSION" >&2
+            echo "## $VERSION" > RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG_NAME" \
+            pstack-"$TAG_NAME".zip \
+            --title "pstack-hermes $TAG_NAME" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag
