@@ -608,8 +608,8 @@ The parent locates the current session via `session_search` (hermes stores sessi
          '| Tooling | the reflect-tooling role model from `config/models.json` (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
         ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/divergent-reviewer.md` |',
          '| Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
-        ('One `delegate_task` call, `delegate_task` (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
-         'One `delegate_task` call, `delegate_task` (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
+        ('One `delegate_task` call (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
+         'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
         ('- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor\'s built-in `create-skill` skill and run its draft / test / iterate loop.',
          '- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill\'s guidance, or `skill_manage(action=\'create\')`) and run its draft / test / iterate loop.'),
         ('- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to `create-skill` and run its description-optimization loop.',
@@ -772,6 +772,17 @@ T11_MAP = [
 
 
 DELEGATION_MAP = [
+    # Specific-first pairs: consume combined fragments so the generic rules
+    # below cannot produce "`delegate_task` calls, `delegate_task` (role:
+    # `leaf`)" doublings, and reword the unbackticked Cursor "Task" leftovers
+    # ("omit Task `model`", "Task subagent") the generic backtick rule misses.
+    ('three `Task` calls, `subagent_type: generalPurpose`',
+     'three `delegate_task` calls (role: `leaf`)'),
+    ('One `Task` call, `subagent_type: generalPurpose`',
+     'One `delegate_task` call (role: `leaf`)'),
+    ("`inherit-parent` or `auto` runs that role on the parent chat model (omit Task `model`)",
+     "`inherit-parent` runs that role on the parent chat model (omit the delegate's `model`)"),
+    ('Spawn a single Task subagent', 'Spawn a single delegate subagent'),
     ('`subagent_type`: `generalPurpose`', '`delegate_task`: role `leaf`'),
     ('Spawn `Task` with `subagent_type: "Comment Sicko"`',
      'Spawn a delegate with `delegate_task` (role: `leaf`, persona: Comment Sicko)'),
@@ -1113,6 +1124,9 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   privilege-escalation scanner (F33); deepest vendor coupling. The slot is
   filled by `skills/hermesbot/` — a hermes-native control-surface skill
   injected from `tools/assets/hermesbot/SKILL.md` at build time.
+- `docs/guide/` — not shipped: upstream's human-facing tutorial (10 chapters and
+  images) documents the Cursor workflow outside the plugin payload; hermes loads
+  `skills/` only. Read it in the upstream repo for the guided tour.
 - Executable scripts shipped inside skills (e.g. `skills/poteto-mode/scripts/`) —
   shipped verbatim; the hermes loader never executes them itself, but the skills
   instruct the agent to run them at runtime (they invoke the `bun` and `gh` CLIs).
@@ -1151,7 +1165,7 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    whitelisted field set (upstream Cursor fields `displayName`, `category`, `tags`,
    `skills`, `agents` are omitted — unknown fields produce loader diagnostics).
 2. `skills/poteto-mode/SKILL.md`: frontmatter `name: Poteto Mode` -> `name: poteto-mode`.
-3. `skills/grokbot/` container and `skills/make-bot-ui/` are **excluded** (see 9);
+3. `skills/grokbot/` container and `skills/make-bot-ui/` are **excluded** (see 8);
    the loader only sees immediate children of `skills/` anyway.
 4. Text normalization to UTF-8 without BOM and LF line endings.
 5. **R1**: the poteto-mode principles index is regenerated from the 21 principle
@@ -1178,7 +1192,27 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    delegate reviews the diff (review separation preserved; fixes the
    deviation observed in the first live usage run).
 
-Nothing else in any SKILL.md was modified.
+10. **T8/T9/T10**: hermes-native discovery + factual fixes — `setup-pstack`
+    writes `config/models.json` (package-local model panel, 18 roles) instead
+    of a Cursor rule; why/reflect/recall/show-me-your-work discovery sections
+    query `session_search` over hermes' session store; reviewer prompts use
+    hermes file-tool names; three localhost endpoint literals in the
+    feature-map example were neutralized for the install scanner.
+11. **Phase-2A (T6)**: delegation vocabulary translated package-wide — Cursor's
+    spawn-parameter and ask-user tool vocabulary becomes hermes equivalents
+    (`delegate_task` with role `leaf`, `clarify`), and its background/cloud
+    execution flags become hermes execution semantics (background execution,
+    local execution); combined fragments are collapsed so no doubled phrasing
+    survives, and the stale unbackticked Cursor leftovers ("omit Task
+    `model`", "Task subagent") are reworded.
+12. **T11**: hardcoded-path cleanup — `.cursor` rules/projects/skills paths,
+    `agent-transcripts` recipes, and `/tmp` scratch dirs mapped to hermes
+    equivalents or platform-neutral phrasing; `worktree-audit.sh` keeps its
+    Cursor transcript check behind an annotated graceful skip.
+
+Beyond these passes, upstream text is unchanged; the machine-generated fix
+register in `.build-provenance.txt` (regenerated on every build) is the
+authoritative delta record.
 
 ---
 
