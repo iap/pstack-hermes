@@ -711,9 +711,9 @@ The parent locates the current session via `session_search` (hermes stores sessi
     t12_script_files = apply_map([check_plan],
                                  T12_SCRIPT_MAP, map_name="T12_SCRIPT_MAP", st=st)
     st.fixes.append(f"T12: Cursor built-in wake/goal rewording applied across "
-                    f"{t12_files} skill file(s) + the plan checker "
-                    "(terminal /loop -> gateway cron wake; armed /goal -> "
-                    "goal.md in the agent store; check-plan marker aligned)")
+                    f"{t12_files} skill file(s) + {t12_script_files} checker "
+                    "file(s) (terminal /loop -> gateway cron wake; armed /goal "
+                    "-> goal.md in the agent store; check-plan marker aligned)")
 
     # Dead-anchor audit: every audited transform must have matched somewhere
     # in this build (fail-loud replacement for the historical silent no-op).
