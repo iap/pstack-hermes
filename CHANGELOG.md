@@ -2,7 +2,7 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
-## [Unreleased]
+## [0.4.0] - 2026-09-09
 
 ### Fixed
 - Delegation phrasing residuals: collapsed doubled `delegate_task` fragments in reflect (reviewers + synthesizer calls), reworded unbackticked Cursor leftovers (poteto-mode "omit Task `model`" -> inherit-parent semantics, how "Task subagent" -> delegate subagent)
