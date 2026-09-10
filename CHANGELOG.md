@@ -2,10 +2,13 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
-## [Unreleased]
+## [0.4.1] - 2026-09-10
 
 ### Changed
 - T12: Cursor built-in `/loop` and `/goal` references reworded to hermes-native mechanisms — gateway cron jobs as the wake/scheduler (autonomous-run, autopilot-full, autopilot-stack, babysit, bug-fix, multi-phase-plan, shipping, visual-parity) and an armed `goal.md` in the agent store replacing the goal primitive; trigger phrases de-slashed ("loop until X"); plan checker (`check-plan.mjs`) marker aligned to accept the new mechanism
+
+### Removed
+- Executed pipeline-hardening plan doc dropped from `docs/superpowers` (#23). The plan shipped in v0.4.0 and the repo's own `.gitignore` already places agent session artifacts (plans/notes) outside the repo.
 
 ## [0.4.0] - 2026-09-09
 
