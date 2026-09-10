@@ -1185,7 +1185,9 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    (injected from `tools/assets/hermesbot/SKILL.md`): a control-surface
    skill on the hermes gateway's own webhook stack (`X-Webhook-Signature-V2`
    HMAC routes), `hermes send`, and `hermes peer` — no Tailscale, no
-   third-party bot runtime.
+   third-party bot runtime. Three localhost endpoint literals in the
+   feature-map example docs are also neutralized under this gate
+   (install-scanner network findings).
 9. **G1**: a delegation escape hatch added to the Feature playbook and the
    poteto-mode Subagents section — surgical, fully-specified edits to files
    already resident in context may be implemented in-thread, provided a leaf
@@ -1196,8 +1198,7 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
     writes `config/models.json` (package-local model panel, 18 roles) instead
     of a Cursor rule; why/reflect/recall/show-me-your-work discovery sections
     query `session_search` over hermes' session store; reviewer prompts use
-    hermes file-tool names; three localhost endpoint literals in the
-    feature-map example were neutralized for the install scanner.
+    hermes file-tool names.
 11. **Phase-2A (T6)**: delegation vocabulary translated package-wide — Cursor's
     spawn-parameter and ask-user tool vocabulary becomes hermes equivalents
     (`delegate_task` with role `leaf`, `clarify`), and its background/cloud
