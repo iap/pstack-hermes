@@ -26,6 +26,9 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   privilege-escalation scanner (F33); deepest vendor coupling. The slot is
   filled by `skills/hermesbot/` — a hermes-native control-surface skill
   injected from `tools/assets/hermesbot/SKILL.md` at build time.
+- `docs/guide/` — not shipped: upstream's human-facing tutorial (10 chapters and
+  images) documents the Cursor workflow outside the plugin payload; hermes loads
+  `skills/` only. Read it in the upstream repo for the guided tour.
 - Executable scripts shipped inside skills (e.g. `skills/poteto-mode/scripts/`) —
   shipped verbatim; the hermes loader never executes them itself, but the skills
   instruct the agent to run them at runtime (they invoke the `bun` and `gh` CLIs).
@@ -64,7 +67,7 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    whitelisted field set (upstream Cursor fields `displayName`, `category`, `tags`,
    `skills`, `agents` are omitted — unknown fields produce loader diagnostics).
 2. `skills/poteto-mode/SKILL.md`: frontmatter `name: Poteto Mode` -> `name: poteto-mode`.
-3. `skills/grokbot/` container and `skills/make-bot-ui/` are **excluded** (see 9);
+3. `skills/grokbot/` container and `skills/make-bot-ui/` are **excluded** (see 8);
    the loader only sees immediate children of `skills/` anyway.
 4. Text normalization to UTF-8 without BOM and LF line endings.
 5. **R1**: the poteto-mode principles index is regenerated from the 21 principle
@@ -84,14 +87,35 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
    (injected from `tools/assets/hermesbot/SKILL.md`): a control-surface
    skill on the hermes gateway's own webhook stack (`X-Webhook-Signature-V2`
    HMAC routes), `hermes send`, and `hermes peer` — no Tailscale, no
-   third-party bot runtime.
+   third-party bot runtime. Three localhost endpoint literals in the
+   feature-map example docs are also neutralized under this gate
+   (install-scanner network findings).
 9. **G1**: a delegation escape hatch added to the Feature playbook and the
    poteto-mode Subagents section — surgical, fully-specified edits to files
    already resident in context may be implemented in-thread, provided a leaf
    delegate reviews the diff (review separation preserved; fixes the
    deviation observed in the first live usage run).
 
-Nothing else in any SKILL.md was modified.
+10. **T8/T9/T10**: hermes-native discovery + factual fixes — `setup-pstack`
+    writes `config/models.json` (package-local model panel, 18 roles) instead
+    of a Cursor rule; why/reflect/recall/show-me-your-work discovery sections
+    query `session_search` over hermes' session store; reviewer prompts use
+    hermes file-tool names.
+11. **Phase-2A (T6)**: delegation vocabulary translated package-wide — Cursor's
+    spawn-parameter and ask-user tool vocabulary becomes hermes equivalents
+    (`delegate_task` with role `leaf`, `clarify`), and its background/cloud
+    execution flags become hermes execution semantics (background execution,
+    local execution); combined fragments are collapsed so no doubled phrasing
+    survives, and the stale unbackticked Cursor leftovers ("omit Task
+    `model`", "Task subagent") are reworded.
+12. **T11**: hardcoded-path cleanup — `.cursor` rules/projects/skills paths,
+    `agent-transcripts` recipes, and `/tmp` scratch dirs mapped to hermes
+    equivalents or platform-neutral phrasing; `worktree-audit.sh` keeps its
+    Cursor transcript check behind an annotated graceful skip.
+
+Beyond these passes, upstream text is unchanged; the machine-generated fix
+register in `.build-provenance.txt` (regenerated on every build) is the
+authoritative delta record.
 
 ---
 

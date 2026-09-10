@@ -62,7 +62,7 @@ Then proceed to Step 3.
 
 ### Step 2b. Direct Explain (simple questions)
 
-Spawn a single Task subagent that explores and explains in one pass:
+Spawn a single delegate subagent that explores and explains in one pass:
 
 - `delegate_task`: role `leaf`
 - `model`: your configured how-explainer model (default `claude-fable-5-1-thinking-max`)

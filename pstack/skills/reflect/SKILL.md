@@ -26,7 +26,7 @@ The parent locates the current session via `session_search` (hermes stores sessi
 
 ### 2. Spawn three reviewers in parallel
 
-One message, three `delegate_task` calls, `delegate_task` (role: `leaf`), explicit `model:` on each, agent mode (`readonly: false`). Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); readonly on hermes restricts file writes only, so MCP access is unaffected. The prompt forbids file writes; the parent applies edits.
+One message, three `delegate_task` calls (role: `leaf`), explicit `model:` on each, agent mode (`readonly: false`). Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); readonly on hermes restricts file writes only, so MCP access is unaffected. The prompt forbids file writes; the parent applies edits.
 
 | Lens | `model` | Prompt template |
 |---|---|---|
@@ -38,7 +38,7 @@ Pass each template verbatim, substituting the transcript path or digest where ma
 
 ### 3. Synthesize
 
-One `delegate_task` call, `delegate_task` (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`). The synthesizer's quality check includes spot-verifying citations, which can require MCP access; readonly on hermes restricts file writes only, so MCP access is unaffected. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
+One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`). The synthesizer's quality check includes spot-verifying citations, which can require MCP access; readonly on hermes restricts file writes only, so MCP access is unaffected. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
 
 ### 4. Structural enforcement check
 
