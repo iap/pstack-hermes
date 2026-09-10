@@ -5,7 +5,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Changed
-- T12: Cursor built-in `/loop` and `/goal` references reworded to hermes-native mechanisms — gateway cron jobs as the wake/scheduler (autonomous-run, autopilot-full, autopilot-stack, babysit, bug-fix, multi-phase-plan, shipping, visual-parity) and an armed `goal.md` in the agent store replacing the goal primitive; trigger phrases de-slashed ("loop until X")
+- T12: Cursor built-in `/loop` and `/goal` references reworded to hermes-native mechanisms — gateway cron jobs as the wake/scheduler (autonomous-run, autopilot-full, autopilot-stack, babysit, bug-fix, multi-phase-plan, shipping, visual-parity) and an armed `goal.md` in the agent store replacing the goal primitive; trigger phrases de-slashed ("loop until X"); plan checker (`check-plan.mjs`) marker aligned to accept the new mechanism
 
 ## [0.4.0] - 2026-09-09
 

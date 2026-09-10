@@ -58,8 +58,10 @@ macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yam
 ## Cursor dual-load
 
 `.cursor-plugin/plugin.json` is preserved unchanged, so this same directory still
-loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never reads
-`.cursor-plugin/`.
+loads as a Cursor plugin structurally. The skills' *content*, however, is fully
+hermes-adapted (delegation vocabulary, discovery, wake and goal mechanisms — see
+the differences list): for real Cursor-side work, install upstream pstack instead.
+Hermes probes only `<root>/plugin.json` and never reads `.cursor-plugin/`.
 
 ## Differences from upstream (the conversion gate)
 
@@ -112,6 +114,12 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
     `agent-transcripts` recipes, and `/tmp` scratch dirs mapped to hermes
     equivalents or platform-neutral phrasing; `worktree-audit.sh` keeps its
     Cursor transcript check behind an annotated graceful skip.
+13. **T12**: Cursor's built-in `/loop` scheduler and `/goal` primitive are
+    reworded to hermes-native mechanisms — gateway cron jobs (`hermes cron`)
+    as the wake/scheduler across the autopilot, babysit, bug-fix,
+    multi-phase, shipping, and verification playbooks, and an armed
+    `goal.md` beside the plan in the agent store that every tick re-reads.
+    The plan checker (`check-plan.mjs`) accepts the new `goal.md` marker.
 
 Beyond these passes, upstream text is unchanged; the machine-generated fix
 register in `.build-provenance.txt` (regenerated on every build) is the

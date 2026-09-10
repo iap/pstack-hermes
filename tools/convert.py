@@ -707,17 +707,20 @@ The parent locates the current session via `session_search` (hermes stores sessi
     # --- T12: Cursor built-in /loop + /goal rewording (Phase-2 wrap-up) ----
     t12_files = apply_map(sorted((out / "skills").rglob("*.md")),
                           T12_MAP, map_name="T12_MAP", st=st)
+    check_plan = out / "skills" / "poteto-mode" / "scripts" / "check-plan.mjs"
+    t12_script_files = apply_map([check_plan],
+                                 T12_SCRIPT_MAP, map_name="T12_SCRIPT_MAP", st=st)
     st.fixes.append(f"T12: Cursor built-in wake/goal rewording applied across "
-                    f"{t12_files} skill file(s) "
+                    f"{t12_files} skill file(s) + the plan checker "
                     "(terminal /loop -> gateway cron wake; armed /goal -> "
-                    "goal.md in the agent store)")
+                    "goal.md in the agent store; check-plan marker aligned)")
 
     # Dead-anchor audit: every audited transform must have matched somewhere
     # in this build (fail-loud replacement for the historical silent no-op).
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
-         "T12_MAP": T12_MAP},
+         "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP},
         st,
     )
 
@@ -845,6 +848,14 @@ T12_MAP = [
      "On her go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal."),
     ("from trunk and the armed /goal. Audit the operation",
      "from trunk and the armed `goal.md` from the store. Audit the operation"),
+]
+
+# check-plan.mjs validates multi-phase plans; its Program-checklist marker
+# must accept the goal.md mechanism the T12-reworded skeleton now instructs
+# (tolerant: either marker, so in-flight plans written with /goal still pass).
+T12_SCRIPT_MAP = [
+    ('const PROGRAM_MARKERS = ["/goal", "git show origin/main:", /30[- ]minute/, "status message"];',
+     'const PROGRAM_MARKERS = [/goal\\.md|\\/goal/, "git show origin/main:", /30[- ]minute/, "status message"];'),
 ]
 
 
@@ -1201,8 +1212,10 @@ macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yam
 ## Cursor dual-load
 
 `.cursor-plugin/plugin.json` is preserved unchanged, so this same directory still
-loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never reads
-`.cursor-plugin/`.
+loads as a Cursor plugin structurally. The skills' *content*, however, is fully
+hermes-adapted (delegation vocabulary, discovery, wake and goal mechanisms — see
+the differences list): for real Cursor-side work, install upstream pstack instead.
+Hermes probes only `<root>/plugin.json` and never reads `.cursor-plugin/`.
 
 ## Differences from upstream (the conversion gate)
 
@@ -1255,6 +1268,12 @@ loads as a Cursor plugin. Hermes probes only `<root>/plugin.json` and never read
     `agent-transcripts` recipes, and `/tmp` scratch dirs mapped to hermes
     equivalents or platform-neutral phrasing; `worktree-audit.sh` keeps its
     Cursor transcript check behind an annotated graceful skip.
+13. **T12**: Cursor's built-in `/loop` scheduler and `/goal` primitive are
+    reworded to hermes-native mechanisms — gateway cron jobs (`hermes cron`)
+    as the wake/scheduler across the autopilot, babysit, bug-fix,
+    multi-phase, shipping, and verification playbooks, and an armed
+    `goal.md` beside the plan in the agent store that every tick re-reads.
+    The plan checker (`check-plan.mjs`) accepts the new `goal.md` marker.
 
 Beyond these passes, upstream text is unchanged; the machine-generated fix
 register in `.build-provenance.txt` (regenerated on every build) is the
