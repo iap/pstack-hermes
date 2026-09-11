@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Model-slug drift check: configured panel slugs vs the provider catalog.
+"""Model-slug drift check: configured panel/config slugs vs the provider catalog.
 
 The panel (tools/assets/model-panel.json) and the shipped config
 (pstack/config/models.json) name provider model slugs that were verified
@@ -8,6 +8,14 @@ especially), so this tool re-verifies them periodically:
 
     uv run --frozen tools/slug_drift.py                       # live catalog
     uv run --frozen tools/slug_drift.py --catalog-file <json> # offline/tests
+
+With --prose, also scans skill markdown for backtick-quoted model-slug
+defaults (e.g. `claude-fable-5-1-thinking-max`) that were written as
+fallback documentation. Those are not in the panel/config, so they are
+never re-verified by the default check; a silently-deprecated default slug
+in prose would surface as a 404 in a live run. The prose scan is opt-in
+because it is a regex heuristic (it cannot tell a model slug from a
+backtick-quoted shell token) and is therefore reported separately.
 
 Exit codes: 0 = every configured slug present; 1 = missing slug(s);
 2 = tool error (catalog unreachable or unparseable). The weekly
@@ -18,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -29,6 +38,33 @@ DEFAULT_CONFIG = REPO_ROOT / "pstack" / "config" / "models.json"
 DEFAULT_CATALOG_URL = "https://openrouter.ai/api/v1/models"
 USER_AGENT = "pstack-hermes-model-drift-watch"
 SELECTOR = "inherit-parent"  # always valid; not a provider slug
+
+# Backtick-quoted tokens that look like provider model slugs. The prose
+# defaults in this port (claude-fable-5-1-thinking-max, gpt-5.6-sol-max,
+# grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh) are not OpenRouter
+# vendor/model format, so they are reported as "prose-only" rather than
+# silently skipped.
+#
+# Heuristic: a model slug has a provider prefix, a version (digits with
+# optional dots/dashes), and an optional suffix. This is intentionally
+# conservative — it is a regex, not an LLM, and false positives (e.g.
+# `properties_json`, `gpt-4`, `prompt`) are worse than false negatives
+# because they flood the drift alert. Tokens without a version component
+# are skipped; tokens that look like real slugs but are not in the
+# vendor/model format are reported as prose-only defaults.
+#
+# The version component must appear somewhere in the token: either in the
+# provider part (e.g. claude-opus-5-thinking-xhigh) or in the model part
+# after a slash (e.g. vendor/missing-1.0). This is a single regex rather
+# than two alternations so the same match object carries the whole slug.
+PROSE_SLUG_RE = re.compile(
+    r"`(?P<slug>"
+    r"(?:gpt|claude|grok|gemini|llama|mistral|qwen|deepseek|phi|"
+    r"command|sonnet|opus|haiku|nova|flash|pro|thinking|fast|slow|"
+    r"xhigh|xlow|mini|max|turbo|preview|latest)"
+    r"[-\w/.]*\d[-\w/.]*"
+    r")`"
+)
 
 
 def collect_slugs(path: Path) -> dict[str, list[str]]:
@@ -90,6 +126,34 @@ def check(paths: list[Path], ids: set[str]) -> tuple[list[str], int]:
     return findings, checked
 
 
+def scan_prose(skills_dir: Path, ids: set[str]) -> tuple[list[str], int]:
+    """Scan skill markdown for backtick-quoted model-slug defaults.
+
+    Returns (findings, slugs_checked). A finding per prose slug that is
+    either missing from the catalog or not in OpenRouter vendor/model
+    format (prose-only defaults like ``claude-fable-5-1-thinking-max``).
+    """
+    findings: list[str] = []
+    checked = 0
+    for md in sorted(skills_dir.rglob("*.md")):
+        try:
+            text = md.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for m in PROSE_SLUG_RE.finditer(text):
+            slug = m.group("slug")
+            checked += 1
+            if "/" in slug:
+                if slug not in ids:
+                    rel = md.relative_to(skills_dir)
+                    findings.append(f"{rel}: prose slug '{slug}' is not in the provider catalog")
+            else:
+                rel = md.relative_to(skills_dir)
+                findings.append(f"{rel}: prose slug '{slug}' is not in OpenRouter vendor/model format "
+                                "(prose-only default; verify against the provider catalog manually)")
+    return findings, checked
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--panel", default=str(DEFAULT_PANEL),
@@ -99,6 +163,8 @@ def main() -> int:
     ap.add_argument("--catalog-url", default=DEFAULT_CATALOG_URL)
     ap.add_argument("--catalog-file", default=None,
                     help="read catalog ids from a JSON file instead of the network")
+    ap.add_argument("--prose", action="store_true",
+                    help="also scan skill markdown for backtick-quoted model-slug defaults")
     args = ap.parse_args()
     paths = [Path(args.panel), Path(args.config)]
 
@@ -108,18 +174,29 @@ def main() -> int:
         else:
             ids = load_catalog_url(args.catalog_url)
         findings, checked = check(paths, ids)
+        prose_findings: list[str] = []
+        prose_checked = 0
+        if args.prose:
+            prose_findings, prose_checked = scan_prose(REPO_ROOT / "pstack" / "skills", ids)
     except Exception as exc:
         print(f"slug drift: tool error: {exc}", file=sys.stderr)
         return 2
 
     for f in findings:
         print(f"MISSING {f}")
+    for f in prose_findings:
+        print(f"PROSE {f}")
     if findings:
         print(f"slug drift: {len(findings)} configured slug(s) missing from the catalog",
               file=sys.stderr)
         return 1
+    # Prose findings are informational only: prose defaults are not in
+    # OpenRouter vendor/model format by design, so they cannot be checked
+    # against the catalog automatically. They are printed above so a human
+    # can decide whether to update them; they do not fail the watch.
     print(f"model slugs: OK ({checked} configured slug(s) all present; "
-          f"{len(ids)} catalog ids checked)")
+          f"{len(ids)} catalog ids checked"
+          + (f"; {prose_checked} prose slug(s) scanned" if args.prose else ""))
     return 0
 
 
