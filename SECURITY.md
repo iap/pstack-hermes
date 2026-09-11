@@ -39,13 +39,17 @@ Report it here.
 | Problem | Report to |
 |---|---|
 | This package's content, tooling, adaptations, configuration, install steps, or docs | **This repository** — Issues, or private vulnerability reporting for security matters |
-| A hermes platform bug that reproduces **with this plugin disabled** (loader, scanner, scheduler, gateway, CLI) | Upstream: <https://github.com/NousResearch/hermes-agent> |
+| A hermes platform bug in how Hermes handles valid plugin input (scanner, loader, manifest parsing, scheduler, gateway, CLI) — including defects that surface only while a plugin is installed | Upstream: <https://github.com/NousResearch/hermes-agent> |
 | A bug in the original Cursor plugin that also reproduces **without** this port | Upstream: <https://github.com/cursor/plugins/tree/main/pstack> (MIT © Lauren Tan) |
 
 Do **not** file this port's misadjustments, misconfigurations, or
-misinterpretations upstream. If a problem disappears when the plugin is
-disabled, it is not an upstream issue. If you are unsure which side owns it,
-open an issue here first with the platform, the exact command, and
+misinterpretations upstream. The test is ownership, not visibility: ask
+whether the fault lies in this package (content, tooling, adaptation,
+configuration) or in Hermes' own handling of valid plugin input. A defect in
+Hermes' scanner, loader, or manifest handling can surface only while a plugin
+is installed — disabling the plugin hides it without making it a port
+problem — so file those upstream. If you cannot tell which side owns it, open
+an issue here first with the platform, the exact command, and
 `hermes plugins doctor <package> --ci` output — triage starts here, and we
 will escalate genuine upstream defects with a minimal reproduction.
 
