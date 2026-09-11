@@ -2,11 +2,6 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
-## [Unreleased]
-
-### Changed
-- SECURITY.md: reporting triage — issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project bugs that reproduce without the plugin. The issue chooser now links the port's issue tracker.
-
 ## [0.4.1] - 2026-09-10
 
 ### Changed

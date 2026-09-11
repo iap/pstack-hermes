@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Report a problem with this port
-    url: https://github.com/iap/pstack-hermes/issues
-    about: Bugs, install or configuration problems, or anything the port's adaptations cause — report here, not upstream.
   - name: Questions about the method
     url: https://github.com/cursor/plugins/tree/main/pstack
     about: The upstream pstack method by Lauren Tan — read the poteto-mode skill first; many questions are answered by it.
