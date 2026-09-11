@@ -895,8 +895,6 @@ T13_MAP = [
      "the `deslop` skill (`/deslop`)"),
     ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
      "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
-    ('Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`); reading session history from the local hermes store',
-     "Always local execution unless the task needs this machine: `control-ui` or `control-cli` runtime verification; reading session history from the local hermes store"),
     ("the cloud agent's status in the Cursor dashboard",
      "the subagent's status in the delegate_task result"),
     ("After a Cursor restart: local agents are dead, cloud work is not.",
