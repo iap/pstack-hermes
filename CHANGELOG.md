@@ -4,12 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
-### Fixed
-- SECURITY.md reporting ownership basis: a defect in Hermes' handling of valid plugin input can surface only while a plugin is installed, so ownership is judged by where the fault lies — not by whether disabling the plugin hides it (review finding on #26)
-
 ### Changed
-- Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list (review finding on #26)
-- SECURITY.md: reporting triage — issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project bugs that reproduce without the plugin.
+- SECURITY.md reporting triage: issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project defects — including a Hermes defect that surfaces only while a plugin is installed
+- Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list
 
 ## [0.4.1] - 2026-09-10
 
