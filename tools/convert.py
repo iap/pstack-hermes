@@ -717,10 +717,17 @@ The parent locates the current session via `session_search` (hermes stores sessi
 
     # Dead-anchor audit: every audited transform must have matched somewhere
     # in this build (fail-loud replacement for the historical silent no-op).
+    t13_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                          T13_MAP, map_name="T13_MAP", st=st)
+    st.fixes.append(f"T13: residual Cursor-vendor coupling Phase-2 wrap-up applied "
+                    f"across {t13_files} skill file(s) "
+                    "(cursor-team-kit plugin references, cloud-agent fleet, "
+                    "Graphite `gt` rewording)")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
-         "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP},
+         "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
+         "T13_MAP": T13_MAP, "T13_PRINCIPLE_MAP": T13_PRINCIPLE_MAP},
         st,
     )
 
