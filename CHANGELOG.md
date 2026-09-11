@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Fixed
+- T13 converter wiring: removed two dead anchors and two identity no-ops from `T13_MAP`, re-anchored the vendor-mention entry to post-transform text, deleted the redundant `T13_PRINCIPLE_MAP` (T8 already performs that rewrite) and the unwired `T13_README_MAP` (the README line is fixed at the template instead), and fixed a capitalisation defect in the generated control-skill sentence. The conversion now completes (anchor audit 112/112) instead of aborting every build.
+
 ### Changed
 - SECURITY.md reporting triage: issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project defects — including a Hermes defect that surfaces only while a plugin is installed
 - Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list

@@ -727,7 +727,7 @@ The parent locates the current session via `session_search` (hermes stores sessi
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP, "T13_PRINCIPLE_MAP": T13_PRINCIPLE_MAP},
+         "T13_MAP": T13_MAP},
         st,
     )
 
@@ -875,7 +875,7 @@ T13_MAP = [
     ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
      "the `deslop` skill (`/deslop`)"),
     ("`cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui`",
-     "the repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
+     "The repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
     ("each a Cursor cloud agent, each exercising the real surface (`control-ui` or `control-cli` from `cursor-team-kit` as the change demands)",
      "each a delegate subagent, each exercising the real surface (`control-ui` or `control-cli` as the change demands)"),
     ("One Cursor cloud agent per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **prove-it-works** principle skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself.",
@@ -888,11 +888,9 @@ T13_MAP = [
      "Each live lane runs on its own lane VM at the PR head. Drive through `control-ui` or `control-cli`."),
     ("Run `/deslop` from `cursor-team-kit` over the diff before commit.",
      "Run `/deslop` over the diff before commit."),
-    ("a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill)",
-     "a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill)"),
     ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
      "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
-    ('Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`); reading local transcripts under `agent-transcripts/`',
+    ("Always local execution unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`); reading session history from the local hermes store",
      "Always local execution unless the task needs this machine: `control-ui` or `control-cli` runtime verification; reading session history from the local hermes store"),
     ("the cloud agent's status in the Cursor dashboard",
      "the subagent's status in the delegate_task result"),
@@ -906,34 +904,7 @@ T13_MAP = [
      "Never require Graphite (`gt`); the stacker is the only topology writer."),
     ("Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative:",
      "Recompute `frontier.json` from the resolved forge after every merge and stack mutation because GitHub base refs drift mid-restack while the forge's tracking is authoritative:"),
-    ("Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking.",
-     "Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking."),
-    ("Never submit or register the chain through `gt`.",
-     "Never submit or register the chain through `gt`."),
 ]
-
-# --- T13 principle-leaf: the minimize-reader-load markdown link ------------
-# This is the one hand-edit found in the shipped package (upstream's
-# `[Guard the Context Window](../principle-guard-the-context-window/SKILL.md)`
-# markdown link was replaced by a bolded skill name). The shipped package
-# is generated and must never be hand-edited (CONTRIBUTING.md), so the
-# correct fix is a converter map entry, not a manual edit. The link target
-# is a sibling principle skill in this same package; reword to the bolded
-# name so the prose survives the port unchanged.
-T13_PRINCIPLE_MAP = [
-    ("This is the human analog of [Guard the Context Window](../principle-guard-the-context-window/SKILL.md): working memory is finite for readers too.",
-     "This is the human analog of the **guard-the-context-window** principle skill: working memory is finite for readers too."),
-]
-
-# --- T13 package-doc: README prose that blends the old Cursor /loop ------
-# mental model with hermes cron. T12 reworded the playbooks but left this
-# package-doc line; the shipped package README is generated, so the fix is
-# a converter map entry, not a manual edit.
-T13_README_MAP = [
-    ("and Phase 4 rebuilds it as hermes cron/loop jobs anyway.",
-     "and Phase 4 rebuilds it as hermes cron jobs anyway."),
-]
-
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
               *, map_name: str, st: Stats) -> int:
@@ -1251,7 +1222,7 @@ regenerate with `python tools/convert.py --source <pstack-clone> --out <package-
   dual-load and a Phase-2 native wrapper.
 - `automations/benny/` — **excluded** from this package: the install scanner
   flags its copy-instructions as persistence patterns (verdict: dangerous),
-  and Phase 4 rebuilds it as hermes cron/loop jobs anyway.
+  and Phase 4 rebuilds it as hermes cron jobs anyway.
 - `skills/make-bot-ui/` — **excluded**: its Tailscale setup script trips the
   privilege-escalation scanner (F33); deepest vendor coupling. The slot is
   filled by `skills/hermesbot/` — a hermes-native control-surface skill
