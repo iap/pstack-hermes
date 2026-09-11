@@ -872,8 +872,11 @@ T13_MAP = [
     # equivalent; its skills are vendored here under their own names, so the
     # references are reworded to name the vendored skill directly. Anchors are
     # taken from the post-T9-transform text, since T13 runs after T9.
-    ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
-     "the `deslop` skill (`/deslop`)"),
+    # Order matters: longer/more-specific anchors must precede shorter
+    # substrings of them (e.g., [8] before [0]) so the replacement doesn't
+    # break the longer match.
+    ("a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill)",
+     "a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill)"),
     ("`cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui`",
      "the repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
     ("each a Cursor cloud agent, each exercising the real surface (`control-ui` or `control-cli` from `cursor-team-kit` as the change demands)",
@@ -888,11 +891,11 @@ T13_MAP = [
      "Each live lane runs on its own lane VM at the PR head. Drive through `control-ui` or `control-cli`."),
     ("Run `/deslop` from `cursor-team-kit` over the diff before commit.",
      "Run `/deslop` over the diff before commit."),
-    ("a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill)",
-     "a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill)"),
+    ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
+     "the `deslop` skill (`/deslop`)"),
     ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
      "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
-    ('Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`); reading local transcripts under `agent-transcripts/`',
+    ('Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`); reading session history from the local hermes store',
      "Always local execution unless the task needs this machine: `control-ui` or `control-cli` runtime verification; reading session history from the local hermes store"),
     ("the cloud agent's status in the Cursor dashboard",
      "the subagent's status in the delegate_task result"),
