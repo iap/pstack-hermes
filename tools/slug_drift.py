@@ -55,14 +55,20 @@ SELECTOR = "inherit-parent"  # always valid; not a provider slug
 #
 # The version component must appear somewhere in the token: either in the
 # provider part (e.g. claude-opus-5-thinking-xhigh) or in the model part
-# after a slash (e.g. vendor/missing-1.0). This is a single regex rather
-# than two alternations so the same match object carries the whole slug.
+# after a slash (e.g. vendor/missing-1.0). Two patterns are recognized:
+# 1. Model-family slugs: `claude-opus-5-thinking-xhigh`, `gpt-5.6-sol-max`
+#    (vendor prefix + version + suffix, no slash)
+# 2. Vendor/model slugs: `z-ai/glm-5.2`, `meituan/longcat-2.0`
+#    (vendor/model-version format matching OpenRouter catalog entries)
+# This is a single regex rather than two alternations so the same match
+# object carries the whole slug.
 PROSE_SLUG_RE = re.compile(
     r"`(?P<slug>"
     r"(?:gpt|claude|grok|gemini|llama|mistral|qwen|deepseek|phi|"
     r"command|sonnet|opus|haiku|nova|flash|pro|thinking|fast|slow|"
     r"xhigh|xlow|mini|max|turbo|preview|latest)"
     r"[-\w/.]*\d[-\w/.]*"
+    r"|(?:[a-z][a-z0-9-]*/[a-z][a-z0-9-]*[-\w/.]*\d[-\w/.]*)"
     r")`"
 )
 
@@ -135,10 +141,12 @@ def scan_prose(skills_dir: Path, ids: set[str]) -> tuple[list[str], int]:
     """
     findings: list[str] = []
     checked = 0
+    skipped: list[str] = []
     for md in sorted(skills_dir.rglob("*.md")):
         try:
             text = md.read_text(encoding="utf-8")
         except Exception:
+            skipped.append(str(md.relative_to(skills_dir)))
             continue
         for m in PROSE_SLUG_RE.finditer(text):
             slug = m.group("slug")
@@ -151,6 +159,9 @@ def scan_prose(skills_dir: Path, ids: set[str]) -> tuple[list[str], int]:
                 rel = md.relative_to(skills_dir)
                 findings.append(f"{rel}: prose slug '{slug}' is not in OpenRouter vendor/model format "
                                 "(prose-only default; verify against the provider catalog manually)")
+    if skipped:
+        findings.append(f"NOTE: {len(skipped)} skill file(s) could not be read as UTF-8 "
+                        f"(prose scan may be incomplete): {', '.join(skipped)}")
     return findings, checked
 
 

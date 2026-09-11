@@ -53,14 +53,14 @@ consistency. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
 and a weekly upstream-drift check
 ([upstream-drift-watch](.github/workflows/upstream-drift-watch.yml)) that opens
 a tracking issue when upstream `pstack/` changes past the pin; a weekly
-- [model-drift-watch](.github/workflows/model-drift-watch.yml) re-verifies every
-- configured model slug against the provider catalog (`tools/slug_drift.py`). The
-- --prose flag (added in T13) also scans skill markdown for backtick-quoted
-- model-slug defaults (e.g. `claude-fable-5-1-thinking-max`). Those are reported
-- as informational findings only (prose defaults are not in OpenRouter vendor/model
-- format and cannot be auto-checked against the catalog). A prose drift alert means
-- a human should verify whether the slug needs updating in the skill files or the
-- provider catalog.
+[model-drift-watch](.github/workflows/model-drift-watch.yml) re-verifies every
+configured model slug against the provider catalog (`tools/slug_drift.py`). The
+`--prose` flag (added in T13) also scans skill markdown for backtick-quoted
+model-slug defaults (e.g. `claude-fable-5-1-thinking-max`). Those are reported
+as informational findings only (prose defaults are not in OpenRouter vendor/model
+format and cannot be auto-checked against the catalog). A prose drift alert means
+a human should verify whether the slug needs updating in the skill files or the
+provider catalog.
 PRs are
 auto-labeled by path (labels are created once via the `labels-bootstrap`
 workflow after the repo goes public).
