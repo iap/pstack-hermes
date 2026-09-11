@@ -717,10 +717,17 @@ The parent locates the current session via `session_search` (hermes stores sessi
 
     # Dead-anchor audit: every audited transform must have matched somewhere
     # in this build (fail-loud replacement for the historical silent no-op).
+    t13_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                          T13_MAP, map_name="T13_MAP", st=st)
+    st.fixes.append(f"T13: residual Cursor-vendor coupling Phase-2 wrap-up applied "
+                    f"across {t13_files} skill file(s) "
+                    "(cursor-team-kit plugin references, cloud-agent fleet, "
+                    "Graphite `gt` rewording)")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
-         "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP},
+         "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
+         "T13_MAP": T13_MAP},
         st,
     )
 
@@ -856,6 +863,76 @@ T12_MAP = [
 T12_SCRIPT_MAP = [
     ('const PROGRAM_MARKERS = ["/goal", "git show origin/main:", /30[- ]minute/, "status message"];',
      'const PROGRAM_MARKERS = [/goal\\.md|\\/goal/, "git show origin/main:", /30[- ]minute/, "status message"];'),
+]
+
+T13_MAP = [
+    # cursor-team-kit plugin references (poteto-mode/SKILL.md, shipping.md,
+    # multi-phase-plan.md, opening-a-pr.md, autopilot-full.md,
+    # autopilot-stack.md, orchestrate.md). The plugin has no hermes
+    # equivalent; its skills are vendored here under their own names, so the
+    # references are reworded to name the vendored skill directly. Anchors are
+    # taken from the post-T9-transform text, since T13 runs after T9.
+    # Order matters: longer/more-specific anchors must precede shorter
+    # substrings of them (e.g., [8] before [0]) so the replacement doesn't
+    # break the longer match.
+    ("a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill)",
+     "a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill)"),
+    ("`cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui`",
+     "the repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
+    ("each a Cursor cloud agent, each exercising the real surface (`control-ui` or `control-cli` from `cursor-team-kit` as the change demands)",
+     "each a delegate subagent, each exercising the real surface (`control-ui` or `control-cli` as the change demands)"),
+    ("One Cursor cloud agent per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **prove-it-works** principle skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself.",
+     "One delegate per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **prove-it-works** principle skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself."),
+    ("One Cursor cloud agent per PR owns its change end to end: build, first push, a ready PR opened before self-proof, self-proof (gates, CI, receipts), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), and babysit to green per `playbooks/babysit.md`.",
+     "One delegate per PR owns its change end to end: build, first push, a ready PR opened before self-proof, self-proof (gates, CI, receipts), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), and babysit to green per `playbooks/babysit.md`."),
+    ("Browser, Electron, and web UIs use `control-ui` from `cursor-team-kit`. CLIs and TUIs use `control-cli` from `cursor-team-kit`.",
+     "Browser, Electron, and web UIs use `control-ui`. CLIs and TUIs use `control-cli`."),
+    ("Each live lane runs on its own cloud VM at the PR head. Drive through `control-ui` or `control-cli` from `cursor-team-kit`.",
+     "Each live lane runs on its own lane VM at the PR head. Drive through `control-ui` or `control-cli`."),
+    ("Run `/deslop` from `cursor-team-kit` over the diff before commit.",
+     "Run `/deslop` over the diff before commit."),
+    ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
+     "the `deslop` skill (`/deslop`)"),
+    ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
+     "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
+    ("the cloud agent's status in the Cursor dashboard",
+     "the subagent's status in the delegate_task result"),
+    ("After a Cursor restart: local agents are dead, cloud work is not.",
+     "After a gateway restart: in-flight delegate work is not automatically resumed, so re-arm any wake loop and re-read the armed `goal.md`."),
+    ("In a cloud root, a cloud-sleeper wake chain.",
+     "In a local root, a wake chain arms each tick as a recurring hermes cron job whose delivery re-wakes this session."),
+    ("A cloud root uses the existing cloud-sleeper wake chain instead.",
+     "A local root uses the existing wake chain instead."),
+    ("Never require Graphite (`gt`).",
+     "Never require Graphite (`gt`); the stacker is the only topology writer."),
+    ("Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative:",
+     "Recompute `frontier.json` from the resolved forge after every merge and stack mutation because GitHub base refs drift mid-restack while the forge's tracking is authoritative:"),
+    ("Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking.",
+     "Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking."),
+    ("Never submit or register the chain through `gt`.",
+     "Never submit or register the chain through `gt`."),
+]
+
+# --- T13 principle-leaf: the minimize-reader-load markdown link ------------
+# This is the one hand-edit found in the shipped package (upstream's
+# `[Guard the Context Window](../principle-guard-the-context-window/SKILL.md)`
+# markdown link was replaced by a bolded skill name). The shipped package
+# is generated and must never be hand-edited (CONTRIBUTING.md), so the
+# correct fix is a converter map entry, not a manual edit. The link target
+# is a sibling principle skill in this same package; reword to the bolded
+# name so the prose survives the port unchanged.
+T13_PRINCIPLE_MAP = [
+    ("This is the human analog of [Guard the Context Window](../principle-guard-the-context-window/SKILL.md): working memory is finite for readers too.",
+     "This is the human analog of the **guard-the-context-window** principle skill: working memory is finite for readers too."),
+]
+
+# --- T13 package-doc: README prose that blends the old Cursor /loop ------
+# mental model with hermes cron. T12 reworded the playbooks but left this
+# package-doc line; the shipped package README is generated, so the fix is
+# a converter map entry, not a manual edit.
+T13_README_MAP = [
+    ("and Phase 4 rebuilds it as hermes cron/loop jobs anyway.",
+     "and Phase 4 rebuilds it as hermes cron jobs anyway."),
 ]
 
 

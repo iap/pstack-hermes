@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           status=0
-          uv run --frozen tools/slug_drift.py | tee "$RUNNER_TEMP/drift-findings.txt" || status=$?
+          uv run --frozen tools/slug_drift.py --prose | tee "$RUNNER_TEMP/drift-findings.txt" || status=$?
           if [ "$status" -eq 0 ]; then
             echo "no drift: every configured slug is in the catalog"
             exit 0
@@ -65,6 +65,11 @@ jobs:
             echo "Verify replacements against the catalog, update"
             echo "\`tools/assets/model-panel.json\`, rebuild the package"
             echo "(\`tools/convert.py\` per CONTRIBUTING.md), and re-run the pipeline."
+            echo ""
+            echo "Prose-only default slugs (backtick-quoted in skill markdown, not in"
+            echo "OpenRouter vendor/model format) are listed under PROSE lines above."
+            echo "They are informational: update them in the skill files when the"
+            echo "provider catalog changes, or leave them as-is if they are still valid."
           } > "$RUNNER_TEMP/drift-body.md"
 
           lookup_status=0
