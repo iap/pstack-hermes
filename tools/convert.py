@@ -727,7 +727,7 @@ The parent locates the current session via `session_search` (hermes stores sessi
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP, "T13_PRINCIPLE_MAP": T13_PRINCIPLE_MAP},
+         "T13_MAP": T13_MAP},
         st,
     )
 
