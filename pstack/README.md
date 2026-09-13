@@ -133,8 +133,11 @@ authoritative delta record.
 ## Known limitations (documented, not drift)
 
 - External prerequisites, not shipped skills: `deslop`, `control-ui`, and
-  `control-cli` are named by several playbooks but live outside this package —
-  skip steps that need them when your setup does not provide them.
+  `control-cli` are named by several playbooks but live outside this package.
+  Skip a step that needs them only when the change does not demand that lane;
+  when the change touches a live surface and the tooling is absent, record the
+  verdict as incomplete instead of clean — a verdict without its demanded live
+  lane is not clean.
   (`no-comments`, `unslop`, and `technical-writing` do ship here.)
 - Frontier management (`orch frontier set`) requires Graphite (`gt`): the
   forge-agnostic wording elsewhere covers PR operations, not frontier
