@@ -70,3 +70,41 @@ workflow after the repo goes public).
 Use the templates — platform (hermes portable / hermes slash / Cursor
 dual-load) and affected skill are required fields; `hermes plugins doctor
 pstack --ci` output is the most useful evidence you can attach.
+
+## Document style
+
+GitHub renders **alert callouts** in markdown, so use them in this repo's
+hand-written docs (`CONTRIBUTING.md`, `README.md`, `SECURITY.md`, the PR
+template, issue bodies). They carry more weight than a plain `> Note.` block.
+
+```
+> [!NOTE]
+> Required context, or a non-obvious "yes, this is intended".
+
+> [!IMPORTANT]
+> A decision or constraint that changes what a correct change looks like.
+
+> [!WARNING]
+> Something that will silently break or mislead if skipped.
+
+> [!TIP]
+> A shortcut worth knowing, not required for correctness.
+```
+
+- One callout per point. Don't stack them; write the prose instead.
+- `[!CAUTION]` is for *destructive or irreversible* steps — use it sparingly,
+  and only where a reader could actually hit the action.
+- Keep the first line short; the body carries the detail. GitHub truncates
+  callouts to a preview in some views.
+
+### Where alerts do **not** apply
+
+- **Commit messages.** GitHub does not render markdown (including alerts) in
+  commit messages — they stay plain text. Say it in the subject line or the
+  body as normal prose. The `type(scope): summary` convention already carries
+  the what/why; add a second line for the why if it doesn't fit.
+- **The generated `pstack/` package.** That tree is rebuilt by
+  `tools/convert.py` from upstream and is never hand-edited. Don't add a
+  callout convention there as a hand-edit rule — it would be wiped on the next
+  build. If alerts belong in package prose, that's a converter change (and an
+  upstream-drift consideration), not a CONTRIBUTING note.
