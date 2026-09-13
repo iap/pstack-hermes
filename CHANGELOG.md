@@ -15,6 +15,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 - SECURITY.md reporting triage: issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project defects — including a Hermes defect that surfaces only while a plugin is installed
 - Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list
 
+### Fixed
+- Residual doc defects: the package README no longer says it rebuilds benny as "hermes cron/loop jobs" (the template is corrected at the source, so the generated line is right by construction), and the control-surface replacement is properly capitalised. The two dead T13 maps — `T13_PRINCIPLE_MAP` and `T13_README_MAP`, both defined but never applied or audited — are removed.
+
 ## [0.4.1] - 2026-09-10
 
 ### Changed

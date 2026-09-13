@@ -21,7 +21,7 @@ regenerate with `uv run --frozen tools/convert.py --source <pstack-clone> --out 
   dual-load and a Phase-2 native wrapper.
 - `automations/benny/` — **excluded** from this package: the install scanner
   flags its copy-instructions as persistence patterns (verdict: dangerous),
-  and Phase 4 rebuilds it as hermes cron/loop jobs anyway.
+  and Phase 4 rebuilds it as hermes cron jobs anyway.
 - `skills/make-bot-ui/` — **excluded**: its Tailscale setup script trips the
   privilege-escalation scanner (F33); deepest vendor coupling. The slot is
   filled by `skills/hermesbot/` — a hermes-native control-surface skill
