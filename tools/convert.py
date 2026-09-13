@@ -869,8 +869,11 @@ T13_MAP = [
     # cursor-team-kit plugin references (poteto-mode/SKILL.md, shipping.md,
     # multi-phase-plan.md, opening-a-pr.md, autopilot-full.md,
     # autopilot-stack.md, orchestrate.md). The plugin has no hermes
-    # equivalent; its skills are vendored here under their own names, so the
-    # references are reworded to name the vendored skill directly. Anchors are
+    # equivalent: `no-comments`, `unslop`, and `technical-writing` ship in
+    # this package under their own names, while `deslop`, `control-ui`, and
+    # `control-cli` do not (recorded as external prerequisites in the
+    # generated README's Known limitations section). References name the
+    # skill directly. Anchors are
     # taken from the post-T9-transform text, since T13 runs after T9.
     # Order matters: longer/more-specific anchors must precede shorter
     # substrings of them (e.g., [8] before [0]) so the replacement doesn't
@@ -1362,6 +1365,16 @@ Hermes probes only `<root>/plugin.json` and never reads `.cursor-plugin/`.
 Beyond these passes, upstream text is unchanged; the machine-generated fix
 register in `.build-provenance.txt` (regenerated on every build) is the
 authoritative delta record.
+
+## Known limitations (documented, not drift)
+
+- External prerequisites, not shipped skills: `deslop`, `control-ui`, and
+  `control-cli` are named by several playbooks but live outside this package —
+  skip steps that need them when your setup does not provide them.
+  (`no-comments`, `unslop`, and `technical-writing` do ship here.)
+- Frontier management (`orch frontier set`) requires Graphite (`gt`): the
+  forge-agnostic wording elsewhere covers PR operations, not frontier
+  discovery.
 
 ---
 

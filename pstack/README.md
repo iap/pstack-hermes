@@ -130,6 +130,16 @@ Beyond these passes, upstream text is unchanged; the machine-generated fix
 register in `.build-provenance.txt` (regenerated on every build) is the
 authoritative delta record.
 
+## Known limitations (documented, not drift)
+
+- External prerequisites, not shipped skills: `deslop`, `control-ui`, and
+  `control-cli` are named by several playbooks but live outside this package —
+  skip steps that need them when your setup does not provide them.
+  (`no-comments`, `unslop`, and `technical-writing` do ship here.)
+- Frontier management (`orch frontier set`) requires Graphite (`gt`): the
+  forge-agnostic wording elsewhere covers PR operations, not frontier
+  discovery.
+
 ---
 
 Adapted for Hermes Agent plugin compatibility from github.com/cursor/plugins pstack..
