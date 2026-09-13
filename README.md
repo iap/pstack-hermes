@@ -1,15 +1,19 @@
 # Pstack Hermes
 
-*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.14.8)*
+*Unofficial community port of Lauren Tan's **pstack** agent method for the
+**Hermes Agent** plugin platform. Not affiliated with Cursor or Lauren Tan.
+If you use Cursor, install the original instead:
+<https://github.com/cursor/plugins/tree/main/pstack>.*
 
-**pstack** — Lauren Tan's rigorous, deeply-methodical agent engineering method
-("if you want to go fast, go deep first") — ported to the **Hermes Agent**
-platform as a self-contained `agent-plugins-v1` package.
+*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.14.8) ·
+Upstream pinned at `93b00b8` (MIT).*
 
-Upstream: <https://github.com/cursor/plugins/tree/main/pstack> ·
-pstack v0.14.8 · MIT · pinned at upstream commit `93b00b8`.
-This port is platform-neutral: the package has **no Cursor runtime dependency**
-and dual-loads on Cursor unchanged.
+**What this project is:** the Hermes integration, adjustment, and compatibility
+layer for pstack — a self-contained `agent-plugins-v1` package plus the
+converter/validator tooling that keeps it faithful to upstream. **What it is
+not:** a Cursor plugin, a fork of the Cursor plugins repo, or the place to
+report upstream Cursor issues. Port problems belong here (Issues); original
+Cursor-plugin bugs that reproduce without this port belong upstream.
 
 ## Install
 
@@ -39,9 +43,6 @@ hermes plugins uninstall pstack
 hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-Cursor (dual-load, optional): point Cursor at the package root — the
-`.cursor-plugin/plugin.json` and `agents/` surfaces are inert on hermes.
-
 ## What's inside
 
 - **45 skills** (24 workflow/mode + 21 `principle-*`) — the full method:
@@ -61,7 +62,7 @@ Cursor (dual-load, optional): point Cursor at the package root — the
 
 ```
 pstack/            the built package (converter output; provenance in .build-provenance.txt)
-tools/convert.py   Cursor → hermes converter (T1–T11 transforms, atomic builds)
+tools/convert.py   Cursor pstack → hermes converter (T1–T12 transforms, atomic builds)
 tools/validate.py  verification ladder: static → repo YAML → gold loader → doctor
 patches/           the 4 hermes-fork patches the port depends on
 docs/              PATCHES.md (fork patch docs), UPSTREAM-PR.md (drafted PR)
@@ -113,6 +114,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 | This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes) |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
+
+## Cursor dual-load (incidental, unsupported)
+
+`.cursor-plugin/plugin.json` is preserved unchanged, so this same directory still
+loads as a Cursor plugin structurally — but the skills' *content* is fully
+hermes-adapted and Cursor-side behavior is neither tested nor supported here.
+For real Cursor-side work, install upstream pstack instead. The
+`.cursor-plugin/` and `agents/` surfaces are inert on hermes.
 
 ## License
 

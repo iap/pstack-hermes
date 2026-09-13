@@ -5,6 +5,8 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Changed
+- Main README rewritten Hermes-first: first-screen unofficial-port identity (not affiliated with Cursor or Lauren Tan; Cursor users go upstream), install up front, Cursor dual-load demoted to a trailing incidental/unsupported note; layout line corrected T1–T11 to T1–T12
+- Converter package-README template: `uv run --frozen` regenerate command and a CLI-install section replacing the manual-copy path; T13 gains the missed orchestrate.md `cursor-team-kit` anchor — rebuilt package from pinned `93b00b8` now carries zero `cursor-team-kit` references in shipped skills
 - PR template: replace the unrunnable `python3 convert.py` checkbox with the real `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack` invocation (the script lives in `tools/` and requires `--source`); add the `tools/scanner_gate.py --package pstack` line that actually enforces the banned-construct checkbox; note the gateway-restart warning in the doctor line as unrelated noise
 - SECURITY.md reporting triage: issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project defects — including a Hermes defect that surfaces only while a plugin is installed
 - Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list
