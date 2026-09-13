@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Added
+- Docs: `docs/ADAPTATIONS.md` (adaptations ledger, primitive mapping, deliberately-not-ported), `docs/RUNBOOK-upstream-drift.md` (re-pin procedure), `docs/USING.md` (invocation model, first run, expectations)
+
 ### Changed
 - Structure hygiene: `pstack/` marked `linguist-generated` in `.gitattributes` (diffs collapse in review) and PR guidance now requires `rebuilt from pin <sha>` in the body; README documents the two version lines (package `0.14.8` vs repo `v0.4.x`) and corrects the transform range to T1–T13; the package README's Known limitations gains the optional-MCP-servers note (template change + rebuild); the PR template gains the matching conditional `pstack/` rebuild-disclosure fields
 - Main README rewritten Hermes-first: first-screen unofficial-port identity (not affiliated with Cursor or Lauren Tan; Cursor users go upstream), install up front, Cursor dual-load demoted to a trailing incidental/unsupported note; layout line corrected T1–T11 to T1–T12

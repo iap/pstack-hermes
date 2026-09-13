@@ -1,5 +1,13 @@
 # Patches to the hermes CLI itself
 
+> [!WARNING]
+> **Historical.** The upstream PRs that proposed these patches to
+> `NousResearch/hermes-agent` were opened and later **closed by the maintainer's
+> decision** (2026-09-11). The patches remain here as reference only — none is
+> required for the package to load, validate, or install. Whether to keep
+> carrying them is an open decision (see the repository issues); treat this file
+> as a record, not a live plan.
+
 These are *not* part of the pstack package. They are proposed changes to the
 hermes agent source tree (`%LOCALAPPDATA%\hermes\hermes-agent`),
 kept here because the portable-plugin work surfaced the gaps. Apply manually
