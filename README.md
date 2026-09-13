@@ -62,7 +62,7 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 
 ```
 pstack/            the built package (converter output; provenance in .build-provenance.txt)
-tools/convert.py   Cursor pstack → hermes converter (T1–T12 transforms, atomic builds)
+tools/convert.py   Cursor pstack → hermes converter (T1–T13 transforms, atomic builds)
 tools/validate.py  verification ladder: static → repo YAML → gold loader → doctor
 patches/           the 4 hermes-fork patches the port depends on
 docs/              PATCHES.md (fork patch docs), UPSTREAM-PR.md (drafted PR)
@@ -113,6 +113,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 | The package | `pstack` | upstream identity (plugin.json, v0.14.8) — preserved |
 | This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes) |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
+| Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.14.8`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
 ## Cursor dual-load (incidental, unsupported)
