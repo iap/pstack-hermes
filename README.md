@@ -65,7 +65,8 @@ pstack/            the built package (converter output; provenance in .build-pro
 tools/convert.py   Cursor pstack → hermes converter (T1–T13 transforms, atomic builds)
 tools/validate.py  verification ladder: static → repo YAML → gold loader → doctor
 patches/           the 4 hermes-fork patches the port depends on
-docs/              PATCHES.md (fork patch docs), UPSTREAM-PR.md (drafted PR)
+docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
+                   PATCHES.md + UPSTREAM-PR.md (historical)
 .github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism), PR labeler, issue templates
 ```
 

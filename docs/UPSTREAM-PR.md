@@ -1,5 +1,11 @@
 # Upstream PR draft — NousResearch/hermes-agent
 
+> [!WARNING]
+> **Historical.** The PR this draft describes was opened and later **closed
+> unmerged** (2026-09-10). It is kept for the evidence it
+> records — four behaviour-verified hermes gaps found while porting. Do not treat
+> it as a live plan.
+
 > Prepared 2026-08-31. Branch: `fix/portable-plugin-hardening`
 > (contains 4 commits from `iap/hermes-agent` main). Open the PR from that
 > branch to `NousResearch/hermes-agent:main` after pushing.
