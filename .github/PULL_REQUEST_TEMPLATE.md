@@ -10,10 +10,12 @@
 - Hermes version: (output of `hermes --version`)
 
 ## Verification (paste evidence)
-- [ ] `python3 convert.py` runs clean (if the converter or a skill changed)
-- [ ] `python3 validate.py --package pstack` exit 0
-- [ ] `hermes plugins doctor pstack --ci` exit 0 (if install-relevant)
-- [ ] No banned constructs: see `tools/bans.py` (single source of truth)
+- [ ] `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack` runs clean
+      (converter or a skill changed; clone upstream at the pinned SHA if you don't have one)
+- [ ] `uv run --frozen tools/validate.py --package pstack` exit 0
+- [ ] `uv run --frozen tools/scanner_gate.py --package pstack` exit 0
+- [ ] `hermes plugins doctor pstack --ci` exit 0 (install-relevant; ignore the
+      "gateway restart" warning — it is unrelated to this plugin)
 - [ ] Provenance consistency: `.build-provenance.txt` still records the pinned upstream SHA
 
 ## Attribution
