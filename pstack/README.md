@@ -3,7 +3,7 @@
 Phase-0 conversion of **pstack v0.14.8** for the Hermes Agent platform's
 portable plugin path. Upstream: <https://github.com/cursor/plugins/tree/main/pstack>
 (MIT, Copyright (c) 2026 Lauren Tan). Conversion provenance: see `.build-provenance.txt`;
-regenerate with `python tools/convert.py --source <pstack-clone> --out <package-dir>`.
+regenerate with `uv run --frozen tools/convert.py --source <pstack-clone> --out <package-dir>`.
 
 ## What hermes loads
 
@@ -48,12 +48,17 @@ registers all 45 skills as `/<name>` slash commands.
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
 plugin namespace; the portable path itself registers zero commands.
 
-## Install path
+## Install
 
-Copy this package directory to the hermes plugins directory —
-`%LOCALAPPDATA%\hermes\plugins\pstack` on Windows, `~/.hermes/plugins/pstack` on
-macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yaml`
-(`%LOCALAPPDATA%\hermes\config.yaml` on Windows, `~/.hermes/config.yaml` on macOS/Linux).
+Install this package from its source repository's `pstack` subdir (the plugin)
+— do not hand-copy the directory:
+
+```sh
+hermes plugins install iap/pstack-hermes/pstack --enable
+```
+
+Git-subdir installs cannot be updated in-place (hermes strips `.git`); to
+update, uninstall and reinstall.
 
 ## Cursor dual-load
 

@@ -21,7 +21,7 @@ Contract implemented (study Ch3 sections 3.1-3.2 + subagent_03a loader facts):
   - Provenance (source commit) written to .build-provenance.txt.
 
 Usage:
-    python tools/convert.py --source <pstack-clone-path> [--out <package-dir>]
+    uv run --frozen tools/convert.py --source <pstack-clone> --out pstack
 
 Defaults: --out = ./pstack at the repo root (this script lives in tools/);
 --source is required (there is no built-in default clone path).
@@ -895,6 +895,8 @@ T13_MAP = [
      "the `deslop` skill (`/deslop`)"),
     ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
      "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
+    ("`control-ui` or `control-cli` runtime verification (from `cursor-team-kit`)",
+     "`control-ui` or `control-cli` runtime verification"),
     ("the cloud agent's status in the Cursor dashboard",
      "the subagent's status in the delegate_task result"),
     ("After a Cursor restart: local agents are dead, cloud work is not.",
@@ -1234,7 +1236,7 @@ def main() -> int:
 Phase-0 conversion of **pstack v{manifest['version']}** for the Hermes Agent platform's
 portable plugin path. Upstream: <https://github.com/cursor/plugins/tree/main/pstack>
 (MIT, Copyright (c) 2026 Lauren Tan). Conversion provenance: see `.build-provenance.txt`;
-regenerate with `python tools/convert.py --source <pstack-clone> --out <package-dir>`.
+regenerate with `uv run --frozen tools/convert.py --source <pstack-clone> --out <package-dir>`.
 
 ## What hermes loads
 
@@ -1279,12 +1281,17 @@ registers all {len(discovered)} skills as `/<name>` slash commands.
 Trade-offs: skills enter the prompt index with 60-char descriptions and lose the
 plugin namespace; the portable path itself registers zero commands.
 
-## Install path
+## Install
 
-Copy this package directory to the hermes plugins directory —
-`%LOCALAPPDATA%\\hermes\\plugins\\pstack` on Windows, `~/.hermes/plugins/pstack` on
-macOS/Linux — then add `pstack` to `plugins.enabled` in the hermes `config.yaml`
-(`%LOCALAPPDATA%\\hermes\\config.yaml` on Windows, `~/.hermes/config.yaml` on macOS/Linux).
+Install this package from its source repository's `pstack` subdir (the plugin)
+— do not hand-copy the directory:
+
+```sh
+hermes plugins install iap/pstack-hermes/pstack --enable
+```
+
+Git-subdir installs cannot be updated in-place (hermes strips `.git`); to
+update, uninstall and reinstall.
 
 ## Cursor dual-load
 
