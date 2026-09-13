@@ -1,3 +1,10 @@
+<!--
+Check a box only when it applies; otherwise leave it unchecked with an N/A note.
+Paste evidence under each checked box — a bare check without output proves nothing.
+Full gate list mirrors the CONTRIBUTING "Pull requests" section.
+Attribution is standing policy in CONTRIBUTING.md (upstream MIT preserved
+everywhere; provenance written by the converter) — no per-PR checkbox.
+-->
 # Pull request checklist
 
 ## Scope
@@ -12,11 +19,12 @@
 ## Verification (paste evidence)
 - [ ] `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack` runs clean
       (converter or a skill changed; clone upstream at the pinned SHA if you don't have one)
+      Evidence:
 - [ ] `uv run --frozen tools/validate.py --package pstack` exit 0
+      Evidence:
 - [ ] `uv run --frozen tools/scanner_gate.py --package pstack` exit 0
+      Evidence:
 - [ ] `hermes plugins doctor pstack --ci` exit 0 (install-relevant; ignore the
       "gateway restart" warning — it is unrelated to this plugin)
+      Evidence:
 - [ ] Provenance consistency: `.build-provenance.txt` still records the pinned upstream SHA
-
-## Attribution
-- [ ] Upstream (MIT, Lauren Tan) is preserved and this PR is attributable
