@@ -2,8 +2,8 @@
 
 > [!WARNING]
 > **Historical.** The upstream PRs that proposed these patches to
-> `NousResearch/hermes-agent` were opened and later **closed by the maintainer's
-> decision** (2026-09-11). The patches remain here as reference only — none is
+> `NousResearch/hermes-agent` were opened and later **closed unmerged**
+> (2026-09-10). The patches remain here as reference only — none is
 > required for the package to load, validate, or install. Whether to keep
 > carrying them is an open decision (see the repository issues); treat this file
 > as a record, not a live plan.

@@ -1,8 +1,8 @@
 # Upstream PR draft — NousResearch/hermes-agent
 
 > [!WARNING]
-> **Historical.** The PR this draft describes was opened and later **closed by
-> the maintainer's decision** (2026-09-11). It is kept for the evidence it
+> **Historical.** The PR this draft describes was opened and later **closed
+> unmerged** (2026-09-10). It is kept for the evidence it
 > records — four behaviour-verified hermes gaps found while porting. Do not treat
 > it as a live plan.
 
