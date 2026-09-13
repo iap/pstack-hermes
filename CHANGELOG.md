@@ -6,7 +6,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ### Added
 - Docs: `docs/ADAPTATIONS.md` (adaptations ledger, primitive mapping, deliberately-not-ported), `docs/RUNBOOK-upstream-drift.md` (re-pin procedure), `docs/USING.md` (invocation model, first run, expectations). Review round: the upstream closure date corrected to 2026-09-10 (closed unmerged; the API attests no closer), and the panel-consumer claim now quotes the actual role-line phrases.
-- `slug_drift.py --prose`: scans skill markdown for backtick-quoted model-slug defaults (including vendor/model forms) independent of the catalog check; `model-drift-watch.yml` passes `--prose` and reports prose-only findings as informational (exit 0) (#25/#29)
+- `slug_drift.py --prose`: scans skill markdown for backtick-quoted model-slug defaults (including vendor/model forms) once the provider catalog loads; `model-drift-watch.yml` passes `--prose` and reports prose-only findings as informational (exit 0) — a catalog tool error (exit 2) skips the scan, since the panel slugs are verified against the loaded catalog first (#25/#29)
 - CONTRIBUTING: document the GitHub alert-callout style for docs — and where it does not apply (#30)
 
 ### Changed
