@@ -14,9 +14,8 @@ body:
       label: Area
       options:
         - a skill's content or behavior
-        - the model panel / config
+        - model / config
         - delegation / subagents
-        - admin dashboard
         - porting / dual-load
         - documentation
         - other
@@ -26,6 +25,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What should change, and what problem does it solve? Include an acceptance criterion if you can.
+      description: What should change, and what problem does it solve? Include
+        an acceptance criterion if you can.
     validations:
       required: true
