@@ -51,7 +51,8 @@ The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, val
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, provenance
 consistency. A PR that changes `pstack/` must say `rebuilt from pin <sha>` in its
 body and name the converter change behind the rebuild — that tree is build
-output, and reviewers read it as output. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
+output, and reviewers read it as output. The [PR template](.github/PULL_REQUEST_TEMPLATE.md)
+carries the matching "Generated package" fields. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
 and a weekly upstream-drift check
 ([upstream-drift-watch](.github/workflows/upstream-drift-watch.yml)) that opens
 a tracking issue when upstream `pstack/` changes past the pin; a weekly

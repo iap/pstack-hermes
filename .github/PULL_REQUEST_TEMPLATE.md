@@ -11,6 +11,11 @@ everywhere; provenance written by the converter) — no per-PR checkbox.
 - What changed (one line):
 - Which platform(s) this affects: hermes / Cursor dual-load / both
 
+## Generated package (complete only if this PR changes `pstack/`)
+- Rebuilt from pin: `<sha>` (must match `.build-provenance.txt` `source_commit`)
+- Converter change behind the rebuild: <pass/map, e.g. a `T13_MAP` entry>
+- [ ] `pstack/` changes are converter output only — no hand edits
+
 ## Environment
 - OS: Windows / macOS / Linux
 - Shell: bash / PowerShell / zsh
