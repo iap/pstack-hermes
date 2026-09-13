@@ -35,8 +35,11 @@ convenience route when you want `/poteto-mode` style commands.
 2. **Configure the model panel** — run the `setup-pstack` skill once. It writes
    `config/models.json` mapping pstack's roles (code, prose, judgment, tooling,
    cross-judge, and the panel roles) to models available to you. `inherit-parent`
-   means "use the parent chat model". Nothing else reads this file, and a bad
-   slug here is a local config problem, not an upstream bug.
+   means "use the parent chat model". The shipped workflow skills consume their
+   roles from it — `why`, `reflect`, `arena`, and `interrogate` name the file
+   directly, while `how` and `swarm` read their role lines (`how explorer`,
+   `how critics`, `swarm workers`). A bad slug here is a local config problem
+   that shows up later, at delegation time — not an upstream bug.
 3. **Give it a real task** and load `poteto-mode`. It classifies the work and
    routes to the right playbook; you do not pick the playbook yourself.
 

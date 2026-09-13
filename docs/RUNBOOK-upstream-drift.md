@@ -16,8 +16,9 @@ Any of these means upstream moved past the pin:
   do nothing. The build refuses to produce a package.
 - **The weekly upstream-drift workflow** opens a tracking issue when upstream
   `pstack/` changes past the pin.
-- **The pinned-SHA re-check** in CI fails if `source_commit` in
-  `.build-provenance.txt` no longer equals the pin.
+- **The "Verify pinned SHA" step** in `ci.yml` fails when the checked-out upstream
+  clone's SHA no longer equals `UPSTREAM_PIN`. It compares the checkout, not
+  `.build-provenance.txt` — provenance records that same SHA by construction.
 
 ## Procedure
 
@@ -39,8 +40,11 @@ Any of these means upstream moved past the pin:
 6. **Re-check the package docs.** If the change touches what the differences
    contract or Known limitations describe, update the README template in
    `convert.py` and rebuild.
-7. **Update the pin in one place.** The pin lives in CI (`UPSTREAM_PIN`) and in
-   `tools/convert.py` / provenance expectations; update together.
+7. **Update `UPSTREAM_PIN` everywhere it is declared.** It is repeated
+   independently in **three** workflows — `ci.yml`, `release.yml`, and
+   `upstream-drift-watch.yml` — and all three must move together. The converter
+   holds no pin: it records the SHA of the clone it is pointed at, so
+   `source_commit` in `.build-provenance.txt` follows the checkout.
 8. **PR** with `rebuilt from pin <sha>` in the body (the PR template carries the
    fields) and a one-line note per map change.
 

@@ -24,7 +24,7 @@ Anchors are audited: a pass whose anchor matches nothing **fails the build**
 | R1 | poteto-mode principles index regenerated from the 21 `principle-*` leaves | `build_principles_index()` | validate: "principles index == leaf-generated" |
 | F16 | `check-plan.mjs` fast-lane slug from `PSTACK_FAST_LANE`; multi-phase-plan documents the override | phase-1 transforms | validate: F16 check |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD `stat`/`date` helpers); space-safe awk | phase-1 transforms | validate: F10–F12 check |
-| T5 | 3 localhost endpoint literals in the feature-map example neutralized (install-scanner network findings) | phase-1 transforms | validate: banned-construct scan |
+| F-publish | 3 localhost endpoint literals in the feature-map example neutralized (install-scanner network findings). Pass is commented `T5` in the converter but **registered as `F-publish`** — match the register | phase-1 transforms | validate: banned-construct scan |
 | T8 | factual fixes from the deep review (readonly-MCP rationale, swarm params, tool names, model-panel path, principle cross-link) + source-playbook note | `T8_MAP` | validate: T8 check |
 | T9/T10 | hermes-native discovery (`session_search`) in why/reflect/recall; `setup-pstack` writes `config/models.json` | `T9_MAP`, `T10_MAP` | validate: T9 + T10 checks |
 | Stage-D | `config/models.json` shipped with the repo model panel (18 roles) | `tools/assets/model-panel.json` | validate: panel == repo panel |
@@ -35,6 +35,7 @@ Anchors are audited: a pass whose anchor matches nothing **fails the build**
 | G1 | delegation escape hatch (in-thread authoring for resident surgical edits, with mandatory independent delegate review) | G1 transform | validate: G1 check |
 | F-publish | `automations/benny` + `skills/make-bot-ui` excluded (install-scanner verdicts); the make-bot-ui slot filled by the repo-owned `skills/hermesbot` | converter flow + `tools/assets/hermesbot/SKILL.md` | validate: both exclusions + skill count 45 |
 | manifest | root `plugin.json` injected (agent-plugins-v1 `$schema`, 9 whitelisted fields) | converter flow | validate gold manifest: real loader, zero diagnostics |
+| assets | `assets/` (the Cursor manifest's referenced asset, 1 file) copied verbatim | converter flow + manifest-asset check | gold manifest: referenced asset resolves; build fails if it is missing |
 | README | package README generated (differences contract + Known limitations) from the live fix register | README template in `convert.py` | `validate.py` (present) + gold load |
 
 ## 2. Primitive mapping (what stands in for what)
