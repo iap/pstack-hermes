@@ -2,15 +2,18 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
-## [Unreleased]
+## [0.4.2] - 2026-09-13
 
 ### Added
 - Docs: `docs/ADAPTATIONS.md` (adaptations ledger, primitive mapping, deliberately-not-ported), `docs/RUNBOOK-upstream-drift.md` (re-pin procedure), `docs/USING.md` (invocation model, first run, expectations). Review round: the upstream closure date corrected to 2026-09-10 (closed unmerged; the API attests no closer), and the panel-consumer claim now quotes the actual role-line phrases.
+- `slug_drift.py --prose`: scans skill markdown for backtick-quoted model-slug defaults (including vendor/model forms) once the provider catalog loads; `model-drift-watch.yml` passes `--prose` and reports prose-only findings as informational (exit 0) — a catalog tool error (exit 2) skips the scan, since the panel slugs are verified against the loaded catalog first (#25/#29)
+- CONTRIBUTING: document the GitHub alert-callout style for docs — and where it does not apply (#30)
 
 ### Changed
 - Structure hygiene: `pstack/` marked `linguist-generated` in `.gitattributes` (diffs collapse in review) and PR guidance now requires `rebuilt from pin <sha>` in the body; README documents the two version lines (package `0.14.8` vs repo `v0.4.x`) and corrects the transform range to T1–T13; the package README's Known limitations gains the optional-MCP-servers note (template change + rebuild); the PR template gains the matching conditional `pstack/` rebuild-disclosure fields
 - Main README rewritten Hermes-first: first-screen unofficial-port identity (not affiliated with Cursor or Lauren Tan; Cursor users go upstream), install up front, Cursor dual-load demoted to a trailing incidental/unsupported note; layout line corrected T1–T11 to T1–T12
 - Converter package-README template: `uv run --frozen` regenerate command and a CLI-install section replacing the manual-copy path; T13 gains the missed orchestrate.md `cursor-team-kit` anchor — rebuilt package from pinned `93b00b8` now carries zero `cursor-team-kit` references in shipped skills
+- T13 conversion pass: residual Cursor-vendor coupling reworded across the package — `cursor-team-kit` references (a deslop pass, `control-ui`/`control-cli`), the cloud-agent fleet wording, and Graphite (`gt`) phrasing; `T13_MAP` wired into the conversion flow and the anchor audit (115/115)
 - PR template: replace the unrunnable `python3 convert.py` checkbox with the real `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack` invocation (the script lives in `tools/` and requires `--source`); add the `tools/scanner_gate.py --package pstack` line that actually enforces the banned-construct checkbox; note the gateway-restart warning in the doctor line as unrelated noise
 - SECURITY.md reporting triage: issues caused by this port (adaptations, exclusions, configuration, install) belong to this repository; upstream reports are reserved for genuine platform or original-project defects — including a Hermes defect that surfaces only while a plugin is installed
 - Issue chooser: the port-problem link now opens the Bug report form directly (`issues/new?template=bug_report.yml`) instead of the All-issues list
