@@ -1378,6 +1378,11 @@ authoritative delta record.
 - Frontier management (`orch frontier set`) requires Graphite (`gt`): the
   forge-agnostic wording elsewhere covers PR operations, not frontier
   discovery.
+- Optional MCP servers: the `why` skill's source investigators (and other
+  research skills) draw on MCP-backed sources — issue trackers, chat,
+  observability, docs. This package ships no `mcp.json`; configure the servers
+  you have and the skills adapt to the session's tool catalog, recording
+  unreachable sources as null findings rather than inventing a tool.
 
 ---
 
