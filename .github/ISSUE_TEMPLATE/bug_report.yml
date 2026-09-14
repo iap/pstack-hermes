@@ -14,7 +14,7 @@ body:
     attributes:
       label: Platform
       options:
-        - hermes (portable plugin path)
+        - hermes
         - Cursor (dual-load)
         - Both platforms
     validations:
