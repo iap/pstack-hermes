@@ -2,6 +2,12 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- README Known limitations: the stack topology / frontier entry now names the platform-native alternatives — GitHub stacked pull requests (public preview) with the official `gh stack` extension and its native restack, and GitLab stacked merge requests with merge trains — instead of implying no alternative exists. Graphite remains required until the orch scripts gain a forge backend.
+- T14 conversion pass (#40): `orchestrate.md`'s stack-safety lines re-pointed — the stacker role maps to a hermes profile, and stack operations are attributed to Graphite rather than implied to have a hermes equivalent.
+
 ## [0.4.2] - 2026-09-13
 
 ### Added
