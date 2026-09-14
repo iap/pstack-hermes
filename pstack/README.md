@@ -148,8 +148,9 @@ authoritative delta record.
   ordinary base changes to an existing child or the bottom PR go through
   the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
   The stacker role itself maps to a hermes profile (identity + model + alias
-  + description) with kanban's atomic `assign`/`claim` enforcing one owner
-  per stack; what is missing is the stack operations, not the role.
+  + description). Kanban's atomic `assign`/`claim` enforces one owner per
+  task, not per stack; stack-level exclusivity is policy layered on that.
+  What is missing is the stack operations, not the role.
 - Optional MCP servers: the `why` skill's source investigators (and other
   research skills) draw on MCP-backed sources — issue trackers, chat,
   observability, docs. This package ships no `mcp.json`; configure the servers
