@@ -1,20 +1,20 @@
 name: Bug report
-description: Report a problem with the pstack plugin on hermes (or Cursor dual-load)
+description: Report a problem with the pstack plugin on hermes
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. Before opening: search existing issues, and note
-        whether the problem happens on **hermes**, on **Cursor**, or both —
-        the plugin is a dual-load package and some surfaces differ by platform.
+        Before opening: search existing issues. This port is a **dual-load**
+        package — some surfaces differ between hermes and Cursor, so say which
+        platform you are on. Bugs caused by the port's own adaptations belong
+        here; upstream pstack bugs belong in the upstream repo.
   - type: dropdown
     id: platform
     attributes:
       label: Platform
       options:
-        - hermes (portable plugin path)
-        - hermes (external_dirs slash commands)
+        - hermes
         - Cursor (dual-load)
         - Both platforms
     validations:
@@ -28,7 +28,6 @@ body:
         - a playbook (which one?)
         - a workflow skill (how/why/tdd/…)
         - a principle skill
-        - admin dashboard
         - setup-pstack
         - install / loader
         - other
@@ -37,14 +36,24 @@ body:
   - type: textarea
     id: what-happened
     attributes:
-      label: What happened
-      description: What did you expect, what happened instead? Include the exact command or step.
+      label: What did you expect, and what happened instead?
+      description: One sentence of expected behaviour, one of actual. Keep the
+        symptom here; the repro goes below.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact command or steps another person can run to see it.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
       label: Evidence
-      description: Log lines, error output, or a minimal reproduction. On hermes, `hermes plugins doctor <package> --ci` output helps.
+      description: Log lines, error output, or a minimal reproduction. On
+        hermes, `hermes plugins doctor <package> --ci` output is the most
+        useful thing you can attach.
     validations:
       required: false

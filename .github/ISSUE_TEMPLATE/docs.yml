@@ -1,0 +1,31 @@
+name: Documentation
+description: Clarify, correct, or expand the port's docs
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for wording fixes, missing explanations, or stale docs —
+        including promises in the README that are not yet backed (see the
+        install section). If a sentence is true but unverifiable, say so
+        rather than deleting it.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - README
+        - CONTRIBUTING.md
+        - docs/ADAPTATIONS.md, docs/RUNBOOK-upstream-drift.md, docs/USING.md
+        - skill prose (shipped in pstack/)
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What is wrong or missing, and what should it say instead?
+        Quote the exact sentence when correcting wording.
+    validations:
+      required: true
