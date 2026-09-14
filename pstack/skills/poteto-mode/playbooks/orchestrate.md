@@ -78,10 +78,10 @@ A dependency is a context relay, not just ordering: undeclared upstream context 
 
 #### Stack safety
 
-- The frontier is a computed object, never narrative. Recompute `frontier.json` from the resolved forge after every merge and stack mutation because GitHub base refs drift mid-restack while the forge's tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where gt knows the stack, normally the stacker's clone; a checkout whose gt metadata never saw the submits reports no PRs and the command errors rather than guessing.
-- Exactly one stacker per stack may run `gt`, serialized within its stack; record the holder in the standing orders. Restacks run in cloud; a local restack at this scale takes the laptop down.
+- The frontier is a computed object, never narrative. Recompute `frontier.json` from the resolved forge after every merge and stack mutation because GitHub base refs drift mid-restack while the forge's tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where the stacker's clone holds the frontier; a checkout whose frontier metadata never saw the submits reports no PRs and the command errors rather than guessing. Frontier tracking itself requires Graphite (`gt`): the stacker is the only topology writer, and no hermes primitive computes stack order.
+- Exactly one stacker per stack owns frontier work, serialized within its stack; record the holder in the standing orders. Restacks require Graphite (`gt`) and run on the stacker's clone; at this scale a local restack takes the laptop down. The stacker is the hermes profile named in the standing orders, and its clone is the checkout whose frontier metadata saw the submits — that is the only host a restack can run on.
 - Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking.
-- PR closes and retargets go through the stacker only; closing a base PR orphans every chain above it. Merges and stack surgery are units with briefs like any other.
+- PR closes and retargets go through the stacker only; closing a base PR orphans every chain above it. Retargeting through the stacker requires Graphite (`gt`); ordinary base changes to an existing child or the bottom PR go through the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker. Merges and stack surgery are units with briefs like any other.
 - One retro watcher follows merged PRs for reverts, post-merge CI breaks, and orphaned follow-ups.
 
 #### Verification

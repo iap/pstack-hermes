@@ -723,11 +723,22 @@ The parent locates the current session via `session_search` (hermes stores sessi
                     f"across {t13_files} skill file(s) "
                     "(cursor-team-kit plugin references, cloud-agent fleet, "
                     "Graphite `gt` rewording)")
+
+    # --- T14: option (b) from issue #33 -- re-point the stacker-role /
+    # topology lines T12 left unmapped in orchestrate.md's Stack safety
+    # block. Where a hermes equivalent exists, point at it; where the
+    # capability genuinely does not exist, keep the Graphite name and
+    # state the limitation rather than invent a false equivalence.
+    t14_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                          T14_MAP, map_name="T14_MAP", st=st)
+    st.fixes.append(f"T14: stacker-role / topology rewording (option b, "
+                    f"issue #33) applied across {t14_files} skill file(s) "
+                    "(stacker clone, one-stacker serialization, retarget)")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP},
+         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP},
         st,
     )
 
@@ -916,6 +927,43 @@ T13_MAP = [
      "Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking."),
     ("Never submit or register the chain through `gt`.",
      "Never submit or register the chain through `gt`."),
+]
+
+# --- T14: stacker-role / topology rewording (option b, issue #33) ------------
+# The three lines in orchestrate.md's "Stack safety" block that T12 left
+# unmapped. Where a real hermes equivalent exists the vendor wording is
+# re-pointed at it; where the capability genuinely does not exist (stack
+# topology, restacks, retarget-through-stacker, the stack-aware merge queue)
+# the Graphite name is kept and the limitation stated explicitly. Same
+# convention as T12: never erase an absent capability, never invent an
+# equivalence that is not there.
+T14_MAP = [
+    ("Resolve it where gt knows the stack, normally the stacker's clone; a "
+     "checkout whose gt metadata never saw the submits reports no PRs and "
+     "the command errors rather than guessing.",
+     "Resolve it where the stacker's clone holds the frontier; a checkout "
+     "whose frontier metadata never saw the submits reports no PRs and the "
+     "command errors rather than guessing. Frontier tracking itself requires "
+     "Graphite (`gt`): the stacker is the only topology writer, and no "
+     "hermes primitive computes stack order."),
+    ("Exactly one stacker per stack may run `gt`, serialized within its stack; "
+     "record the holder in the standing orders. Restacks run in cloud; a local "
+     "restack at this scale takes the laptop down.",
+     "Exactly one stacker per stack owns frontier work, serialized within its "
+     "stack; record the holder in the standing orders. Restacks require "
+     "Graphite (`gt`) and run on the stacker's clone; at this scale a local "
+     "restack takes the laptop down. The stacker is the hermes profile named "
+     "in the standing orders, and its clone is the checkout whose frontier "
+     "metadata saw the submits — that is the only host a restack can run on."),
+    ("PR closes and retargets go through the stacker only; closing a base PR "
+     "orphans every chain above it. Merges and stack surgery are units with "
+     "briefs like any other.",
+     "PR closes and retargets go through the stacker only; closing a base PR "
+     "orphans every chain above it. Retargeting through the stacker requires "
+     "Graphite (`gt`); ordinary base changes to an existing child or the "
+     "bottom PR go through the resolved forge (`origin pr edit` / `gh pr "
+     "edit`) and need no stacker. Merges and stack surgery are units with "
+     "briefs like any other."),
 ]
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
@@ -1355,6 +1403,15 @@ authoritative delta record.
 - Frontier management (`orch frontier set`) requires Graphite (`gt`): the
   forge-agnostic wording elsewhere covers PR operations, not frontier
   discovery.
+- Stack topology requires Graphite (`gt`): the stacker is the only topology
+  writer, and restacks, stack surgery, and the stack-aware merge queue have
+  no hermes equivalent. Retargeting through the stacker requires `gt`, but
+  ordinary base changes to an existing child or the bottom PR go through
+  the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
+  The stacker role itself maps to a hermes profile (identity + model + alias
+  + description). Kanban's atomic `assign`/`claim` enforces one owner per
+  task, not per stack; stack-level exclusivity is policy layered on that.
+  What is missing is the stack operations, not the role.
 - Optional MCP servers: the `why` skill's source investigators (and other
   research skills) draw on MCP-backed sources — issue trackers, chat,
   observability, docs. This package ships no `mcp.json`; configure the servers
