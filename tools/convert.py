@@ -951,14 +951,19 @@ T14_MAP = [
      "restack at this scale takes the laptop down.",
      "Exactly one stacker per stack owns frontier work, serialized within its "
      "stack; record the holder in the standing orders. Restacks require "
-     "Graphite (`gt`) and run on the stacker's machine; at this scale a local "
-     "restack takes the laptop down."),
+     "Graphite (`gt`) and run on the stacker's clone; at this scale a local "
+     "restack takes the laptop down. The stacker is the hermes profile named "
+     "in the standing orders, and its clone is the checkout whose frontier "
+     "metadata saw the submits — that is the only host a restack can run on."),
     ("PR closes and retargets go through the stacker only; closing a base PR "
      "orphans every chain above it. Merges and stack surgery are units with "
      "briefs like any other.",
      "PR closes and retargets go through the stacker only; closing a base PR "
-     "orphans every chain above it. Retargeting requires Graphite (`gt`); "
-     "merges and stack surgery are units with briefs like any other."),
+     "orphans every chain above it. Retargeting through the stacker requires "
+     "Graphite (`gt`); ordinary base changes to an existing child or the "
+     "bottom PR go through the resolved forge (`origin pr edit` / `gh pr "
+     "edit`) and need no stacker. Merges and stack surgery are units with "
+     "briefs like any other."),
 ]
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
@@ -1399,11 +1404,13 @@ authoritative delta record.
   forge-agnostic wording elsewhere covers PR operations, not frontier
   discovery.
 - Stack topology requires Graphite (`gt`): the stacker is the only topology
-  writer, and restacks, retarget-through-stacker, and the stack-aware merge
-  queue have no hermes equivalent. The stacker role itself maps to a
-  hermes profile (identity + model + alias + description) with kanban's
-  atomic `assign`/`claim` enforcing one owner per stack; what is missing is
-  the stack operations, not the role.
+  writer, and restacks, stack surgery, and the stack-aware merge queue have
+  no hermes equivalent. Retargeting through the stacker requires `gt`, but
+  ordinary base changes to an existing child or the bottom PR go through
+  the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
+  The stacker role itself maps to a hermes profile (identity + model + alias
+  + description) with kanban's atomic `assign`/`claim` enforcing one owner
+  per stack; what is missing is the stack operations, not the role.
 - Optional MCP servers: the `why` skill's source investigators (and other
   research skills) draw on MCP-backed sources — issue trackers, chat,
   observability, docs. This package ships no `mcp.json`; configure the servers
