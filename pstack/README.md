@@ -139,18 +139,19 @@ authoritative delta record.
   verdict as incomplete instead of clean — a verdict without its demanded live
   lane is not clean.
   (`no-comments`, `unslop`, and `technical-writing` do ship here.)
-- Frontier management (`orch frontier set`) requires Graphite (`gt`): the
-  forge-agnostic wording elsewhere covers PR operations, not frontier
-  discovery.
-- Stack topology requires Graphite (`gt`): the stacker is the only topology
-  writer, and restacks, stack surgery, and the stack-aware merge queue have
-  no hermes equivalent. Retargeting through the stacker requires `gt`, but
-  ordinary base changes to an existing child or the bottom PR go through
+- Stack topology and frontier management: the orchestration tooling resolves
+  the frontier through Graphite (`gt`) — `orch frontier set`, the stacker's
+  restacks and stack surgery, and stack-aware merge ordering. The stacker role
+  maps to a hermes profile (identity + model + alias + description); kanban's
+  atomic `assign`/`claim` enforces one owner per task, and stack-level
+  exclusivity is policy layered on that. Retargeting through the stacker needs
+  `gt`; ordinary base changes to an existing child or the bottom PR go through
   the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
-  The stacker role itself maps to a hermes profile (identity + model + alias
-  + description). Kanban's atomic `assign`/`claim` enforces one owner per
-  task, not per stack; stack-level exclusivity is policy layered on that.
-  What is missing is the stack operations, not the role.
+  Platform-native alternatives exist and are the tracked follow-up: GitHub
+  stacked pull requests (public preview) with the official `gh stack`
+  extension — including its native restack — and GitLab stacked merge requests
+  with merge trains. Until the orch scripts gain a forge backend, stack
+  operations require Graphite.
 - Optional MCP servers: the `why` skill's source investigators (and other
   research skills) draw on MCP-backed sources — issue trackers, chat,
   observability, docs. This package ships no `mcp.json`; configure the servers
