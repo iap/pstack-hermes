@@ -33,9 +33,9 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 > (`tools/`, CI) alongside the package, and the scanner correctly refuses to
 > install a source tree that contains it. The `pstack` subdir is the plugin.
 
-> The shorthand form `iap/pstack-hermes/pstack` is required. Once the
-> plugin-index entry is merged, the bare-name form `hermes plugins install
-> pstack` will also work.
+> The bare-name form `hermes plugins install pstack` is not available —
+> no plugin-index entry exists for this package. Use the shorthand form
+> `iap/pstack-hermes/pstack` shown above.
 
 **Update:** plugins installed from git subdirs cannot be updated in-place
 (hermes strips the `.git` directory). To update, reinstall:
