@@ -89,6 +89,7 @@ export interface Frontier {
   readonly generation: number;
   readonly prs: readonly FrontierPr[];
   readonly lowestUnmerged: number | null;
+  readonly fallback?: readonly string[];
 }
 
 export type StackProvider = "auto" | "graphite" | "github" | "gitlab";
@@ -1008,6 +1009,7 @@ interface GtFrontierEntry extends GtPullRequest {
 interface StackFrontierResult {
   readonly provider: Exclude<StackProvider, "auto">;
   readonly prs: readonly FrontierPr[];
+  readonly fallback?: readonly string[];
 }
 
 function parseGtPullRequest({
@@ -1181,6 +1183,8 @@ function githubPullRequests(repo: string): readonly GithubPr[] {
         "all",
         "--json",
         "number,headRefName,baseRefName,state",
+        "--limit",
+        "100",
       ],
       {
         cwd: repo,
@@ -1204,7 +1208,73 @@ function githubPullRequests(repo: string): readonly GithubPr[] {
   return parsed.map(parseGithubPr);
 }
 
-function githubFrontier(repo: string): readonly FrontierPr[] {
+interface GitlabPr {
+  readonly number: number;
+  readonly headRefName: string;
+  readonly baseRefName: string;
+  readonly state: FrontierPrState;
+}
+
+function parseGitlabPr(value: unknown, index: number): GitlabPr {
+  if (!isRecord(value)) {
+    throw new UserError(`glab mr list row ${index + 1} must be an object`);
+  }
+  const number = value.iid;
+  const headRefName = value.source_branch;
+  const baseRefName = value.target_branch;
+  const state = frontierPrStateOrNull(value.state);
+  if (
+    typeof number !== "number" ||
+    !Number.isSafeInteger(number) ||
+    number < 1 ||
+    typeof headRefName !== "string" ||
+    headRefName.trim().length === 0 ||
+    typeof baseRefName !== "string" ||
+    baseRefName.trim().length === 0 ||
+    state === null
+  ) {
+    throw new UserError(`glab mr list row ${index + 1} has an invalid shape`);
+  }
+  return { number, headRefName, baseRefName, state };
+}
+
+function gitlabPullRequests(repo: string): readonly GitlabPr[] {
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "glab",
+      [
+        "mr",
+        "list",
+        "--all",
+        "--state",
+        "all",
+        "--output",
+        "json",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+  } catch (error) {
+    throw new UserError(`glab mr list failed: ${errorMessage(error)}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new UserError(`glab mr list returned invalid JSON: ${errorMessage(error)}`);
+  }
+  if (!isUnknownArray(parsed)) {
+    throw new UserError("glab mr list JSON must be an array");
+  }
+  return parsed.map(parseGitlabPr);
+}
+
+function githubFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
   const rows = githubPullRequests(repo);
   if (rows.length === 0) {
     throw new UserError("gh pr list did not return any pull requests");
@@ -1216,16 +1286,26 @@ function githubFrontier(repo: string): readonly FrontierPr[] {
     }
     byHead.set(row.headRefName, row);
   }
-  const roots = rows.filter((row) => !byHead.has(row.baseRefName));
-  if (roots.length !== 1) {
+  const candidates = pin === undefined
+    ? rows
+    : rows.filter((row) => pin.includes(row.number));
+  if (candidates.length === 0) {
     throw new UserError(
-      roots.length === 0
+      pin === undefined
+        ? "github stack discovery found no pull requests"
+        : `github stack discovery found none of the pinned PRs: ${pin.join(",")}`
+    );
+  }
+  const candidateRoots = candidates.filter((row) => !byHead.has(row.baseRefName));
+  if (candidateRoots.length !== 1) {
+    throw new UserError(
+      candidateRoots.length === 0
         ? "github stack discovery found no root PR; at least one PR must target trunk"
-        : `github stack discovery found multiple root PRs: ${roots.map((row) => row.number).join(",")}`
+        : `github stack discovery found multiple root PRs: ${candidateRoots.map((row) => row.number).join(",")}`
     );
   }
   const result: FrontierPr[] = [];
-  let current = roots[0];
+  let current = candidateRoots[0];
   while (current !== undefined) {
     result.push({
       pr: current.number,
@@ -1233,7 +1313,7 @@ function githubFrontier(repo: string): readonly FrontierPr[] {
       sha: branchSha({ branch: current.headRefName, repo }),
       state: current.state,
     });
-    const children = rows.filter((row) => row.baseRefName === current?.headRefName);
+    const children = candidates.filter((row) => row.baseRefName === current?.headRefName);
     if (children.length > 1) {
       throw new UserError(
         `github stack discovery found multiple children for ${current.headRefName}: ${children.map((row) => row.number).join(",")}`
@@ -1241,7 +1321,7 @@ function githubFrontier(repo: string): readonly FrontierPr[] {
     }
     current = children[0];
   }
-  if (result.length !== rows.length) {
+  if (pin === undefined && result.length !== rows.length) {
     throw new UserError("github stack discovery found disconnected pull requests");
   }
   return result;
@@ -1276,7 +1356,8 @@ function branchSha({
 
 function resolveFrontier(
   repo: string,
-  provider: StackProvider = "auto"
+  provider: StackProvider = "auto",
+  pin?: readonly number[]
 ): StackFrontierResult {
   if (provider === "graphite") {
     return {
@@ -1288,15 +1369,21 @@ function resolveFrontier(
     };
   }
   if (provider === "github") {
-    return { provider, prs: githubFrontier(repo) };
+    return { provider, prs: githubFrontier(repo, pin) };
   }
   if (provider === "gitlab") {
-    throw new UserError("gitlab stack provider is not implemented yet");
+    return { provider, prs: gitlabFrontier(repo) };
   }
   const failures: string[] = [];
-  for (const candidate of ["graphite", "github"] as const) {
+  const attempted: string[] = [];
+  for (const candidate of ["graphite", "gitlab", "github"] as const) {
+    attempted.push(candidate);
     try {
-      return resolveFrontier(repo, candidate);
+      const result = resolveFrontier(repo, candidate, pin);
+      if (attempted.length > 1) {
+        return { ...result, fallback: attempted.slice(0, -1) };
+      }
+      return result;
     } catch (error) {
       failures.push(`${candidate}: ${errorMessage(error)}`);
     }
@@ -1646,6 +1733,9 @@ export function openStore(
           generation: old.generation + 1,
           prs,
           lowestUnmerged: prs.find((row) => row.state === "OPEN")?.pr ?? null,
+          ...(frontier.fallback !== undefined
+            ? { fallback: frontier.fallback }
+            : {}),
         };
         await atomicWrite(
           join(store, "frontier.json"),

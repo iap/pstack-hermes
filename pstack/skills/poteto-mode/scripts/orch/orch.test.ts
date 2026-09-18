@@ -185,11 +185,12 @@ async function withFakeGh<T>({
     `#!/usr/bin/env bash
 set -euo pipefail
 case "$*" in
-  "pr list --state all --json number,headRefName,baseRefName,state")
+  "pr list --state all --json number,headRefName,baseRefName,state --limit 100")
     cat "${outputPath}"
     ;;
   *)
-    printf 'unexpected gh arguments: %s\n' "$*" >&2
+    printf 'unexpected gh arguments: %s
+' "$*" >&2
     exit 2
     ;;
 esac
