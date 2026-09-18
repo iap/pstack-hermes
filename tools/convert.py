@@ -355,9 +355,597 @@ def t11_targets(out: Path) -> list[Path]:
     return sorted((out / "skills").rglob("*.md")) + sorted((out / "skills").rglob("*.sh"))
 
 
+def replace_required(path: Path, old: str, new: str, label: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    if old not in text:
+        raise ConvertError(f"{path.name}: {label} anchor not found")
+    path.write_bytes(text.replace(old, new, 1).encode("utf-8"))
+
+
+def apply_stack_provider_patch(out: Path, st: Stats) -> None:
+    """Add provider-neutral frontier discovery to the generated orch scripts."""
+    store = out / "skills" / "poteto-mode" / "scripts" / "orch" / "store.ts"
+    orch = out / "skills" / "poteto-mode" / "scripts" / "orch" / "orch.ts"
+    test = out / "skills" / "poteto-mode" / "scripts" / "orch" / "orch.test.ts"
+
+    replace_required(
+        store,
+        """export interface Frontier {
+  readonly generation: number;
+  readonly prs: readonly FrontierPr[];
+  readonly lowestUnmerged: number | null;
+}
+""",
+        """export interface Frontier {
+  readonly generation: number;
+  readonly prs: readonly FrontierPr[];
+  readonly lowestUnmerged: number | null;
+}
+
+export type StackProvider = "auto" | "graphite" | "github" | "gitlab";
+""",
+        "StackProvider type",
+    )
+    replace_required(
+        store,
+        """export interface SetFrontierParams {
+  readonly repo: string;
+  readonly prs?: readonly number[];
+}
+""",
+        """export interface SetFrontierParams {
+  readonly repo: string;
+  readonly prs?: readonly number[];
+  readonly provider?: StackProvider;
+}
+""",
+        "SetFrontierParams provider",
+    )
+    replace_required(
+        store,
+        """interface GtFrontierEntry extends GtPullRequest {
+  readonly branches: string;
+}
+""",
+        """interface GtFrontierEntry extends GtPullRequest {
+  readonly branches: string;
+}
+
+interface StackFrontierResult {
+  readonly provider: Exclude<StackProvider, "auto">;
+  readonly prs: readonly FrontierPr[];
+}
+""",
+        "StackFrontierResult",
+    )
+    replace_required(
+        store,
+        """function branchSha({
+  branch,
+  repo,
+}: {
+  branch: string;
+  repo: string;
+}): string {
+""",
+        """interface GithubPr {
+  readonly number: number;
+  readonly headRefName: string;
+  readonly baseRefName: string;
+  readonly state: FrontierPrState;
+}
+
+function parseGithubPr(value: unknown, index: number): GithubPr {
+  if (!isRecord(value)) {
+    throw new UserError(`gh pr list row ${index + 1} must be an object`);
+  }
+  const number = value.number;
+  const headRefName = value.headRefName;
+  const baseRefName = value.baseRefName;
+  const state = frontierPrStateOrNull(value.state);
+  if (
+    typeof number !== "number" ||
+    !Number.isSafeInteger(number) ||
+    number < 1 ||
+    typeof headRefName !== "string" ||
+    headRefName.trim().length === 0 ||
+    typeof baseRefName !== "string" ||
+    baseRefName.trim().length === 0 ||
+    state === null
+  ) {
+    throw new UserError(`gh pr list row ${index + 1} has an invalid shape`);
+  }
+  return { number, headRefName, baseRefName, state };
+}
+
+function githubPullRequests(repo: string): readonly GithubPr[] {
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "gh",
+      [
+        "pr",
+        "list",
+        "--state",
+        "all",
+        "--json",
+        "number,headRefName,baseRefName,state",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+  } catch (error) {
+    throw new UserError(`gh pr list failed: ${errorMessage(error)}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new UserError(`gh pr list returned invalid JSON: ${errorMessage(error)}`);
+  }
+  if (!isUnknownArray(parsed)) {
+    throw new UserError("gh pr list JSON must be an array");
+  }
+  return parsed.map(parseGithubPr);
+}
+
+function githubFrontier(repo: string): readonly FrontierPr[] {
+  const rows = githubPullRequests(repo);
+  if (rows.length === 0) {
+    throw new UserError("gh pr list did not return any pull requests");
+  }
+  const byHead = new Map<string, GithubPr>();
+  for (const row of rows) {
+    if (byHead.has(row.headRefName)) {
+      throw new UserError(`gh pr list contains duplicate head branch ${row.headRefName}`);
+    }
+    byHead.set(row.headRefName, row);
+  }
+  const roots = rows.filter((row) => !byHead.has(row.baseRefName));
+  if (roots.length !== 1) {
+    throw new UserError(
+      roots.length === 0
+        ? "github stack discovery found no root PR; at least one PR must target trunk"
+        : `github stack discovery found multiple root PRs: ${roots.map((row) => row.number).join(",")}`
+    );
+  }
+  const result: FrontierPr[] = [];
+  let current = roots[0];
+  while (current !== undefined) {
+    result.push({
+      pr: current.number,
+      branches: current.headRefName,
+      sha: branchSha({ branch: current.headRefName, repo }),
+      state: current.state,
+    });
+    const children = rows.filter((row) => row.baseRefName === current?.headRefName);
+    if (children.length > 1) {
+      throw new UserError(
+        `github stack discovery found multiple children for ${current.headRefName}: ${children.map((row) => row.number).join(",")}`
+      );
+    }
+    current = children[0];
+  }
+  if (result.length !== rows.length) {
+    throw new UserError("github stack discovery found disconnected pull requests");
+  }
+  return result;
+}
+
+function branchSha({
+  branch,
+  repo,
+}: {
+  branch: string;
+  repo: string;
+}): string {
+""",
+        "GitHub provider insertion",
+    )
+    replace_required(
+        store,
+        """function resolveFrontier(repo: string): readonly FrontierPr[] {
+  return graphiteFrontier(repo).map((row) => ({
+    ...row,
+    sha: branchSha({ branch: row.branches, repo }),
+  }));
+}
+""",
+        """function resolveFrontier(
+  repo: string,
+  provider: StackProvider = "auto"
+): StackFrontierResult {
+  if (provider === "graphite") {
+    return {
+      provider,
+      prs: graphiteFrontier(repo).map((row) => ({
+        ...row,
+        sha: branchSha({ branch: row.branches, repo }),
+      })),
+    };
+  }
+  if (provider === "github") {
+    return { provider, prs: githubFrontier(repo) };
+  }
+  if (provider === "gitlab") {
+    throw new UserError("gitlab stack provider is not implemented yet");
+  }
+  const failures: string[] = [];
+  for (const candidate of ["graphite", "github"] as const) {
+    try {
+      return resolveFrontier(repo, candidate);
+    } catch (error) {
+      failures.push(`${candidate}: ${errorMessage(error)}`);
+    }
+  }
+  throw new UserError(`auto stack provider failed (${failures.join("; ")})`);
+}
+""",
+        "resolveFrontier provider",
+    )
+    replace_required(
+        store,
+        """function validateFrontierPin({
+  actual,
+  expected,
+}: {
+  actual: readonly number[];
+  expected: readonly number[];
+}): void {
+""",
+        """function validateFrontierPin({
+  actual,
+  expected,
+  provider,
+}: {
+  actual: readonly number[];
+  expected: readonly number[];
+  provider: string;
+}): void {
+""",
+        "validateFrontierPin provider parameter",
+    )
+    for old, new, label in [
+        ("missing from gt", "missing from ${provider}", "pin missing provider"),
+        ("extra in gt", "extra in ${provider}", "pin extra provider"),
+        ("; gt ${actual.join", "; ${provider} ${actual.join", "pin order provider"),
+    ]:
+        replace_required(store, old, new, label)
+    replace_required(
+        store,
+        """        const old = await readFrontier(store);
+        const prs = resolveFrontier(repo);
+        if (pin !== undefined) {
+          validateFrontierPin({
+            actual: prs.map((row) => row.pr),
+            expected: pin,
+          });
+        }
+""",
+        """        const old = await readFrontier(store);
+        const frontier = resolveFrontier(repo, params.provider);
+        const prs = frontier.prs;
+        if (pin !== undefined) {
+          validateFrontierPin({
+            actual: prs.map((row) => row.pr),
+            expected: pin,
+            provider: frontier.provider,
+          });
+        }
+""",
+        "frontier set provider",
+    )
+
+    replace_required(
+        orch,
+        """  type OpenGate,
+  type StandingLine,
+  type StatusReport,
+""",
+        """  type OpenGate,
+  type StandingLine,
+  type StackProvider,
+  type StatusReport,
+""",
+        "orch StackProvider import",
+    )
+    replace_required(
+        orch,
+        """interface FrontierSetOptions {
+  readonly repo?: string;
+  readonly prs?: readonly number[];
+}
+""",
+        """interface FrontierSetOptions {
+  readonly repo?: string;
+  readonly prs?: readonly number[];
+  readonly provider: StackProvider;
+}
+""",
+        "orch FrontierSetOptions provider",
+    )
+    replace_required(
+        orch,
+        """function countLine(value: Counts): string {
+""",
+        """function stackProvider(value: string): StackProvider {
+  if (
+    value === "auto" ||
+    value === "graphite" ||
+    value === "github" ||
+    value === "gitlab"
+  ) {
+    return value;
+  }
+  throw new InvalidArgumentError("must be auto, graphite, github, or gitlab");
+}
+
+function countLine(value: Counts): string {
+""",
+        "orch stackProvider parser",
+    )
+    replace_required(
+        orch,
+        """.description("manage the Graphite stack frontier")""",
+        """.description("manage the stack frontier")""",
+        "orch frontier description",
+    )
+    replace_required(
+        orch,
+        """leaf(frontier, "set", "discover the Graphite stack and set the frontier")""",
+        """leaf(frontier, "set", "discover the stack and set the frontier")""",
+        "orch frontier set description",
+    )
+    replace_required(
+        orch,
+        """    .option(
+      "--prs <n,...>",
+      "optional expected pull request order pin",
+      prList
+    )
+""",
+        """    .option(
+      "--provider <provider>",
+      "stack provider: auto, graphite, github, or gitlab",
+      stackProvider,
+      "auto"
+    )
+    .option(
+      "--prs <n,...>",
+      "optional expected pull request order pin",
+      prList
+    )
+""",
+        "orch provider option",
+    )
+    replace_required(
+        orch,
+        """            repo: frontierRepo(options),
+            prs: options.prs,
+""",
+        """            repo: frontierRepo(options),
+            prs: options.prs,
+            provider: options.provider,
+""",
+        "orch provider action",
+    )
+
+    replace_required(
+        test,
+        """function runCli(
+  args: readonly string[],
+""",
+        """async function withFakeGh<T>({
+  directory,
+  operation,
+  pullRequests,
+}: {
+  directory: string;
+  operation: () => Promise<T>;
+  pullRequests: readonly {
+    readonly number: number;
+    readonly headRefName: string;
+    readonly baseRefName: string;
+    readonly state: string;
+  }[];
+}): Promise<T> {
+  const bin = join(directory, "bin-gh");
+  const outputPath = join(directory, "gh-prs.json");
+  await mkdir(bin);
+  await writeFile(outputPath, JSON.stringify(pullRequests));
+  const gh = join(bin, "gh");
+  await writeFile(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  "pr list --state all --json number,headRefName,baseRefName,state")
+    cat "${outputPath}"
+    ;;
+  *)
+    printf 'unexpected gh arguments: %s\\n' "$*" >&2
+    exit 2
+    ;;
+esac
+`
+  );
+  await chmod(gh, 0o755);
+
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${bin}:${originalPath ?? ""}`;
+  try {
+    return await operation();
+  } finally {
+    if (originalPath === undefined) {
+      delete process.env.PATH;
+    } else {
+      process.env.PATH = originalPath;
+    }
+  }
+}
+
+function runCli(
+  args: readonly string[],
+""",
+        "withFakeGh helper",
+    )
+    replace_required(test, "missing from gt", "missing from graphite", "test pin missing provider")
+    replace_required(test, "extra in gt", "extra in graphite", "test pin extra provider")
+    replace_required(test, "; gt 10,13,11", "; graphite 10,13,11", "test pin order provider")
+    replace_required(
+        test,
+        """  it("rejects unparseable Graphite output loudly", async () => {
+""",
+        """  it("resolves a GitHub-native branch-target stack without Graphite", async () => {
+    const { directory, store } = await initializedStore();
+    const stack = await makeGitStack(directory);
+
+    await withFakeGh({
+      directory,
+      pullRequests: [
+        {
+          number: 11,
+          headRefName: "stack/open",
+          baseRefName: "stack/closed",
+          state: "OPEN",
+        },
+        {
+          number: 10,
+          headRefName: "stack/merged",
+          baseRefName: "main",
+          state: "MERGED",
+        },
+        {
+          number: 13,
+          headRefName: "stack/closed",
+          baseRefName: "stack/merged",
+          state: "CLOSED",
+        },
+      ],
+      operation: async () => {
+        expect(
+          await store.frontier.set({ repo: stack.repo, provider: "github" })
+        ).toEqual({
+          generation: 1,
+          prs: [
+            {
+              pr: 10,
+              branches: "stack/merged",
+              sha: stack.mergedSha,
+              state: "MERGED",
+            },
+            {
+              pr: 13,
+              branches: "stack/closed",
+              sha: stack.closedSha,
+              state: "CLOSED",
+            },
+            {
+              pr: 11,
+              branches: "stack/open",
+              sha: stack.openSha,
+              state: "OPEN",
+            },
+          ],
+          lowestUnmerged: 11,
+        });
+      },
+    });
+  }, 30000);
+
+  it("rejects unparseable Graphite output loudly", async () => {
+""",
+        "GitHub provider test",
+    )
+    replace_required(
+        test,
+        """    expect(frontierHelp.stdout).toContain("--repo <dir>");
+    expect(frontierHelp.stdout).toContain("--prs <n,...>");
+""",
+        """    expect(frontierHelp.stdout).toContain("--repo <dir>");
+    expect(frontierHelp.stdout).toContain("--provider <provider>");
+    expect(frontierHelp.stdout).toContain("--prs <n,...>");
+""",
+        "provider help test",
+    )
+    st.fixes.append("T15: orch frontier stack provider abstraction added "
+                    "(auto/graphite/github, gitlab reserved)")
+
+
 def apply_phase1_transforms(out: Path, st: Stats) -> None:
     """Apply R1/F16/F10-F12 hygiene to the copied package. Fail-loud on any
     anchor mismatch so a silent no-op can never masquerade as a fix."""
+    # --- T0: hermes-port script package metadata + self-contained scripts ---
+    scripts_pkg = out / "skills" / "poteto-mode" / "scripts" / "package.json"
+    scripts_payload = json.loads(scripts_pkg.read_text(encoding="utf-8"))
+    scripts_payload["name"] = "@pstack-hermes/poteto-mode-tools"
+    scripts_payload["scripts"] = {
+        "deps": "bun install --frozen-lockfile",
+        "test": "bun run deps && bun test orch watch-pr",
+        "typecheck": "bun run deps && tsc --project watch-pr/tsconfig.json --noEmit --strict",
+    }
+    scripts_pkg.write_bytes(json.dumps(scripts_payload, indent=2).encode("utf-8") + b"\n")
+    lock = out / "skills" / "poteto-mode" / "scripts" / "bun.lock"
+    lock_text = lock.read_text(encoding="utf-8")
+    if '"name": "@cursor-skill/poteto-mode-tools"' in lock_text:
+        lock.write_bytes(lock_text.replace(
+            '"name": "@cursor-skill/poteto-mode-tools"',
+            '"name": "@pstack-hermes/poteto-mode-tools"',
+            1,
+        ).encode("utf-8"))
+    orch_test = out / "skills" / "poteto-mode" / "scripts" / "orch" / "orch.test.ts"
+    orch_test_text = orch_test.read_text(encoding="utf-8")
+    git_config_anchor = '  git({ repo, args: ["config", "user.email", "orch@example.com"] });\n'
+    git_signing_config = (
+        git_config_anchor +
+        '  git({ repo, args: ["config", "commit.gpgsign", "false"] });\n'
+        '  git({ repo, args: ["config", "tag.gpgSign", "false"] });\n'
+    )
+    if git_signing_config not in orch_test_text:
+        if git_config_anchor not in orch_test_text:
+            raise ConvertError("orch.test.ts: git user.email anchor not found")
+        orch_test_text = orch_test_text.replace(git_config_anchor, git_signing_config, 1)
+    graphite_timeout_pairs = [
+        (
+            """      },
+    });
+  });
+
+  it("rejects unparseable Graphite output loudly", async () => {""",
+            """      },
+    });
+  }, 30000);
+
+  it("rejects unparseable Graphite output loudly", async () => {""",
+        ),
+        (
+            """      },
+    });
+  });
+
+  it("rejects malformed TSV, verdict, frontier, and inbox data", async () => {""",
+            """      },
+    });
+  }, 30000);
+
+  it("rejects malformed TSV, verdict, frontier, and inbox data", async () => {""",
+        ),
+    ]
+    for old, new in graphite_timeout_pairs:
+        if old not in orch_test_text:
+            raise ConvertError("orch.test.ts: Graphite timeout anchor not found")
+        orch_test_text = orch_test_text.replace(old, new, 1)
+    orch_test.write_bytes(orch_test_text.encode("utf-8"))
+    st.fixes.append(
+        "script package metadata renamed for hermes, test/typecheck scripts bootstrap deps, "
+        "git-fixture signing disabled, and Graphite fixture tests given explicit Bun timeouts"
+    )
+    apply_stack_provider_patch(out, st)
+
     # --- T1: regenerate the principles index from the leaves (R1) ---
     pm = out / "skills" / "poteto-mode" / "SKILL.md"
     text = pm.read_text(encoding="utf-8")
@@ -451,6 +1039,8 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
         ('Use Glob to find directories and files, Grep to find key symbols, Read to understand the actual implementation.',
          'Use search_files to find directories and files and to find key symbols, read_file to understand the actual implementation.'),
         ('Use Read, Grep, and Glob as needed.', 'Use read_file and search_files as needed.'),
+        ('Use the tools available to you (Read, Grep, Glob) to explore.',
+         'Use the file-search and file-read tools available to you to explore.'),
         # .cursor/rules path references -> model-panel phrasing (full Phase-3 = profiles)
         ('in `~/.cursor/rules/pstack-models.mdc` when present',
          'in the configured pstack model panel when present'),
@@ -497,6 +1087,8 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
          'offering the detected models plus `inherit-parent` (this role runs on the parent chat model) as the options.'),
         ('Every real slug written must be in the detected set; `inherit-parent` and `auto` always pass.',
          'Every real slug written must be in the detected set; `inherit-parent` always passes.'),
+        ('If the configured value is `inherit-parent` or `auto`, omit `model` instead; never treat those aliases as broken slugs or enter this fallback for them.',
+         'If the configured value is `inherit-parent`, omit `model` instead; never treat that selector as a broken slug or enter this fallback for it.'),
         ('''### 5. Write the rule
 
 Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
@@ -610,6 +1202,10 @@ The parent locates the current session via `session_search` (hermes stores sessi
          '| Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
         ('One `delegate_task` call (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
          'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
+        ('Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).',
+         'Use the provided Hermes session id to inspect the active conversation with `session_search`, or use the digest below if no session id is given.'),
+        ('Pass each template verbatim, substituting the transcript path or digest where marked.',
+         'Pass each template verbatim, substituting the Hermes session id or digest where marked.'),
         ('- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor\'s built-in `create-skill` skill and run its draft / test / iterate loop.',
          '- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill\'s guidance, or `skill_manage(action=\'create\')`) and run its draft / test / iterate loop.'),
         ('- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to `create-skill` and run its description-optimization loop.',
@@ -815,16 +1411,19 @@ DELEGATION_MAP = [
     ('Spawn a single Task subagent', 'Spawn a single delegate subagent'),
     ('`subagent_type`: `generalPurpose`', '`delegate_task`: role `leaf`'),
     ('Spawn `Task` with `subagent_type: "Comment Sicko"`',
-     'Spawn a delegate with `delegate_task` (role: `leaf`, persona: Comment Sicko)'),
+     'Read `references/comment-sicko.md`, then spawn a delegate with `delegate_task` (role: `leaf`)'),
     ('`subagent_type: generalPurpose`', '`delegate_task` (role: `leaf`)'),
-    ('`subagent_type: "poteto-agent"`', '`delegate_task` (role: `leaf`, persona: poteto-agent)'),
+    ('`subagent_type: "poteto-agent"`',
+     '`delegate_task` (role: `leaf`) with the poteto-mode wrapper instructions in the task prompt'),
     ('`environment: "cloud"`, ', ''),
     ('`environment: "cloud"`', 'local execution'),
     ('`run_in_background: true`', 'background execution'),
+    ('Do not restate its rules.', 'Inline the rules verbatim; do not paraphrase or add commentary.'),
     ('`subagent_type`', 'delegate role'),
     ('`AskQuestion`', '`clarify`'),
     ('AskQuestion', 'clarify'),
-    ('agent mode (readonly strips MCP)', 'full agent mode (read-only delegates lose MCP access)'),
+    ('agent mode (readonly strips MCP)',
+     'agent mode (readonly restricts file writes only; MCP access is unaffected)'),
     ('the Task tool', 'delegate_task'),
     ('`Task`', '`delegate_task`'),
 ]
@@ -891,6 +1490,10 @@ T13_MAP = [
     # break the longer match.
     ("a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill)",
      "a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill)"),
+    ("Fan out N parallel cloud workers. They may cover separate slices, race the same brief, or mix both.",
+     "Fan out N parallel delegate workers. They may cover separate slices, race the same brief, or mix both. Background `delegate_task` work is process-local; use a hermes cron wake or a background terminal run for work that must survive a session restart."),
+    ("N is total workers, not the cloud concurrency limit.",
+     "N is total workers, not a durability guarantee."),
     ("`cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui`",
      "The repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
     ("each a Cursor cloud agent, each exercising the real surface (`control-ui` or `control-cli` from `cursor-team-kit` as the change demands)",
@@ -907,6 +1510,8 @@ T13_MAP = [
      "Run `/deslop` over the diff before commit."),
     ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
      "the `deslop` skill (`/deslop`)"),
+    ("The frontier is a computed object, never narrative. Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where gt knows the stack, normally the stacker's clone; a checkout whose gt metadata never saw the submits reports no PRs and the command errors rather than guessing.",
+     "The frontier is a computed object, never narrative. Recompute `frontier.json` from the resolved forge after every merge and stack mutation: ordered PR list, branch names, head SHAs, a generation number, and the lowest unmerged PR. `orch frontier set --provider auto` tries Graphite first and then a GitHub-native chain inferred from PR base/head branches; pin with `--provider graphite` or `--provider github` when the stack source must be explicit. Resolve it in the clone that has the local branches for the stack; a checkout whose forge metadata cannot produce one connected chain errors rather than guessing."),
     ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
      "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
     ("`control-ui` or `control-cli` runtime verification (from `cursor-team-kit`)",
@@ -921,8 +1526,6 @@ T13_MAP = [
      "A local root uses the existing wake chain instead."),
     ("Never require Graphite (`gt`).",
      "Never require Graphite (`gt`); the stacker is the only topology writer."),
-    ("Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative:",
-     "Recompute `frontier.json` from the resolved forge after every merge and stack mutation because GitHub base refs drift mid-restack while the forge's tracking is authoritative:"),
     ("Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking.",
      "Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking."),
     ("Never submit or register the chain through `gt`.",
@@ -930,22 +1533,17 @@ T13_MAP = [
 ]
 
 # --- T14: stacker-role / topology rewording (option b, issue #33) ------------
-# The three lines in orchestrate.md's "Stack safety" block that T12 left
-# unmapped. Where a real hermes equivalent exists the vendor wording is
+# Two of the three lines in orchestrate.md's "Stack safety" block that T12
+# left unmapped. (The third — the frontier-paragraph "Resolve it where gt
+# knows the stack" line — is re-pointed by T13_MAP's provider-selection
+# rewrite, which subsumed this map's original first entry; pruned 2026-09.)
+# Where a real hermes equivalent exists the vendor wording is
 # re-pointed at it; where the capability genuinely does not exist (stack
 # topology, restacks, retarget-through-stacker, the stack-aware merge queue)
 # the Graphite name is kept and the limitation stated explicitly. Same
 # convention as T12: never erase an absent capability, never invent an
 # equivalence that is not there.
 T14_MAP = [
-    ("Resolve it where gt knows the stack, normally the stacker's clone; a "
-     "checkout whose gt metadata never saw the submits reports no PRs and "
-     "the command errors rather than guessing.",
-     "Resolve it where the stacker's clone holds the frontier; a checkout "
-     "whose frontier metadata never saw the submits reports no PRs and the "
-     "command errors rather than guessing. Frontier tracking itself requires "
-     "Graphite (`gt`): the stacker is the only topology writer, and no "
-     "hermes primitive computes stack order."),
     ("Exactly one stacker per stack may run `gt`, serialized within its stack; "
      "record the holder in the standing orders. Restacks run in cloud; a local "
      "restack at this scale takes the laptop down.",
@@ -1200,6 +1798,13 @@ def main() -> int:
     #     study's own "what not to port" items; benny is rebuilt as hermes
     #     cron/loop jobs in Phase 4.
     agents_n = copy_tree(source / "agents", out / "agents", st)
+    comment_sicko = out / "agents" / "comment-sicko.md"
+    if comment_sicko.is_file():
+        no_comments_refs = out / "skills" / "no-comments" / "references"
+        no_comments_refs.mkdir(parents=True, exist_ok=True)
+        (no_comments_refs / "comment-sicko.md").write_bytes(comment_sicko.read_bytes())
+        st.fixes.append("Phase-2A: Comment Sicko persona copied into no-comments "
+                        "references for hermes prompt inlining")
     st.fixes.append("F-publish: automations/benny excluded (scanner persistence verdict) "
                     "and skills/make-bot-ui excluded (scanner privilege verdict; F33)")
 
@@ -1400,6 +2005,7 @@ authoritative delta record.
   verdict as incomplete instead of clean — a verdict without its demanded live
   lane is not clean.
   (`no-comments`, `unslop`, and `technical-writing` do ship here.)
+<<<<<<< HEAD
 - Stack topology and frontier management: the orchestration tooling resolves
   the frontier through Graphite (`gt`) — `orch frontier set`, the stacker's
   restacks and stack surgery, and stack-aware merge ordering. The stacker role
@@ -1407,6 +2013,16 @@ authoritative delta record.
   atomic `assign`/`claim` enforces one owner per task, and stack-level
   exclusivity is policy layered on that. Retargeting through the stacker needs
   `gt`; ordinary base changes to an existing child or the bottom PR go through
+=======
+- Frontier management (`orch frontier set`) supports `--provider auto`,
+  `graphite`, and `github`. `auto` tries Graphite first, then GitHub-native
+  PR base/head branch topology. GitLab is reserved in the CLI/API but not
+  implemented yet.
+- Stack topology requires Graphite (`gt`): the stacker is the only topology
+  writer, and restacks, stack surgery, and the stack-aware merge queue have
+  no hermes equivalent. Retargeting through the stacker requires `gt`, but
+  ordinary base changes to an existing child or the bottom PR go through
+>>>>>>> 296badc (feat(pstack): T15 frontier provider abstraction + hermes adaptation contract, rebuilt from pin 93b00b8)
   the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
   Platform-native follow-ups, per platform: GitHub stacked pull requests
   (public preview) with the official `gh stack` extension — including its
@@ -1423,7 +2039,7 @@ authoritative delta record.
 
 ---
 
-{ADAPTATION_LINE}.
+{ADAPTATION_LINE}
 """
     (out / "README.md").write_bytes(readme.encode("utf-8"))
     st.files_copied += 1

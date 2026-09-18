@@ -41,3 +41,17 @@ def test_undecodable_binary_files_are_skipped(tmp_path):
     (tmp_path / "blob.bin").write_bytes(b"\xff\xfe" + b"tailscale.com/install.sh")
 
     assert bans.find_violations(tmp_path) == []
+
+
+def test_generated_node_modules_are_skipped(tmp_path):
+    vendor = tmp_path / "skills" / "poteto-mode" / "scripts" / "node_modules" / "bad"
+    vendor.mkdir(parents=True)
+    (vendor / "README.md").write_text("tailscale.com/install.sh\r\n", encoding="utf-8")
+    skill = tmp_path / "skills" / "ok" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("hello hermes", encoding="utf-8")
+
+    scanned = [rel for rel, _text in bans.iter_text_files(tmp_path)]
+
+    assert scanned == ["skills/ok/SKILL.md"]
+    assert bans.find_violations(tmp_path) == []

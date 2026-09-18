@@ -31,12 +31,20 @@ DELEGATION_VOCAB_BANS: tuple[str, ...] = (
     'environment: "cloud"',
 )
 VOCAB_EXEMPT_PREFIXES: tuple[str, ...] = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
+GENERATED_DEPENDENCY_DIRS: frozenset[str] = frozenset({"node_modules"})
+
+
+def is_generated_dependency_path(path: Path) -> bool:
+    """True for dependency installs created by runtime/tool verification."""
+    return any(part in GENERATED_DEPENDENCY_DIRS for part in path.parts)
 
 
 def iter_text_files(pkg: Path) -> Iterator[tuple[str, str]]:
     """Yield (posix-rel-path, text) for every UTF-8-decodable file in pkg."""
     for p in sorted(pkg.rglob("*")):
         if not p.is_file():
+            continue
+        if is_generated_dependency_path(p.relative_to(pkg)):
             continue
         try:
             text = p.read_text(encoding="utf-8")

@@ -51,7 +51,7 @@ Anchors are audited: a pass whose anchor matches nothing **fails the build**
 | armed `/goal` | `goal.md` beside the plan in the agent store, re-read each wake | approximated |
 | `grokbot` / `make-bot-ui` (Grok Bot routines, Tailscale) | `hermesbot` (gateway webhook + `hermes send` + `hermes peer`) | replaced |
 | `cursor-team-kit` skills (`deslop`, `control-ui`, `control-cli`) | named directly; **external prerequisites**, not shipped | absent, documented |
-| Graphite (`gt`) stacker for frontier discovery | documented as required for `orch frontier set` (no hermes equivalent yet) | absent, documented (issue #33) |
+| Graphite (`gt`) stacker for frontier discovery | `orch frontier set` now supports provider selection: `auto`, `graphite`, and GitHub-native PR base/head topology; GitLab is reserved but not implemented yet | partially native |
 | Cursor worktree isolation per subagent | the skills manage worktrees themselves | approximated |
 
 ## 3. Deliberately not ported

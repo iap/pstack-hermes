@@ -15,10 +15,7 @@
     "why investigators": "meituan/longcat-2.0",
     "why synthesizer": "z-ai/glm-5.2",
     "reflect tooling": "qwen/qwen-2.5-7b-instruct",
-    "reflect judgment, divergent, synthesizer": [
-      "z-ai/glm-5.2",
-      "meta/muse-spark-1.2-contributor"
-    ],
+    "reflect judgment, divergent, synthesizer": "z-ai/glm-5.2",
     "arena runners": [
       "meituan/longcat-2.0",
       "meta/muse-spark-1.2-contributor"
@@ -27,9 +24,7 @@
       "z-ai/glm-5.2",
       "meituan/longcat-2.0"
     ],
-    "swarm workers": [
-      "meituan/longcat-2.0"
-    ],
+    "swarm workers": "meituan/longcat-2.0",
     "architect runners": [
       "z-ai/glm-5.2",
       "meta/muse-spark-1.2-contributor"
