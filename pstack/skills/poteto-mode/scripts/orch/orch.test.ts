@@ -82,6 +82,8 @@ async function makeGitStack(directory: string): Promise<{
   git({ repo, args: ["init", "--initial-branch=main"] });
   git({ repo, args: ["config", "user.name", "Orch Test"] });
   git({ repo, args: ["config", "user.email", "orch@example.com"] });
+  git({ repo, args: ["config", "commit.gpgsign", "false"] });
+  git({ repo, args: ["config", "tag.gpgSign", "false"] });
   await writeFile(join(repo, "main.txt"), "main\n");
   git({ repo, args: ["add", "."] });
   git({ repo, args: ["commit", "-m", "main"] });
@@ -150,6 +152,55 @@ esac
   process.env.PATH = `${bin}:${originalPath ?? ""}`;
   try {
     return await operation(outputPath);
+  } finally {
+    if (originalPath === undefined) {
+      delete process.env.PATH;
+    } else {
+      process.env.PATH = originalPath;
+    }
+  }
+}
+
+async function withFakeGh<T>({
+  directory,
+  operation,
+  pullRequests,
+}: {
+  directory: string;
+  operation: () => Promise<T>;
+  pullRequests: readonly {
+    readonly number: number;
+    readonly headRefName: string;
+    readonly baseRefName: string;
+    readonly state: string;
+  }[];
+}): Promise<T> {
+  const bin = join(directory, "bin-gh");
+  const outputPath = join(directory, "gh-prs.json");
+  await mkdir(bin);
+  await writeFile(outputPath, JSON.stringify(pullRequests));
+  const gh = join(bin, "gh");
+  await writeFile(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  "pr list --state all --json number,headRefName,baseRefName,state --limit 100")
+    cat "${outputPath}"
+    ;;
+  *)
+    printf 'unexpected gh arguments: %s\n' "$*" >&2
+    exit 2
+    ;;
+esac
+`
+  );
+  await chmod(gh, 0o755);
+
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${bin}:${originalPath ?? ""}`;
+  try {
+    return await operation();
   } finally {
     if (originalPath === undefined) {
       delete process.env.PATH;
@@ -458,7 +509,7 @@ describe("Store", () => {
             prs: [10, 11, 12],
           })
         ).rejects.toThrow(
-          "frontier pin mismatch: missing from gt: 12; extra in gt: 13"
+          "frontier pin mismatch: missing from graphite: 12; extra in graphite: 13"
         );
         await expect(
           store.frontier.set({
@@ -466,7 +517,7 @@ describe("Store", () => {
             prs: [13, 10, 11],
           })
         ).rejects.toThrow(
-          "frontier pin mismatch: order differs: expected 13,10,11; gt 10,13,11"
+          "frontier pin mismatch: order differs: expected 13,10,11; graphite 10,13,11"
         );
         await expect(
           store.frontier.set({
@@ -476,7 +527,64 @@ describe("Store", () => {
         ).rejects.toThrow("--prs must not contain duplicates");
       },
     });
-  });
+  }, 30000);
+
+  it("resolves a GitHub-native branch-target stack without Graphite", async () => {
+    const { directory, store } = await initializedStore();
+    const stack = await makeGitStack(directory);
+
+    await withFakeGh({
+      directory,
+      pullRequests: [
+        {
+          number: 11,
+          headRefName: "stack/open",
+          baseRefName: "stack/closed",
+          state: "OPEN",
+        },
+        {
+          number: 10,
+          headRefName: "stack/merged",
+          baseRefName: "main",
+          state: "MERGED",
+        },
+        {
+          number: 13,
+          headRefName: "stack/closed",
+          baseRefName: "stack/merged",
+          state: "CLOSED",
+        },
+      ],
+      operation: async () => {
+        expect(
+          await store.frontier.set({ repo: stack.repo, provider: "github" })
+        ).toEqual({
+          generation: 1,
+          prs: [
+            {
+              pr: 10,
+              branches: "stack/merged",
+              sha: stack.mergedSha,
+              state: "MERGED",
+            },
+            {
+              pr: 13,
+              branches: "stack/closed",
+              sha: stack.closedSha,
+              state: "CLOSED",
+            },
+            {
+              pr: 11,
+              branches: "stack/open",
+              sha: stack.openSha,
+              state: "OPEN",
+            },
+          ],
+          lowestUnmerged: 11,
+        });
+      },
+    });
+  }, 30000);
 
   it("rejects unparseable Graphite output loudly", async () => {
     const { directory, store } = await initializedStore();
@@ -493,7 +601,7 @@ describe("Store", () => {
         );
       },
     });
-  });
+  }, 30000);
 
   it("rejects malformed TSV, verdict, frontier, and inbox data", async () => {
     const { directory, store } = await initializedStore();
@@ -548,6 +656,7 @@ describe("orch CLI", () => {
     const frontierHelp = runCli(["frontier", "set", "--help"]);
     expect(frontierHelp.code).toBe(0);
     expect(frontierHelp.stdout).toContain("--repo <dir>");
+    expect(frontierHelp.stdout).toContain("--provider <provider>");
     expect(frontierHelp.stdout).toContain("--prs <n,...>");
 
     const directory = await makeDirectory();

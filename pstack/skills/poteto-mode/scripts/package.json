@@ -1,10 +1,11 @@
 {
-  "name": "@cursor-skill/poteto-mode-tools",
+  "name": "@pstack-hermes/poteto-mode-tools",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test orch watch-pr",
-    "typecheck": "tsc --project watch-pr/tsconfig.json --noEmit --strict"
+    "deps": "bun install --frozen-lockfile",
+    "test": "bun run deps && bun test orch watch-pr",
+    "typecheck": "bun run deps && tsc --project watch-pr/tsconfig.json --noEmit --strict"
   },
   "dependencies": {
     "commander": "14.0.0"

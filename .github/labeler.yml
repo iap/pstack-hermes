@@ -38,6 +38,7 @@ tooling:
 
 documentation:
   - changed-files:
+      - any-glob-to-any-file: "AGENTS.md"
       - any-glob-to-any-file: "README.md"
       - any-glob-to-any-file: "CONTRIBUTING.md"
       - any-glob-to-any-file: "SECURITY.md"

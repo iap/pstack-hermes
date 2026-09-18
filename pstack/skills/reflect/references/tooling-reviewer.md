@@ -20,7 +20,7 @@ Examples of the pattern:
 
 The durable improvement is the skill learning to use available tools, not this one user typing one less ticket title.
 
-Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).
+Use the provided Hermes session id to inspect the active conversation with `session_search`, or use the digest below if no session id is given.
 
 Scan for:
 - Tool invocations and command flags the agent had to discover

@@ -1,0 +1,126 @@
+# Publish: push the built plugin package to the dist repo (root-level install source).
+#
+# The dist repo (DIST_REPO below) is build output, like pstack/ itself: its
+# content is written only by this workflow and never edited by hand. Its tree
+# root IS the package (plugin.json at root), which is what makes the root
+# install shorthand work:
+#
+#   hermes plugins install iap/pstack --enable     # no /pstack subdir needed
+#   hermes plugins update pstack                   # in-place: root installs keep .git
+#
+# Publishes are APPEND-ONLY commits on top of the dist repo's main branch -
+# never a history rewrite. `hermes plugins update` is a `git pull --ff-only`
+# on the installed clone, so a rewritten remote would break every user's
+# in-place update.
+#
+# Prerequisites (one-time, maintainer):
+#   1. Create the empty dist repo on GitHub (default branch: main).
+#   2. Add a fine-grained PAT (contents: read/write on DIST_REPO only) as the
+#      PLUGIN_DIST_TOKEN secret in this repository.
+
+name: publish-plugin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  UPSTREAM_PIN: 93b00b89ef425a9c1bac0d0b317dfc49c930ac99
+  DIST_REPO: iap/pstack
+
+concurrency:
+  group: publish-plugin
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Record SOURCE_DATE_EPOCH
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+        with:
+          enable-cache: true
+
+      - name: Clone upstream pstack at pin
+        shell: bash
+        run: |
+          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
+          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
+          git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
+
+      - name: Verify pinned SHA
+        shell: bash
+        run: |
+          got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
+          if [ "$got" != "$UPSTREAM_PIN" ]; then
+            echo "::error::SHA mismatch: got $got, want $UPSTREAM_PIN"
+            exit 1
+          fi
+          echo "pinned upstream SHA verified: $got"
+
+      - name: Convert
+        shell: bash
+        run: uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out pstack
+
+      - name: Validate
+        shell: bash
+        run: uv run --frozen tools/validate.py --package pstack
+
+      - name: Scanner gate
+        shell: bash
+        run: uv run --frozen tools/scanner_gate.py --package pstack
+
+      - name: Publish dist tree
+        shell: bash
+        env:
+          PLUGIN_DIST_TOKEN: ${{ secrets.PLUGIN_DIST_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLUGIN_DIST_TOKEN}" ]; then
+            echo "::warning::PLUGIN_DIST_TOKEN secret is not set - skipping dist publish to ${DIST_REPO} (build gates above still ran). Create the dist repo and add the secret to enable publishing."
+            exit 0
+          fi
+          authed_url="https://x-access-token:${PLUGIN_DIST_TOKEN}@github.com/${DIST_REPO}.git"
+
+          dist="$RUNNER_TEMP/dist"
+          if ! git clone -q "$authed_url" "$dist" 2>/dev/null; then
+            echo "::error::clone of ${DIST_REPO} failed (repo missing, or token lacks access)"
+            exit 1
+          fi
+          # Scrub the token from the clone's remote config; pushes pass the URL
+          # explicitly so it is never persisted.
+          git -C "$dist" remote set-url origin "https://github.com/${DIST_REPO}.git"
+          # Empty dist repo on first publish: the clone warns and has no branches.
+          git -C "$dist" checkout -q main 2>/dev/null || git -C "$dist" checkout -q -b main
+
+          # Replace the tree with the fresh build (.git kept): an append-only
+          # commit on top of main so installed clones can fast-forward.
+          find "$dist" -mindepth 1 -maxdepth 1 -not -name ".git" -exec rm -rf {} +
+          cp -a pstack/. "$dist/"
+          git -C "$dist" add -A
+          if git -C "$dist" diff --cached --quiet; then
+            echo "dist tree unchanged - nothing to publish"
+            exit 0
+          fi
+          export GIT_AUTHOR_NAME="github-actions[bot]" GIT_AUTHOR_EMAIL="github-actions[bot]@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+          converter="$(grep -o 'sha256\[:16\]=[0-9a-f]*' pstack/.build-provenance.txt | cut -d= -f2 || true)"
+          git -C "$dist" commit -q \
+            -m "publish: pstack built from upstream pin ${UPSTREAM_PIN}" \
+            -m "converter: ${converter:-unknown}; source run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          dist tree is build output - written only by publish-plugin.yml, never edited by hand."
+
+          git -C "$dist" push -q "$authed_url" main:main
+          echo "published ${DIST_REPO}@$(git -C "$dist" rev-parse HEAD)"

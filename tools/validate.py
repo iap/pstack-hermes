@@ -31,7 +31,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PACKAGE = REPO_ROOT / "pstack"
 
 sys.path.insert(0, str(SCRIPT_DIR))
-from bans import DELEGATION_VOCAB_BANS, find_violations  # noqa: E402
+from bans import DELEGATION_VOCAB_BANS, find_violations, is_generated_dependency_path  # noqa: E402
 from convert import MANIFEST_NAME_RE, SCHEMA_URL, SKILL_NAME_RE, TEXT_EXTS  # noqa: E402
 
 
@@ -74,6 +74,35 @@ TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
 # selector. Catches hand-edit slips like a missing vendor prefix or `-free`
 # where the catalog's free suffix is `:free`.
 MODEL_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9._-]*(:[a-z0-9_-]+)?$")
+ROLE_VALUE_SHAPES = {
+    "feature, refactoring": str,
+    "bug-fix": str,
+    "perf-issue": str,
+    "hillclimb": str,
+    "judgment and prose": str,
+    "hardest tasks": str,
+    "how explorer": str,
+    "how explainer": str,
+    "how critics": list,
+    "why investigators": str,
+    "why synthesizer": str,
+    "reflect tooling": str,
+    "reflect judgment, divergent, synthesizer": str,
+    "arena runners": list,
+    "arena cross-judge pool": list,
+    "swarm workers": str,
+    "architect runners": list,
+    "interrogate reviewers": list,
+}
+HERMES_ADAPTATION_BANS = {
+    "persona:": "delegate personas are inert in hermes portable plugins; inline the prompt",
+    "read-only delegates lose MCP access": "readonly-MCP rationale is stale for hermes",
+    "Read, Grep, Glob": "Cursor tool names survived in hermes-facing prose",
+    "<ABSOLUTE_PATH>": "reflect reviewers must use a session id or digest, not a transcript path",
+    "parallel cloud workers": "delegate_task background work is process-local, not a cloud fleet",
+    "cloud concurrency limit": "hermes swarm sizing is worker count, not cloud concurrency",
+    "`inherit-parent` or `auto`": "hermes has no Cursor-style auto selector",
+}
 
 
 class Report:
@@ -243,6 +272,8 @@ def check_encoding(pkg: Path, rep: Report) -> None:
     bom_files, crlf_files, checked = [], [], 0
     for p in pkg.rglob("*"):
         if not p.is_file():
+            continue
+        if is_generated_dependency_path(p.relative_to(pkg)):
             continue
         if p.suffix.lower() not in TEXT_EXTS and p.name not in TEXT_NAMES:
             continue
@@ -440,7 +471,47 @@ def check_phase1(pkg: Path, rep: Report) -> None:
             rep.fail(f"F-publish: banned construct present: {v}")
     else:
         rep.ok("F-publish: no banned constructs in any decodable package file "
-               "(security bans package-wide, delegation vocab hermes-facing)")
+                "(security bans package-wide, delegation vocab hermes-facing)")
+
+
+def check_conflict_markers(pkg: Path, rep: Report) -> None:
+    """No unresolved VCS conflict markers may survive into generated output.
+
+    Only the unambiguous markers are checked: `<<<<<<<`/`>>>>>>>`/`|||||||`
+    line starts. A bare `=======` line is a legal setext heading underline in
+    markdown and is therefore not flagged.
+    """
+    markers = ("<<<<<<<", ">>>>>>>", "|||||||")
+    bad = []
+    for p in sorted(pkg.rglob("*")):
+        if not p.is_file() or is_generated_dependency_path(p.relative_to(pkg)):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if line.startswith(markers):
+                bad.append(f"{p.relative_to(pkg)}:{lineno}:{line[:12]}")
+    if bad:
+        rep.fail(f"conflict markers present in generated output: {bad}")
+    else:
+        rep.ok("conflict markers: none in any package file")
+
+
+def check_hermes_adaptation_contract(pkg: Path, rep: Report) -> None:
+    """Hermes-specific instruction contract checks for generated skills."""
+    bad = []
+    for p in (pkg / "skills").rglob("*.md"):
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for tok, label in HERMES_ADAPTATION_BANS.items():
+            if tok in t:
+                bad.append(f"{p.relative_to(pkg)}:{tok} ({label})")
+    if bad:
+        rep.fail(f"Hermes adaptation contract: unresolved constructs: {bad}")
+    else:
+        rep.ok("Hermes adaptation contract: no inert personas, stale runtime claims, "
+               "Cursor tool names, transcript paths, cloud-worker wording, or auto aliases")
 
 
 def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None:
@@ -479,6 +550,18 @@ def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None
     if slug_problems:
         rep.fail("Stage-D: model slugs not provider-qualified lowercase "
                  f"vendor/model[:variant]: {slug_problems}")
+
+    shape_problems = []
+    for source, roles in (("panel", panel_roles), ("config", cfg_roles)):
+        for role, expected_type in ROLE_VALUE_SHAPES.items():
+            if role not in roles:
+                continue
+            value = roles[role]
+            if not isinstance(value, expected_type):
+                shape = "array" if expected_type is list else "string"
+                shape_problems.append(f"{source} '{role}' must be {shape}")
+    if shape_problems:
+        rep.fail(f"Stage-D: role value shape mismatch: {shape_problems}")
 
     # One subagent runs per array entry, so a duplicate concrete slug inside a
     # role spawns an identical lane — always an accident (e.g. two spellings
@@ -623,6 +706,8 @@ def main() -> int:
         check_encoding(pkg, rep)
         check_layout(pkg, rep)
         check_phase1(pkg, rep)
+        check_hermes_adaptation_contract(pkg, rep)
+        check_conflict_markers(pkg, rep)
         check_model_panel(pkg, rep)
 
         print("-- [1..3] static checks (stdlib replication of agent_plugins.py rules) --")

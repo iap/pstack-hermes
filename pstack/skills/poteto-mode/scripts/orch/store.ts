@@ -89,7 +89,10 @@ export interface Frontier {
   readonly generation: number;
   readonly prs: readonly FrontierPr[];
   readonly lowestUnmerged: number | null;
+  readonly fallback?: readonly string[];
 }
+
+export type StackProvider = "auto" | "graphite" | "github" | "gitlab";
 
 export interface StandingLine {
   readonly number: number;
@@ -168,6 +171,7 @@ export interface ResolveGateParams {
 export interface SetFrontierParams {
   readonly repo: string;
   readonly prs?: readonly number[];
+  readonly provider?: StackProvider;
 }
 
 export interface AddStandingParams {
@@ -1002,6 +1006,12 @@ interface GtFrontierEntry extends GtPullRequest {
   readonly branches: string;
 }
 
+interface StackFrontierResult {
+  readonly provider: Exclude<StackProvider, "auto">;
+  readonly prs: readonly FrontierPr[];
+  readonly fallback?: readonly string[];
+}
+
 function parseGtPullRequest({
   branch,
   detail,
@@ -1131,6 +1141,129 @@ function graphiteFrontier(repo: string): readonly GtFrontierEntry[] {
   return result;
 }
 
+interface GithubPr {
+  readonly number: number;
+  readonly headRefName: string;
+  readonly baseRefName: string;
+  readonly state: FrontierPrState;
+}
+
+function parseGithubPr(value: unknown, index: number): GithubPr {
+  if (!isRecord(value)) {
+    throw new UserError(`gh pr list row ${index + 1} must be an object`);
+  }
+  const number = value.number;
+  const headRefName = value.headRefName;
+  const baseRefName = value.baseRefName;
+  const state = frontierPrStateOrNull(value.state);
+  if (
+    typeof number !== "number" ||
+    !Number.isSafeInteger(number) ||
+    number < 1 ||
+    typeof headRefName !== "string" ||
+    headRefName.trim().length === 0 ||
+    typeof baseRefName !== "string" ||
+    baseRefName.trim().length === 0 ||
+    state === null
+  ) {
+    throw new UserError(`gh pr list row ${index + 1} has an invalid shape`);
+  }
+  return { number, headRefName, baseRefName, state };
+}
+
+function githubPullRequests(repo: string): readonly GithubPr[] {
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "gh",
+      [
+        "pr",
+        "list",
+        "--state",
+        "all",
+        "--json",
+        "number,headRefName,baseRefName,state",
+        "--limit",
+        "100",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+  } catch (error) {
+    throw new UserError(`gh pr list failed: ${errorMessage(error)}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new UserError(`gh pr list returned invalid JSON: ${errorMessage(error)}`);
+  }
+  if (!isUnknownArray(parsed)) {
+    throw new UserError("gh pr list JSON must be an array");
+  }
+  return parsed.map(parseGithubPr);
+}
+
+function githubFrontier(
+  repo: string,
+  pin?: readonly number[]
+): readonly FrontierPr[] {
+  const rows = githubPullRequests(repo);
+  if (rows.length === 0) {
+    throw new UserError("gh pr list did not return any pull requests");
+  }
+  const byHead = new Map<string, GithubPr>();
+  for (const row of rows) {
+    if (byHead.has(row.headRefName)) {
+      throw new UserError(`gh pr list contains duplicate head branch ${row.headRefName}`);
+    }
+    byHead.set(row.headRefName, row);
+  }
+  const candidates = pin === undefined
+    ? rows
+    : rows.filter((row) => pin.includes(row.number));
+  if (candidates.length === 0) {
+    throw new UserError(
+      pin === undefined
+        ? "github stack discovery found no pull requests"
+        : `github stack discovery found none of the pinned PRs: ${pin.join(",")}`
+    );
+  }
+  const roots = candidates.filter((row) => !byHead.has(row.baseRefName));
+  if (roots.length !== 1) {
+    throw new UserError(
+      roots.length === 0
+        ? "github stack discovery found no root PR; at least one PR must target trunk"
+        : `github stack discovery found multiple root PRs: ${roots.map((row) => row.number).join(",")}`
+    );
+  }
+  const result: FrontierPr[] = [];
+  let current = roots[0];
+  while (current !== undefined) {
+    result.push({
+      pr: current.number,
+      branches: current.headRefName,
+      sha: branchSha({ branch: current.headRefName, repo }),
+      state: current.state,
+    });
+    const children = candidates.filter((row) => row.baseRefName === current?.headRefName);
+    if (children.length > 1) {
+      throw new UserError(
+        `github stack discovery found multiple children for ${current.headRefName}: ${children.map((row) => row.number).join(",")}`
+      );
+    }
+    current = children[0];
+  }
+  if (pin === undefined && result.length !== rows.length) {
+    throw new UserError("github stack discovery found disconnected pull requests");
+  }
+  return result;
+}
+
 function branchSha({
   branch,
   repo,
@@ -1158,19 +1291,51 @@ function branchSha({
   return sha;
 }
 
-function resolveFrontier(repo: string): readonly FrontierPr[] {
-  return graphiteFrontier(repo).map((row) => ({
-    ...row,
-    sha: branchSha({ branch: row.branches, repo }),
-  }));
+function resolveFrontier(
+  repo: string,
+  provider: StackProvider = "auto",
+  pin?: readonly number[]
+): StackFrontierResult {
+  if (provider === "graphite") {
+    return {
+      provider,
+      prs: graphiteFrontier(repo).map((row) => ({
+        ...row,
+        sha: branchSha({ branch: row.branches, repo }),
+      })),
+    };
+  }
+  if (provider === "github") {
+    return { provider, prs: githubFrontier(repo, pin) };
+  }
+  if (provider === "gitlab") {
+    throw new UserError("gitlab stack provider is not implemented yet");
+  }
+  const failures: string[] = [];
+  const attempted: string[] = [];
+  for (const candidate of ["graphite", "github"] as const) {
+    attempted.push(candidate);
+    try {
+      const result = resolveFrontier(repo, candidate, pin);
+      if (attempted.length > 1) {
+        return { ...result, fallback: attempted.slice(0, -1) };
+      }
+      return result;
+    } catch (error) {
+      failures.push(`${candidate}: ${errorMessage(error)}`);
+    }
+  }
+  throw new UserError(`auto stack provider failed (${failures.join("; ")})`);
 }
 
 function validateFrontierPin({
   actual,
   expected,
+  provider,
 }: {
   actual: readonly number[];
   expected: readonly number[];
+  provider: string;
 }): void {
   if (
     actual.length === expected.length &&
@@ -1184,14 +1349,14 @@ function validateFrontierPin({
   const extra = actual.filter((pr) => !expectedSet.has(pr));
   const drift: string[] = [];
   if (missing.length > 0) {
-    drift.push(`missing from gt: ${missing.join(",")}`);
+    drift.push(`missing from ${provider}: ${missing.join(",")}`);
   }
   if (extra.length > 0) {
-    drift.push(`extra in gt: ${extra.join(",")}`);
+    drift.push(`extra in ${provider}: ${extra.join(",")}`);
   }
   if (missing.length === 0 && extra.length === 0) {
     drift.push(
-      `order differs: expected ${expected.join(",")}; gt ${actual.join(",")}`
+      `order differs: expected ${expected.join(",")}; ${provider} ${actual.join(",")}`
     );
   }
   throw new UserError(`frontier pin mismatch: ${drift.join("; ")}`);
@@ -1492,17 +1657,22 @@ export function openStore(
           throw new UserError("--prs must not contain duplicates");
         }
         const old = await readFrontier(store);
-        const prs = resolveFrontier(repo);
+        const frontier = resolveFrontier(repo, params.provider, pin);
+        const prs = frontier.prs;
         if (pin !== undefined) {
           validateFrontierPin({
             actual: prs.map((row) => row.pr),
             expected: pin,
+            provider: frontier.provider,
           });
         }
         const value: Frontier = {
           generation: old.generation + 1,
           prs,
           lowestUnmerged: prs.find((row) => row.state === "OPEN")?.pr ?? null,
+          ...(frontier.fallback !== undefined
+            ? { fallback: frontier.fallback }
+            : {}),
         };
         await atomicWrite(
           join(store, "frontier.json"),

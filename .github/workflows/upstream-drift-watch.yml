@@ -10,6 +10,10 @@ on:
     - cron: "23 6 * * 1" # weekly, Monday 06:23 UTC
   workflow_dispatch:
 
+concurrency:
+  group: upstream-drift-watch
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write
@@ -58,9 +62,14 @@ jobs:
             echo "pipeline."
           } > "$RUNNER_TEMP/drift-body.md"
 
+          lookup_status=0
           existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
                         --json number,title --jq '.[] | select(.title == $ENV.ISSUE_TITLE) | .number' \
-                        || true)"
+                        || lookup_status=$?)"
+          if [ "$lookup_status" -ne 0 ]; then
+            echo "::error::issue lookup failed (gh exit $lookup_status); not creating a possible duplicate"
+            exit 1
+          fi
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"
             echo "updated tracking issue #$existing"

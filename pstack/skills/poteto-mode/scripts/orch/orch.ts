@@ -11,6 +11,7 @@ import {
   type InboxPointer,
   type OpenGate,
   type StandingLine,
+  type StackProvider,
   type StatusReport,
   type Store,
   type Unit,
@@ -82,6 +83,7 @@ interface GateResolveOptions {
 interface FrontierSetOptions {
   readonly repo?: string;
   readonly prs?: readonly number[];
+  readonly provider: StackProvider;
 }
 
 function message(error: unknown): string {
@@ -102,6 +104,18 @@ function prList(value: string): readonly number[] {
     throw new InvalidArgumentError("requires a comma-separated PR list");
   }
   return parts.map(positiveInteger);
+}
+
+function stackProvider(value: string): StackProvider {
+  if (
+    value === "auto" ||
+    value === "graphite" ||
+    value === "github" ||
+    value === "gitlab"
+  ) {
+    return value;
+  }
+  throw new InvalidArgumentError("must be auto, graphite, github, or gitlab");
 }
 
 function countLine(value: Counts): string {
@@ -472,14 +486,20 @@ function createProgram(io: Io): Command {
 
   const frontier = program
     .command("frontier")
-    .description("manage the Graphite stack frontier")
+    .description("manage the stack frontier")
     .action(() => requireSubcommand(program));
-  leaf(frontier, "set", "discover the Graphite stack and set the frontier")
+  leaf(frontier, "set", "discover the stack and set the frontier")
     .addOption(
       new Option(
         "--repo <dir>",
         "repository directory (or ORCH_REPO)"
       ).env("ORCH_REPO")
+    )
+    .option(
+      "--provider <provider>",
+      "stack provider: auto, graphite, github, or gitlab",
+      stackProvider,
+      "auto"
     )
     .option(
       "--prs <n,...>",
@@ -494,6 +514,7 @@ function createProgram(io: Io): Command {
           store.frontier.set({
             repo: frontierRepo(options),
             prs: options.prs,
+            provider: options.provider,
           }),
         frontierLine
       )

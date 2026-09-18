@@ -58,6 +58,35 @@ convenience route when you want `/poteto-mode` style commands.
   your session has configured; unreachable sources are recorded as null
   findings, not invented.
 
+## Customizing skills
+
+Two supported tiers, by how durable the change is:
+
+- **Small or temporary tweaks — edit in place.** The installed plugin is
+  plain files under the hermes plugins dir; edit any `SKILL.md`, then
+  `hermes gateway restart`. Nothing re-scans local edits. On a root install
+  (`iap/pstack`), `hermes plugins update pstack` autostashes uncommitted
+  edits and reapplies them — keep them uncommitted; locally committed
+  changes block the fast-forward update. Subdir installs have no `.git`:
+  reinstalling to update **wipes** in-place edits, so copy modified skills
+  out first.
+- **Durable personal variants — fork the dist repo.** `iap/pstack` is the
+  plain package (manifest at root, no tooling): fork it, commit your
+  changes, install from your fork
+  (`hermes plugins install <you>/pstack --enable`). Updates become a normal
+  git pull/merge from upstream.
+
+Structural changes that must survive upstream re-pins (new adaptations,
+model-panel defaults, exclusions) belong in a fork of the development repo
+(`pstack-hermes`), via the converter — see its CONTRIBUTING.md. Broadly
+useful fixes are welcome as PRs there.
+
+> [!WARNING]
+> Keep the hermes vocabulary when editing skills — `delegate_task`,
+> `clarify`, `session_search`, `hermes cron`, `hermesbot`. Nothing on your
+> machine enforces this; a skill that instructs Cursor-style `Task`
+> subagents or `AskQuestion` will silently mislead the agent on hermes.
+
 ## Reporting problems
 
 Read [SECURITY.md](../SECURITY.md) first — it defines what belongs to this port

@@ -34,7 +34,7 @@ One message, three `delegate_task` calls (role: `leaf`), explicit `model:` on ea
 | Tooling | the reflect-tooling role model from `config/models.json` (fallback: parent chat model) | `references/tooling-reviewer.md` |
 | Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |
 
-Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `delegate_task` response body.
+Pass each template verbatim, substituting the Hermes session id or digest where marked. Reviewers return findings in the `delegate_task` response body.
 
 ### 3. Synthesize
 
