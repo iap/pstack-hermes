@@ -60,21 +60,26 @@ convenience route when you want `/poteto-mode` style commands.
 
 ## Customizing skills
 
-Two supported tiers, by how durable the change is:
+Pick by what you want to change — one of three routes:
 
-- **Small or temporary tweaks — edit in place.** The installed plugin is
-  plain files under the hermes plugins dir; edit any `SKILL.md`, then
-  `hermes gateway restart`. Nothing re-scans local edits. On a root install
-  (`iap/pstack`), `hermes plugins update pstack` autostashes uncommitted
-  edits and reapplies them — keep them uncommitted; locally committed
-  changes block the fast-forward update. Subdir installs have no `.git`:
-  reinstalling to update **wipes** in-place edits, so copy modified skills
-  out first.
-- **Durable personal variants — fork the dist repo.** `iap/pstack` is the
-  plain package (manifest at root, no tooling): fork it, commit your
-  changes, install from your fork
+- **Tweak a line or two (model slug, thresholds, wording) — edit in place.**
+  The installed plugin is plain files under the hermes plugins dir; edit any
+  `SKILL.md`, then `hermes gateway restart`. Nothing re-scans local edits.
+  On a root install (`iap/pstack`), `hermes plugins update pstack`
+  autostashes uncommitted edits and reapplies them — keep them uncommitted;
+  locally committed changes block the fast-forward update. Subdir installs
+  have no `.git`: reinstalling to update **wipes** in-place edits, so copy
+  modified skills out first.
+- **Own several changed skills, keep them versioned — fork the dist repo.**
+  `iap/pstack` is the plain package (manifest at root, no tooling): fork it,
+  commit your changes, install from your fork
   (`hermes plugins install <you>/pstack --enable`). Updates become a normal
   git pull/merge from upstream.
+- **Add your own new skills alongside pstack — a skill tap.** A tap is just
+  a GitHub repo of `skills/<name>/SKILL.md` directories:
+  `hermes skills tap add <you>/skills-repo`, then
+  `hermes skills install <you>/skills-repo/<skill>`. No fork of pstack, no
+  touching the installed tree; pstack's own skills stay stock.
 
 Structural changes that must survive upstream re-pins (new adaptations,
 model-panel defaults, exclusions) belong in a fork of the development repo
