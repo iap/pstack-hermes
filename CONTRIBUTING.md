@@ -69,9 +69,10 @@ bun run typecheck                         # deps + tsc --noEmit --strict
 4. **Publish** — on every push to `main`,
    [publish-plugin.yml](.github/workflows/publish-plugin.yml) re-runs
    convert → validate → scanner gate and publishes the built tree to the
-   dist repo `iap/pstack` as an **append-only commit** (build output; never
-   edited by hand, history never rewritten — `hermes plugins update`
-   fast-forwards installed clones). The dist
+   dist repo `iap/pstack` as an **append-only commit**, tagged
+   `pstack-<date>-<sha>` (the plugin catalog admits only repos with real
+   tags). Build output: never edited by hand, history never rewritten —
+   `hermes plugins update` fast-forwards installed clones. The dist
    repo's tree root is the package, which is what makes the root install
    shorthand (`hermes plugins install iap/pstack`) and in-place
    `hermes plugins update pstack` work. Requires the one-time `PLUGIN_DIST_TOKEN`

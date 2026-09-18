@@ -36,7 +36,8 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 
 > [!NOTE]
 > The bare-name form `hermes plugins install pstack` is not available —
-> no plugin-index entry exists for this package. Use one of the two forms above.
+> the package has no entry in the hermes plugin catalog yet. Use one of the
+> two forms above.
 
 **Update:** a root install keeps `.git`, so it updates in-place:
 ```sh

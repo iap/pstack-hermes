@@ -29,6 +29,8 @@ everywhere; provenance written by the converter) — no per-PR checkbox.
       Evidence:
 - [ ] `uv run --frozen tools/scanner_gate.py --package pstack` exit 0
       Evidence:
+- [ ] poteto-mode scripts Bun suite green (`bun run test` + `bun run typecheck`)
+      Evidence:
 - [ ] `hermes plugins doctor pstack --ci` exit 0 (install-relevant; ignore the
       "gateway restart" warning — it is unrelated to this plugin)
       Evidence:
