@@ -12,25 +12,17 @@
 - Package: `pstack/` — **generated** by `tools/convert.py`; never hand-edited.
 - A new conversion pass **must add a row here** (see Maintenance at the bottom).
 
-## Terminology — the "Phase-N" labels
+## Terminology
 
-`Phase-0`, `Phase-1`, `Phase-2A`, `Phase-4` are **historical stage labels from
-the original port project**, embedded in the converter's docstring and in the
-generated `.build-provenance.txt` fix register. They are names of
-port-work stages, not runtime concepts — the shipped plugin and hermes attach
-no meaning to them. For anyone reading the provenance file or converter:
+`Phase-N` labels in the converter docstring and `.build-provenance.txt` are
+port-stage names, not runtime concepts.
 
-| Label | What it named |
+| Label | Stage |
 |---|---|
-| Phase-0 | The initial conversion stage: copy the pinned upstream tree into the hermes `agent-plugins-v1` package shape (root manifest injection, skills flattening, UTF-8/LF normalization, provenance writing). The converter is still "the Phase-0 converter" because every build replays exactly that stage. |
-| Phase-1 | Post-copy hygiene transforms (R1, F16, F10–F12, F-publish in the pass table below). |
-| Phase-2 / Phase-2A | The vocabulary-adaptation waves: delegation translation (`Phase-2A` in the fix register) and related Cursor→hermes rewording passes. |
-| Phase-4 | The *future* rebuild of the two scanner-excluded upstream components (`automations/benny`) as hermes-native mechanisms — a label for "not done, deliberately excluded", not a scheduled milestone. |
-
-References in the converter docstring to a "study" (Ch3, subagent_03a) cite
-the original port's internal research notes; those notes are **not** part of
-this repository. The authoritative contract is this ledger plus the converter
-code itself.
+| Phase-0 | initial conversion: pinned upstream → `agent-plugins-v1` package shape |
+| Phase-1 | post-copy hygiene (R1, F16, F10–F12, F-publish) |
+| Phase-2A | vocabulary adaptation (delegation translation) |
+| Phase-4 | native rebuild of excluded `automations/benny` — not scheduled |
 
 ## 1. Conversion passes
 
