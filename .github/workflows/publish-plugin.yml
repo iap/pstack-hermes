@@ -117,11 +117,10 @@ jobs:
           fi
           export GIT_AUTHOR_NAME="github-actions[bot]" GIT_AUTHOR_EMAIL="github-actions[bot]@users.noreply.github.com"
           export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
-          converter="$(grep -o 'sha256\[:16\]=[0-9a-f]*' pstack/.build-provenance.txt | cut -d= -f2 || true)"
+          # One line: pin + run URL. Everything else (converter hash, timestamp)
+          # is already in .build-provenance.txt inside the tree.
           git -C "$dist" commit -q \
-            -m "publish: pstack built from upstream pin ${UPSTREAM_PIN}" \
-            -m "converter: ${converter:-unknown}; source run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          dist tree is build output - written only by publish-plugin.yml, never edited by hand."
+            -m "publish: pstack from pin ${UPSTREAM_PIN:0:7} (run ${GITHUB_RUN_ID})"
 
           git -C "$dist" push -q "$authed_url" main:main
           # Tag every real publish: the hermes plugin catalog requires the
