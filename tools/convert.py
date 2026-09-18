@@ -2048,15 +2048,6 @@ authoritative delta record.
   verdict as incomplete instead of clean — a verdict without its demanded live
   lane is not clean.
   (`no-comments`, `unslop`, and `technical-writing` do ship here.)
-<<<<<<< HEAD
-- Stack topology and frontier management: the orchestration tooling resolves
-  the frontier through Graphite (`gt`) — `orch frontier set`, the stacker's
-  restacks and stack surgery, and stack-aware merge ordering. The stacker role
-  maps to a hermes profile (identity + model + alias + description); kanban's
-  atomic `assign`/`claim` enforces one owner per task, and stack-level
-  exclusivity is policy layered on that. Retargeting through the stacker needs
-  `gt`; ordinary base changes to an existing child or the bottom PR go through
-=======
 - Frontier management (`orch frontier set`) supports `--provider auto`,
   `graphite`, and `github`. `auto` tries Graphite first, then GitHub-native
   PR base/head branch topology. GitLab is reserved in the CLI/API but not
@@ -2065,7 +2056,6 @@ authoritative delta record.
   writer, and restacks, stack surgery, and the stack-aware merge queue have
   no hermes equivalent. Retargeting through the stacker requires `gt`, but
   ordinary base changes to an existing child or the bottom PR go through
->>>>>>> 296badc (feat(pstack): T15 frontier provider abstraction + hermes adaptation contract, rebuilt from pin 93b00b8)
   the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker.
   Platform-native follow-ups, per platform: GitHub stacked pull requests
   (public preview) with the official `gh stack` extension — including its

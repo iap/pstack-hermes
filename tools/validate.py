@@ -474,6 +474,31 @@ def check_phase1(pkg: Path, rep: Report) -> None:
                 "(security bans package-wide, delegation vocab hermes-facing)")
 
 
+def check_conflict_markers(pkg: Path, rep: Report) -> None:
+    """No unresolved VCS conflict markers may survive into generated output.
+
+    Only the unambiguous markers are checked: `<<<<<<<`/`>>>>>>>`/`|||||||`
+    line starts. A bare `=======` line is a legal setext heading underline in
+    markdown and is therefore not flagged.
+    """
+    markers = ("<<<<<<<", ">>>>>>>", "|||||||")
+    bad = []
+    for p in sorted(pkg.rglob("*")):
+        if not p.is_file() or is_generated_dependency_path(p.relative_to(pkg)):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if line.startswith(markers):
+                bad.append(f"{p.relative_to(pkg)}:{lineno}:{line[:12]}")
+    if bad:
+        rep.fail(f"conflict markers present in generated output: {bad}")
+    else:
+        rep.ok("conflict markers: none in any package file")
+
+
 def check_hermes_adaptation_contract(pkg: Path, rep: Report) -> None:
     """Hermes-specific instruction contract checks for generated skills."""
     bad = []
@@ -682,6 +707,7 @@ def main() -> int:
         check_layout(pkg, rep)
         check_phase1(pkg, rep)
         check_hermes_adaptation_contract(pkg, rep)
+        check_conflict_markers(pkg, rep)
         check_model_panel(pkg, rep)
 
         print("-- [1..3] static checks (stdlib replication of agent_plugins.py rules) --")
