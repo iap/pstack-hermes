@@ -1208,73 +1208,10 @@ function githubPullRequests(repo: string): readonly GithubPr[] {
   return parsed.map(parseGithubPr);
 }
 
-interface GitlabPr {
-  readonly number: number;
-  readonly headRefName: string;
-  readonly baseRefName: string;
-  readonly state: FrontierPrState;
-}
-
-function parseGitlabPr(value: unknown, index: number): GitlabPr {
-  if (!isRecord(value)) {
-    throw new UserError(`glab mr list row ${index + 1} must be an object`);
-  }
-  const number = value.iid;
-  const headRefName = value.source_branch;
-  const baseRefName = value.target_branch;
-  const state = frontierPrStateOrNull(value.state);
-  if (
-    typeof number !== "number" ||
-    !Number.isSafeInteger(number) ||
-    number < 1 ||
-    typeof headRefName !== "string" ||
-    headRefName.trim().length === 0 ||
-    typeof baseRefName !== "string" ||
-    baseRefName.trim().length === 0 ||
-    state === null
-  ) {
-    throw new UserError(`glab mr list row ${index + 1} has an invalid shape`);
-  }
-  return { number, headRefName, baseRefName, state };
-}
-
-function gitlabPullRequests(repo: string): readonly GitlabPr[] {
-  let raw: string;
-  try {
-    raw = execFileSync(
-      "glab",
-      [
-        "mr",
-        "list",
-        "--all",
-        "--state",
-        "all",
-        "--output",
-        "json",
-      ],
-      {
-        cwd: repo,
-        encoding: "utf8",
-        env: { ...process.env, NO_COLOR: "1" },
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    );
-  } catch (error) {
-    throw new UserError(`glab mr list failed: ${errorMessage(error)}`);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    throw new UserError(`glab mr list returned invalid JSON: ${errorMessage(error)}`);
-  }
-  if (!isUnknownArray(parsed)) {
-    throw new UserError("glab mr list JSON must be an array");
-  }
-  return parsed.map(parseGitlabPr);
-}
-
-function githubFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+function githubFrontier(
+  repo: string,
+  pin?: readonly number[]
+): readonly FrontierPr[] {
   const rows = githubPullRequests(repo);
   if (rows.length === 0) {
     throw new UserError("gh pr list did not return any pull requests");
@@ -1296,16 +1233,16 @@ function githubFrontier(repo: string, pin?: readonly number[]): readonly Frontie
         : `github stack discovery found none of the pinned PRs: ${pin.join(",")}`
     );
   }
-  const candidateRoots = candidates.filter((row) => !byHead.has(row.baseRefName));
-  if (candidateRoots.length !== 1) {
+  const roots = candidates.filter((row) => !byHead.has(row.baseRefName));
+  if (roots.length !== 1) {
     throw new UserError(
-      candidateRoots.length === 0
+      roots.length === 0
         ? "github stack discovery found no root PR; at least one PR must target trunk"
-        : `github stack discovery found multiple root PRs: ${candidateRoots.map((row) => row.number).join(",")}`
+        : `github stack discovery found multiple root PRs: ${roots.map((row) => row.number).join(",")}`
     );
   }
   const result: FrontierPr[] = [];
-  let current = candidateRoots[0];
+  let current = roots[0];
   while (current !== undefined) {
     result.push({
       pr: current.number,
@@ -1372,11 +1309,11 @@ function resolveFrontier(
     return { provider, prs: githubFrontier(repo, pin) };
   }
   if (provider === "gitlab") {
-    return { provider, prs: gitlabFrontier(repo) };
+    throw new UserError("gitlab stack provider is not implemented yet");
   }
   const failures: string[] = [];
   const attempted: string[] = [];
-  for (const candidate of ["graphite", "gitlab", "github"] as const) {
+  for (const candidate of ["graphite", "github"] as const) {
     attempted.push(candidate);
     try {
       const result = resolveFrontier(repo, candidate, pin);
@@ -1720,7 +1657,7 @@ export function openStore(
           throw new UserError("--prs must not contain duplicates");
         }
         const old = await readFrontier(store);
-        const frontier = resolveFrontier(repo, params.provider);
+        const frontier = resolveFrontier(repo, params.provider, pin);
         const prs = frontier.prs;
         if (pin !== undefined) {
           validateFrontierPin({

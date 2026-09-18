@@ -189,8 +189,7 @@ case "$*" in
     cat "${outputPath}"
     ;;
   *)
-    printf 'unexpected gh arguments: %s
-' "$*" >&2
+    printf 'unexpected gh arguments: %s\n' "$*" >&2
     exit 2
     ;;
 esac

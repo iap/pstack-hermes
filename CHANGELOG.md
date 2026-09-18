@@ -14,6 +14,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ### Fixed
 - Converter: `T13_MAP`'s frontier-provider entry was anchored on text that only exists *after* the `T13_MAP` forge-wording entry and `T14_MAP`'s first entry run — an ordering that can never match a clean pinned clone (the local 2026-09-14 build predated the map edit and its `pstack/` was stale). Re-anchored the entry to the pinned paragraph, pruned the two subsumed entries (`T13_MAP` forge-wording line, `T14_MAP` first entry — their intent is carried by the full-paragraph provider-selection rewrite), and rebuilt from the clean pin: `orchestrate.md` and the package README now carry the T15 provider-selection wording, with the anchor audit passing against a fresh clone of `93b00b8`.
+- T15b robustness (carried through the converter after a direct-to-generated-file edit was caught by the reproducibility gate): GitHub-native discovery now scopes itself to an explicit `--prs` pin instead of validating every PR in the repository as one stack, `gh pr list` passes an explicit `--limit 100` so connected stacks beyond 30 PRs are not silently truncated, and auto-provider fallback is persisted into `frontier.json` as a `fallback` field (which providers were skipped) so a Graphite → GitHub fallback is coordinator-visible instead of silent. The GitLab provider remains reserved ("not implemented yet") pending a reviewed `glab` integration.
 
 ## [0.4.2] - 2026-09-13
 
