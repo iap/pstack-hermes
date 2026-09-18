@@ -14,9 +14,10 @@
 # in-place update.
 #
 # Prerequisites (one-time, maintainer):
-#   1. Create the empty dist repo on GitHub (default branch: main).
-#   2. Add a fine-grained PAT (contents: read/write on DIST_REPO only) as the
-#      PLUGIN_DIST_TOKEN secret in this repository.
+#   Add a fine-grained PAT (contents: read/write on DIST_REPO only) as the
+#   PLUGIN_DIST_TOKEN secret in this repository. The dist repo
+#   (github.com/iap/pstack) exists; until the secret is set, publishes are
+#   skipped with a warning and the build gates above still run.
 
 name: publish-plugin
 
@@ -123,4 +124,11 @@ jobs:
           dist tree is build output - written only by publish-plugin.yml, never edited by hand."
 
           git -C "$dist" push -q "$authed_url" main:main
-          echo "published ${DIST_REPO}@$(git -C "$dist" rev-parse HEAD)"
+          # Tag every real publish: the hermes plugin catalog requires the
+          # submitted repo to carry real tags (not just a default branch), and
+          # each tag makes one dist state human-addressable. Tag name embeds
+          # the build date + the dist commit, so tags are unique per publish.
+          tag="pstack-$(date -u +%Y%m%d)-$(git -C "$dist" rev-parse --short HEAD)"
+          git -C "$dist" tag "$tag"
+          git -C "$dist" push -q "$authed_url" "refs/tags/$tag"
+          echo "published ${DIST_REPO}@$(git -C "$dist" rev-parse HEAD) (tag ${tag})"
