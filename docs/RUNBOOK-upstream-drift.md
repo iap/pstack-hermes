@@ -48,6 +48,15 @@ Any of these means upstream moved past the pin:
 8. **PR** with `rebuilt from pin <sha>` in the body (the PR template carries the
    fields) and a one-line note per map change.
 
+## If upstream disappears
+
+`iap/plugins` is a fork of `cursor/plugins` kept as pin insurance. If upstream
+is deleted or moves, point the clone step in the four workflows that declare
+`UPSTREAM_PIN` (`ci.yml`, `release.yml`, `publish-plugin.yml`,
+`upstream-drift-watch.yml`) at the fork — the port then continues from the
+frozen pin. Users are never affected: installs and updates come from
+`iap/pstack`, not upstream.
+
 ## Do not
 
 - **Do not hand-edit `pstack/`.** It is generated; edits vanish on rebuild.
