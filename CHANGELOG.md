@@ -2,11 +2,18 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
-## [Unreleased]
+## [0.4.3] - 2026-09-18
+
+### Added
+- `publish-plugin.yml`: CI publisher that publishes the validated built package to the plugin-only dist repo `iap/pstack` (build output; append-only commits so installed clones can fast-forward — history is never rewritten; skipped with a warning until `PLUGIN_DIST_TOKEN` is configured). The dist repo's tree root is the package, enabling the root install shorthand `hermes plugins install iap/pstack --enable` — no subdir — and in-place `hermes plugins update pstack` (root installs keep `.git`; verified against the hermes installer source). Requires the one-time `PLUGIN_DIST_TOKEN` secret (fine-grained PAT, contents: read/write on the dist repo only).
+- Agent-facing docs: `AGENTS.md` (harness identity, generated-tree rule, hermes-vs-Cursor vocabulary, primitive mapping) and a CONTRIBUTING rewrite (orientation, Bun setup, common-task recipes, publish stage).
+- `docs/USING.md` "Customizing skills": the two-tier guidance (edit in place vs fork the dist repo) with the keep-hermes-vocabulary warning for end users.
 
 ### Changed
-- README Known limitations: the stack topology / frontier entry now names the platform-native alternatives — GitHub stacked pull requests (public preview) with the official `gh stack` extension and its native restack, and GitLab stacked merge requests with merge trains — instead of implying no alternative exists. Graphite remains required until the orch scripts gain a forge backend.
-- T14 conversion pass (#40): `orchestrate.md`'s stack-safety lines re-pointed — the stacker role maps to a hermes profile, and stack operations are attributed to Graphite rather than implied to have a hermes equivalent.
+- README install routes reorganized: root install via the dist repo is primary; the `iap/pstack-hermes/pstack` subdir install is documented as the legacy route (still works). Update instructions split by route (in-place update for root installs; reinstall for subdir installs).
+
+### Fixed
+- Converter: `T13_MAP`'s frontier-provider entry was anchored on text that only exists *after* the `T13_MAP` forge-wording entry and `T14_MAP`'s first entry run — an ordering that can never match a clean pinned clone (the local 2026-09-14 build predated the map edit and its `pstack/` was stale). Re-anchored the entry to the pinned paragraph, pruned the two subsumed entries (`T13_MAP` forge-wording line, `T14_MAP` first entry — their intent is carried by the full-paragraph provider-selection rewrite), and rebuilt from the clean pin: `orchestrate.md` and the package README now carry the T15 provider-selection wording, with the anchor audit passing against a fresh clone of `93b00b8`.
 
 ## [0.4.2] - 2026-09-13
 

@@ -18,31 +18,33 @@ Cursor-plugin bugs that reproduce without this port belong upstream.
 ## Install
 
 ```sh
-# hermes (portable plugin path) — shorthand form (recommended)
-hermes plugins install iap/pstack-hermes/pstack --enable
+# hermes (portable plugin path) — root install (recommended)
+hermes plugins install iap/pstack --enable
 
-# Alternative: install from the pstack subdir URL directly
-# hermes plugins install https://github.com/iap/pstack-hermes/pstack --enable
+# Legacy: subdir install from this dev repo (still works)
+hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-> Note: the shorthand form `iap/pstack-hermes/pstack` is required — the full
-> URL form fails because hermes treats the path as a repo root, not a subdir.
+> [!NOTE]
+> The root form installs from the **dist repo** (`iap/pstack`), whose tree root
+> is the built package — published by CI from the pinned upstream build
+> ([publish-plugin.yml](.github/workflows/publish-plugin.yml)). The dev repo
+> itself (`iap/pstack-hermes`) cannot be installed from its root: the install
+> scanner scans the whole tree, and this repo deliberately ships its
+> development tooling (`tools/`, CI) alongside the package. The `pstack` subdir
+> is the plugin; the dist repo is the plugin.
 
-> Note: installing from the repo root or the release zip URL is blocked by the
-> install scanner **by design** — this repository ships its development tooling
-> (`tools/`, CI) alongside the package, and the scanner correctly refuses to
-> install a source tree that contains it. The `pstack` subdir is the plugin.
-
+> [!NOTE]
 > The bare-name form `hermes plugins install pstack` is not available —
-> no plugin-index entry exists for this package. Use the shorthand form
-> `iap/pstack-hermes/pstack` shown above.
+> no plugin-index entry exists for this package. Use one of the two forms above.
 
-**Update:** plugins installed from git subdirs cannot be updated in-place
-(hermes strips the `.git` directory). To update, reinstall:
+**Update:** a root install keeps `.git`, so it updates in-place:
 ```sh
-hermes plugins uninstall pstack
-hermes plugins install iap/pstack-hermes/pstack --enable
+hermes plugins update pstack
 ```
+
+Subdir installs strip the `.git` directory on install and cannot update
+in-place — to update one, uninstall and reinstall with the subdir form.
 
 ## What's inside
 
@@ -62,13 +64,16 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 ## Repository layout
 
 ```
+AGENTS.md          instructions for coding agents (harness identity, generated-tree rule)
 pstack/            the built package (converter output; provenance in .build-provenance.txt)
-tools/convert.py   Cursor pstack → hermes converter (T1–T13 transforms, atomic builds)
-tools/validate.py  verification ladder: static → repo YAML → gold loader → doctor
+tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform passes, atomic builds)
+tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
+                   → gold manifest → gold load
 patches/           the 4 hermes-fork patches the port depends on
 docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
                    PATCHES.md + UPSTREAM-PR.md (historical)
-.github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism), PR labeler, issue templates
+.github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
+                   publish-plugin.yml (dist-repo publisher), PR labeler, issue templates
 ```
 
 ## Verification
@@ -105,7 +110,11 @@ uv run --frozen pytest -q             # tooling unit tests
 uv run --frozen ruff check tools      # lint
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
+The poteto-mode checker scripts additionally run a Bun suite (CI runs the
+same): `cd pstack/skills/poteto-mode/scripts && bun run test && bun run typecheck`.
+
+Coding agents start with [AGENTS.md](AGENTS.md); humans continue in
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 [docs/PATCHES.md](docs/PATCHES.md) for the fork patches the port relies on.
 
 ## Naming
@@ -113,7 +122,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
 | Thing | Name | Why |
 |---|---|---|
 | The package | `pstack` | upstream identity (plugin.json, v0.14.8) — preserved |
-| This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes) |
+| This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes); the development/pipeline repo |
+| Dist repo | `pstack` (`iap/pstack`) | plugin-only build output, published by [publish-plugin.yml](.github/workflows/publish-plugin.yml) (append-only commits); the root install source |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
 | Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.14.8`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
