@@ -2029,6 +2029,27 @@ ledger with reviewer checks lives in the dev repo
     (out / "README.md").write_bytes(readme.encode("utf-8"))
     st.files_copied += 1
 
+    # (h) after-install.md — hermes renders this instead of the generic
+    # "Plugin installed" panel at the end of `plugins install`.
+    after_install = """# pstack installed
+
+1. `hermes gateway restart`
+2. Run the `setup-pstack` skill once — it writes `config/models.json`
+   (the model panel the workflow skills read).
+3. Load `poteto-mode` and hand it a real task — it classifies the work and
+   routes to the right playbook.
+
+Skills are opt-in on the portable path: load one with
+`skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
+`skills/` dir to `skills.external_dirs` in the hermes config for
+`/<name>` slash commands. Update anytime with `hermes plugins update pstack`.
+Docs: <https://github.com/iap/pstack#readme>
+"""
+    (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
+    st.files_copied += 1
+    st.fixes.append("after-install.md: install-completion panel (gateway restart, "
+                    "setup-pstack, poteto-mode routing)")
+
     # provenance
     conv_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
     # Fixes are derived from st.fixes (what actually ran), never hardcoded —
