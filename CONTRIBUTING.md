@@ -4,20 +4,20 @@ Thanks for helping port and maintain pstack on hermes. The repo is small and
 the contract is strict — read this once and the CI will never surprise you.
 
 > [!NOTE]
-> Coding agents work from [AGENTS.md](AGENTS.md) (harness identity, generated-
-> tree rule, hermes-vs-Cursor vocabulary). Humans start here. Both describe
-> the same contract; this file carries the procedures, that one carries the
-> orientation.
+> Coding agents work from [AGENTS.md](AGENTS.md) (change triage, hermes work
+> loop, vocabulary bans). Humans start here. Both describe the same contract;
+> that file carries triage and verification orientation; this file carries
+> procedures (setup, common tasks, PRs, release).
 
 ## Orientation
 
 | Read | For |
 |---|---|
-| [AGENTS.md](AGENTS.md) | what this repo is, the generated-tree rule, hermes vs Cursor vocabulary |
+| [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
 | [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) | the ledger: every conversion pass and its reviewer check |
 | [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) | re-pinning procedure when upstream moves |
-| [docs/PATCHES.md](docs/PATCHES.md) | the hermes-fork patches the port depends on |
+| [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
 One-sentence model of the repo: **`tools/convert.py` turns a pinned upstream
 clone into `pstack/`; `tools/validate.py` and CI keep that output honest;
