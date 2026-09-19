@@ -65,7 +65,7 @@ in-place — to update one, uninstall and reinstall with the subdir form.
 ## Repository layout
 
 ```
-AGENTS.md          instructions for coding agents (harness identity, generated-tree rule)
+AGENTS.md          instructions for coding agents (triage, hermes work loop, vocabulary)
 pstack/            the built package (converter output; provenance in .build-provenance.txt)
 tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform passes, atomic builds)
 tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
@@ -114,9 +114,9 @@ uv run --frozen ruff check tools      # lint
 The poteto-mode checker scripts additionally run a Bun suite (CI runs the
 same): `cd pstack/skills/poteto-mode/scripts && bun run test && bun run typecheck`.
 
-Coding agents start with [AGENTS.md](AGENTS.md); humans continue in
-[CONTRIBUTING.md](CONTRIBUTING.md) for the full contract, and
-[docs/PATCHES.md](docs/PATCHES.md) for the fork patches the port relies on.
+Coding agents start with [AGENTS.md](AGENTS.md) (triage + hermes verify loop);
+humans continue in [CONTRIBUTING.md](CONTRIBUTING.md) for procedures, and
+[docs/PATCHES.md](docs/PATCHES.md) for historical hermes-fork patch reference.
 
 ## Naming
 

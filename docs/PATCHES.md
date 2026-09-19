@@ -8,6 +8,10 @@
 > carrying them is an open decision (see the repository issues); treat this file
 > as a record, not a live plan.
 
+Agents routing harness gaps: prefer a fix or issue on
+`NousResearch/hermes-agent`. Do not treat these patches as a required
+install step for pstack.
+
 These are *not* part of the pstack package. They are proposed changes to the
 hermes agent source tree (`%LOCALAPPDATA%\hermes\hermes-agent`),
 kept here because the portable-plugin work surfaced the gaps. Apply manually

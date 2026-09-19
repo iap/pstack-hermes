@@ -79,7 +79,11 @@ Pick by what you want to change — one of three routes:
   a GitHub repo of `skills/<name>/SKILL.md` directories:
   `hermes skills tap add <you>/skills-repo`, then
   `hermes skills install <you>/skills-repo/<skill>`. No fork of pstack, no
-  touching the installed tree; pstack's own skills stay stock.
+  touching the installed tree; pstack's own skills stay stock. Prefer this
+  (or hermes `skill_manage` / `/learn` into your tap) for *new* skills —
+  keep stock pstack skills stock. Hermes skill improvement and optional
+  self-evolution belong on **your** tap or fork copies, not on the installed
+  stock tree: updates and dist republishes will collide with those edits.
 
 Structural changes that must survive upstream re-pins (new adaptations,
 model-panel defaults, exclusions) belong in a fork of the development repo
