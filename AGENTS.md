@@ -88,9 +88,12 @@ Goal: prove the **built package** behaves on hermes — not that a Cursor IDE
 session looks right.
 
 1. Rebuild + `uv run --frozen tools/validate.py` (exit 0) — always.
-2. Install-relevant: `hermes plugins doctor pstack --ci` against an install of
-   the built tree (root install from dist, or a local path to `pstack/` when
-   testing a branch).
+2. Install-relevant: `hermes plugins doctor` against the **installed dist
+   package** (`hermes plugins doctor pstack --ci`, run from outside the
+   repo — `pstack` resolves to the installed plugin id) or against the
+   **branch-local build** (`hermes plugins doctor $PWD/pstack --ci`, run
+   from the repo root — explicit path so it does not silently hit the
+   installed dist).
 3. Optional smoke: load `poteto-mode` via the invoke route in
    [docs/USING.md](docs/USING.md) (`skill_view` or `skills.external_dirs`) and
    run one real task. Failures with a stock package and clean doctor → hermes
@@ -160,6 +163,7 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   them distinct.
 - Using Cursor/Graphite tooling habits as the implementation or review path
   for hermes delivery — verify with convert → validate → doctor / hermes invoke.
-- Pointing hermes `skill_manage` / `/learn` / self-evolution at stock package
-  skills — personal improvements belong in a skill tap or dist fork; durable
-  package changes go through the converter (see [docs/USING.md](docs/USING.md)).
+- Pointing hermes `skill_manage` / `hermes learning` / self-evolution at
+  stock package skills — personal improvements belong in a skill tap or dist
+  fork; durable package changes go through the converter
+  (see [docs/USING.md](docs/USING.md)).
