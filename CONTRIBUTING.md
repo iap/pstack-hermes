@@ -4,20 +4,20 @@ Thanks for helping port and maintain pstack on hermes. The repo is small and
 the contract is strict — read this once and the CI will never surprise you.
 
 > [!NOTE]
-> Coding agents work from [AGENTS.md](AGENTS.md) (harness identity, generated-
-> tree rule, hermes-vs-Cursor vocabulary). Humans start here. Both describe
-> the same contract; this file carries the procedures, that one carries the
-> orientation.
+> Coding agents work from [AGENTS.md](AGENTS.md) (change triage, hermes work
+> loop, vocabulary bans). Humans start here. Both describe the same contract;
+> that file carries triage and verification orientation; this file carries
+> procedures (setup, common tasks, PRs, release).
 
 ## Orientation
 
 | Read | For |
 |---|---|
-| [AGENTS.md](AGENTS.md) | what this repo is, the generated-tree rule, hermes vs Cursor vocabulary |
+| [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
 | [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) | the ledger: every conversion pass and its reviewer check |
 | [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) | re-pinning procedure when upstream moves |
-| [docs/PATCHES.md](docs/PATCHES.md) | the hermes-fork patches the port depends on |
+| [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
 One-sentence model of the repo: **`tools/convert.py` turns a pinned upstream
 clone into `pstack/`; `tools/validate.py` and CI keep that output honest;
@@ -65,7 +65,11 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    flow through automatically. Dependency installs (`node_modules/`) created
    by script verification are exempt from the scans.
 3. **Doctor** — `hermes plugins doctor pstack --ci` for install-relevant
-   changes (maintainer machine; needs the hermes venv).
+   changes (maintainer machine; needs the hermes venv). Select the target
+   explicitly — `pstack` is ambiguous: from the repo root it names the local
+   directory, elsewhere it can resolve to an installed package. For branch
+   verification, pass the resolved local path (`$(pwd)/pstack`); for the
+   installed dist package, use the name as installed.
 4. **Publish** — on every push to `main`,
    [publish-plugin.yml](.github/workflows/publish-plugin.yml) re-runs
    convert → validate → scanner gate and publishes the built tree to the

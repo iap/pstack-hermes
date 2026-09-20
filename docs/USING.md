@@ -31,7 +31,10 @@ convenience route when you want `/poteto-mode` style commands.
 
 1. **Install** (see the README for the exact command), then run
    `hermes plugins doctor pstack --ci` — the manifest must parse and all skills
-   must be discovered.
+   must be discovered. Pick the target explicitly: `pstack` is ambiguous
+   (repo root = local directory; elsewhere = installed package). Use the name
+   as installed for the dist package, or a resolved local path for a branch
+   tree.
 2. **Configure the model panel** — run the `setup-pstack` skill once. It writes
    `config/models.json` mapping pstack's roles (code, prose, judgment, tooling,
    cross-judge, and the panel roles) to models available to you. `inherit-parent`
@@ -79,7 +82,11 @@ Pick by what you want to change — one of three routes:
   a GitHub repo of `skills/<name>/SKILL.md` directories:
   `hermes skills tap add <you>/skills-repo`, then
   `hermes skills install <you>/skills-repo/<skill>`. No fork of pstack, no
-  touching the installed tree; pstack's own skills stay stock.
+  touching the installed tree; pstack's own skills stay stock. Prefer this
+  (or hermes `skill_manage` / `/learn` into your tap) for *new* skills —
+  keep stock pstack skills stock. Hermes skill improvement and optional
+  self-evolution belong on **your** tap or fork copies, not on the installed
+  stock tree: updates and dist republishes will collide with those edits.
 
 Structural changes that must survive upstream re-pins (new adaptations,
 model-panel defaults, exclusions) belong in a fork of the development repo
