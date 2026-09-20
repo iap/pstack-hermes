@@ -70,7 +70,7 @@ pstack/            the built package (converter output; provenance in .build-pro
 tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform passes, atomic builds)
 tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
                    → gold manifest → gold load
-patches/           the 4 hermes-fork patches the port depends on
+patches/           historical hermes-fork patches (reference only; not required to install)
 docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
                    PATCHES.md + UPSTREAM-PR.md (historical)
 .github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
