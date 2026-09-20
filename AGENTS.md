@@ -55,7 +55,11 @@ Then:
    [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) with a **reviewer check**, and
    include rebuilt `pstack/` in the same PR (`rebuilt from pin <sha>` in the body).
 2. If the change is **install-relevant** (manifest, skill discovery, package
-   layout) → `hermes plugins doctor pstack --ci` (needs the hermes venv).
+   layout) → `hermes plugins doctor` against the **installed dist package**
+   (`hermes plugins doctor pstack --ci`, run from outside the repo — `pstack`
+   resolves to the installed plugin id) or against the **branch-local build**
+   (`hermes plugins doctor "$PWD/pstack" --ci`, run from the repo root —
+   explicit path so it does not silently hit the installed dist).
 3. Re-pin upstream only via
    [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) — never by
    hand-tuning `pstack/`.
@@ -91,7 +95,7 @@ session looks right.
 2. Install-relevant: `hermes plugins doctor` against the **installed dist
    package** (`hermes plugins doctor pstack --ci`, run from outside the
    repo — `pstack` resolves to the installed plugin id) or against the
-   **branch-local build** (`hermes plugins doctor $PWD/pstack --ci`, run
+   **branch-local build** (`hermes plugins doctor "$PWD/pstack" --ci`, run
    from the repo root — explicit path so it does not silently hit the
    installed dist).
 3. Optional smoke: load `poteto-mode` via the invoke route in
