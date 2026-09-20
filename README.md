@@ -137,6 +137,14 @@ hermes-adapted and Cursor-side behavior is neither tested nor supported here.
 For real Cursor-side work, install upstream pstack instead. The
 `.cursor-plugin/` and `agents/` surfaces are inert on hermes.
 
+## Known limitations
+
+- **poteto-mode stacker / cloud-restack model** — poteto-mode's `gt`
+  stacker and cloud-VM restack lanes (`orchestrate.md`, `orch/`) are
+  Cursor/Graphite-only. Hermes has no stacker/topology-writer equivalent
+  and runs lanes locally. These playbooks remain upstream method content;
+  the Cursor dual-load surface is inert on hermes.
+
 ## License
 
 MIT — upstream © 2026 Lauren Tan; port modifications © 2026 the
