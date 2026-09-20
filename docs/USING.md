@@ -31,7 +31,10 @@ convenience route when you want `/poteto-mode` style commands.
 
 1. **Install** (see the README for the exact command), then run
    `hermes plugins doctor pstack --ci` — the manifest must parse and all skills
-   must be discovered.
+   must be discovered. Pick the target explicitly: `pstack` is ambiguous
+   (repo root = local directory; elsewhere = installed package). Use the name
+   as installed for the dist package, or a resolved local path for a branch
+   tree.
 2. **Configure the model panel** — run the `setup-pstack` skill once. It writes
    `config/models.json` mapping pstack's roles (code, prose, judgment, tooling,
    cross-judge, and the panel roles) to models available to you. `inherit-parent`

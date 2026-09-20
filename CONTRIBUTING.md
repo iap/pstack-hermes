@@ -65,7 +65,11 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    flow through automatically. Dependency installs (`node_modules/`) created
    by script verification are exempt from the scans.
 3. **Doctor** — `hermes plugins doctor pstack --ci` for install-relevant
-   changes (maintainer machine; needs the hermes venv).
+   changes (maintainer machine; needs the hermes venv). Select the target
+   explicitly — `pstack` is ambiguous: from the repo root it names the local
+   directory, elsewhere it can resolve to an installed package. For branch
+   verification, pass the resolved local path (`$(pwd)/pstack`); for the
+   installed dist package, use the name as installed.
 4. **Publish** — on every push to `main`,
    [publish-plugin.yml](.github/workflows/publish-plugin.yml) re-runs
    convert → validate → scanner gate and publishes the built tree to the
