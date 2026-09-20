@@ -139,11 +139,16 @@ For real Cursor-side work, install upstream pstack instead. The
 
 ## Known limitations
 
-- **poteto-mode stacker / cloud-restack model** — poteto-mode's `gt`
-  stacker and cloud-VM restack lanes (`orchestrate.md`, `orch/`) are
-  Cursor/Graphite-only. Hermes has no stacker/topology-writer equivalent
-  and runs lanes locally. These playbooks remain upstream method content;
-  the Cursor dual-load surface is inert on hermes.
+- **Graphite (`gt`) optional** — poteto-mode's `orch` now defaults to
+  GitHub-native stack discovery (`gh pr list` base/head chain). Graphite
+  is still supported via `--provider graphite` but is no longer required.
+- **Cloud restacks** — restacking still requires Graphite (`gt`); hermes
+  runs lanes locally via `git rebase` + `git push --force-with-lease`.
+- **Cursor control surfaces** — `control-ui`, `control-cli`, and `deslop`
+  are Cursor-only skills with no hermes equivalent. Live UI/CLI
+  verification is not available on hermes.
+- **Origin forge** — `origin pr ...` commands are Cursor's Origin CLI;
+  hermes falls back to `gh` when Origin is not installed.
 
 ## License
 
