@@ -565,6 +565,156 @@ function branchSha({
     )
     replace_required(
         store,
+        """  return result;
+}
+
+function branchSha({
+  branch,
+  repo,
+}: {
+  branch: string;
+  repo: string;
+}): string {
+""",
+        """  return result;
+}
+
+interface GitLabMr {
+  readonly iid: number;
+  readonly sourceBranch: string;
+  readonly targetBranch: string;
+  readonly state: FrontierPrState;
+}
+
+function parseGitLabMr(value: unknown, index: number): GitLabMr {
+  if (!isRecord(value)) {
+    throw new UserError(`glab mr list row ${index + 1} must be an object`);
+  }
+  const iid = value.iid;
+  const sourceBranch = value.sourceBranch;
+  const targetBranch = value.targetBranch;
+  const state = frontierPrStateOrNull(value.state);
+  if (
+    typeof iid !== "number" ||
+    !Number.isSafeInteger(iid) ||
+    iid < 1 ||
+    typeof sourceBranch !== "string" ||
+    sourceBranch.trim().length === 0 ||
+    typeof targetBranch !== "string" ||
+    targetBranch.trim().length === 0 ||
+    state === null
+  ) {
+    throw new UserError(`glab mr list row ${index + 1} has an invalid shape`);
+  }
+  return { iid, sourceBranch, targetBranch, state };
+}
+
+function gitlabPullRequests(repo: string): readonly GitLabMr[] {
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "glab",
+      [
+        "mr",
+        "list",
+        "--state",
+        "all",
+        "-F",
+        "json",
+        "--limit",
+        "100",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+  } catch (error) {
+    throw new UserError(`glab mr list failed: ${errorMessage(error)}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new UserError(`glab mr list returned invalid JSON: ${errorMessage(error)}`);
+  }
+  if (!isUnknownArray(parsed)) {
+    throw new UserError("glab mr list JSON must be an array");
+  }
+  return parsed.map(parseGitLabMr);
+}
+
+function gitlabFrontier(
+  repo: string,
+  pin?: readonly number[]
+): readonly FrontierPr[] {
+  const rows = gitlabPullRequests(repo);
+  if (rows.length === 0) {
+    throw new UserError("glab mr list did not return any merge requests");
+  }
+  const byHead = new Map<string, GitLabMr>();
+  for (const row of rows) {
+    if (byHead.has(row.sourceBranch)) {
+      throw new UserError(`glab mr list contains duplicate source branch ${row.sourceBranch}`);
+    }
+    byHead.set(row.sourceBranch, row);
+  }
+  const candidates = pin === undefined
+    ? rows
+    : rows.filter((row) => pin.includes(row.iid));
+  if (candidates.length === 0) {
+    throw new UserError(
+      pin === undefined
+        ? "gitlab stack discovery found no merge requests"
+        : `gitlab stack discovery found none of the pinned MRs: ${pin.join(",")}`
+    );
+  }
+  const roots = candidates.filter((row) => !byHead.has(row.targetBranch));
+  if (roots.length !== 1) {
+    throw new UserError(
+      roots.length === 0
+        ? "gitlab stack discovery found no root MR; at least one MR must target trunk"
+        : `gitlab stack discovery found multiple root MRs: ${roots.map((row) => row.iid).join(",")}`
+    );
+  }
+  const result: FrontierPr[] = [];
+  let current = roots[0];
+  while (current !== undefined) {
+    result.push({
+      pr: current.iid,
+      branches: current.sourceBranch,
+      sha: branchSha({ branch: current.sourceBranch, repo }),
+      state: current.state,
+    });
+    const children = candidates.filter((row) => row.targetBranch === current?.sourceBranch);
+    if (children.length > 1) {
+      throw new UserError(
+        `gitlab stack discovery found multiple children for ${current.sourceBranch}: ${children.map((row) => row.iid).join(",")}`
+      );
+    }
+    current = children[0];
+  }
+  if (pin === undefined && result.length !== rows.length) {
+    throw new UserError("gitlab stack discovery found disconnected merge requests");
+  }
+  return result;
+}
+
+function branchSha({
+  branch,
+  repo,
+}: {
+  branch: string;
+  repo: string;
+}): string {
+""",
+        "GitLab provider insertion",
+    )
+
+    replace_required(
+        store,
         """function resolveFrontier(repo: string): readonly FrontierPr[] {
   return graphiteFrontier(repo).map((row) => ({
     ...row,
@@ -590,11 +740,11 @@ function branchSha({
     return { provider, prs: githubFrontier(repo, pin) };
   }
   if (provider === "gitlab") {
-    throw new UserError("gitlab stack provider is not implemented yet");
+    return { provider, prs: gitlabFrontier(repo, pin) };
   }
   const failures: string[] = [];
   const attempted: string[] = [];
-  for (const candidate of ["graphite", "github"] as const) {
+  for (const candidate of ["graphite", "github", "gitlab"] as const) {
     attempted.push(candidate);
     try {
       const result = resolveFrontier(repo, candidate, pin);
@@ -1373,11 +1523,18 @@ The parent locates the current session via `session_search` (hermes stores sessi
     st.fixes.append(f"T14: stacker-role / topology rewording (option b, "
                     f"issue #33) applied across {t14_files} skill file(s) "
                     "(stacker clone, one-stacker serialization, retarget)")
+    # --- T15: GitLab provider availability (post #47) ---
+    # Document that auto fallback now includes GitLab after graphite/github.
+    t15_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                          T15_MAP, map_name="T15_MAP", st=st)
+    st.fixes.append(f"T15: GitLab provider availability documented "
+                    f"across {t15_files} skill file(s) "
+                    "(auto fallback now includes gitlab)")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP},
+         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP, "T15_MAP": T15_MAP},
         st,
     )
 
@@ -1605,6 +1762,17 @@ T14_MAP = [
      "bottom PR go through the resolved forge (`origin pr edit` / `gh pr "
      "edit`) and need no stacker. Merges and stack surgery are units with "
      "briefs like any other."),
+]
+
+T15_MAP = [
+    ("`orch frontier set --provider auto` tries Graphite first and then a "
+     "GitHub-native chain inferred from PR base/head branches; pin with "
+     "`--provider graphite` or `--provider github` when the stack source "
+     "must be explicit.",
+     "`orch frontier set --provider auto` tries Graphite first, then GitHub, "
+     "then GitLab — each inferred from PR/MR base/head branches; pin with "
+     "`--provider graphite`, `--provider github`, or `--provider gitlab` "
+     "when the stack source must be explicit."),
 ]
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
