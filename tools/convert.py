@@ -1525,11 +1525,18 @@ The parent locates the current session via `session_search` (hermes stores sessi
     st.fixes.append(f"T14: stacker-role / topology rewording (option b, "
                     f"issue #33) applied across {t14_files} skill file(s) "
                     "(stacker clone, one-stacker serialization, retarget)")
+    # --- T15: GitLab provider availability (post #47) ---
+    # Document that auto fallback now includes GitLab after graphite/github.
+    t15_files = apply_map(sorted((out / "skills").rglob("*.md")),
+                          T15_MAP, map_name="T15_MAP", st=st)
+    st.fixes.append(f"T15: GitLab provider availability documented "
+                    f"across {t15_files} skill file(s) "
+                    "(auto fallback now includes gitlab)")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP},
+         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP, "T15_MAP": T15_MAP},
         st,
     )
 
@@ -1757,6 +1764,17 @@ T14_MAP = [
      "bottom PR go through the resolved forge (`origin pr edit` / `gh pr "
      "edit`) and need no stacker. Merges and stack surgery are units with "
      "briefs like any other."),
+]
+
+T15_MAP = [
+    ("`orch frontier set --provider auto` tries Graphite first and then a "
+     "GitHub-native chain inferred from PR base/head branches; pin with "
+     "`--provider graphite` or `--provider github` when the stack source "
+     "must be explicit.",
+     "`orch frontier set --provider auto` tries Graphite first, then GitHub, "
+     "then GitLab — each inferred from PR/MR base/head branches; pin with "
+     "`--provider graphite`, `--provider github`, or `--provider gitlab` "
+     "when the stack source must be explicit."),
 ]
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
