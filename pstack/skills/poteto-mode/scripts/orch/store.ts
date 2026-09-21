@@ -1306,8 +1306,6 @@ function gitlabPullRequests(repo: string): readonly GitLabMr[] {
         "all",
         "-F",
         "json",
-        "--jq",
-        ".[] | {iid, sourceBranch, targetBranch, state}",
         "--limit",
         "100",
       ],
