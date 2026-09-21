@@ -60,8 +60,8 @@ a hermes defect that reproduces with the plugin disabled →
 
 ## What hermes loads
 
-- **45 skills** (24 workflow/mode +
-  21 `principle-*`), single-level `skills/<dir>/SKILL.md`,
+- **47 skills** (24 workflow/mode +
+  23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
   discovered via the root `plugin.json` (agent-plugins-v1 manifest,
   9 whitelisted fields).
 - `skills/hermesbot/` — hermes-native control-surface skill on the gateway
