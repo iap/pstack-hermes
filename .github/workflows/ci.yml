@@ -46,17 +46,30 @@ jobs:
           PACKAGE_PATH: pstack
         run: |
           set -euo pipefail
+          # Both sides must hash the SAME path strings or they can never match:
+          # git reports "pstack/...", a cd+find reports "./...". Normalise both to
+          # the package-relative form before hashing.
           hash_git_tree() {
+            local prefix="$1/"
             git ls-tree -r --name-only HEAD -- "$1" \
               | grep -v '\.build-provenance\.txt$' \
               | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                  printf '%s  %s\n' "$(git show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "${f#"$prefix"}"
                 done \
               | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
           hash_dir_tree() {
-            ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
-                | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
+            local root="$1"
+            # GNU-only flags (sed -z) are deliberately avoided: this job also runs
+            # on windows-latest, where the shell is Git-bash but BSD/GNU userland
+            # differences have bitten this repo before.
+            ( cd "$root" && find . -type f ! -name ".build-provenance.txt" \
+                | sed 's|^\./||' \
+                | LC_ALL=C sort \
+                | while IFS= read -r f; do
+                    printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
+                  done \
+                | sha256sum | cut -d' ' -f1 )
           }
           committed="$(hash_git_tree "$PACKAGE_PATH")"
           rebuilt_dir="$RUNNER_TEMP/pstack-rebuilt"
