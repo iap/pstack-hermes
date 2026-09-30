@@ -1,37 +1,50 @@
 <!--
-Check a box only when it applies; otherwise leave it unchecked with an N/A note.
-Paste evidence under each checked box — a bare check without output proves nothing.
+Keep this short: a template nobody finishes is worse than none.
+Every checkbox below is something CI or tools/pr_checklist.py can actually
+verify. Boxes that cannot be verified were deleted, not softened.
+Instructions live in HTML comments and never render in the PR form.
 Full gate list mirrors the CONTRIBUTING "Pull requests" section.
-Attribution is standing policy in CONTRIBUTING.md (upstream MIT preserved
-everywhere; provenance written by the converter) — no per-PR checkbox.
+Attribution is standing policy in CONTRIBUTING.md - no per-PR checkbox.
+The ```yaml provenance``` block is machine-read by tools/pr_checklist.py.
 -->
-# Pull request checklist
+# Pull request
 
-## Scope
-- What changed (one line):
-- Which platform(s) this affects: hermes / Cursor dual-load / both
+## What changed
+<!-- one or two lines: the change, not a narrative -->
 
-## Generated package (complete only if this PR changes `pstack/`)
-- Rebuilt from pin: `<sha>` (must match `.build-provenance.txt` `source_commit`)
-- Converter change behind the rebuild: <pass/map, e.g. a `T13_MAP` entry>
-- [ ] `pstack/` changes are converter output only — no hand edits
+## Affected surface
+- [ ] tooling (`tools/`, CI, docs)
+- [ ] generated package (`pstack/`) — **requires a rebuild from the current pin**
 
-## Environment
-- OS: Windows / macOS / Linux
-- Shell: bash / PowerShell / zsh
-- Hermes version: (output of `hermes --version`)
+## Provenance — required if `pstack/` changed
+<!-- tools/pr_checklist.py compares source_commit below to the tree's
+     .build-provenance.txt. Copy the exact values from your rebuilt package.
+     converter is optional; source_commit is the one that must be right. -->
+```yaml
+source_commit: <40-char SHA from pstack/.build-provenance.txt>
+converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
+```
 
-## Verification (paste evidence)
-- [ ] `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack` runs clean
-      (converter or a skill changed; clone upstream at the pinned SHA if you don't have one)
-      Evidence:
-- [ ] `uv run --frozen tools/validate.py --package pstack` exit 0
-      Evidence:
-- [ ] `uv run --frozen tools/scanner_gate.py --package pstack` exit 0
-      Evidence:
-- [ ] poteto-mode scripts Bun suite green (`bun run test` + `bun run typecheck`)
-      Evidence:
-- [ ] `hermes plugins doctor pstack --ci` exit 0 (install-relevant; ignore the
-      "gateway restart" warning — it is unrelated to this plugin)
-      Evidence:
-- [ ] Provenance consistency: `.build-provenance.txt` still records the pinned upstream SHA
+## Verification
+<!-- Paste the command output. A checked box with no output below it is flagged
+     by tools/pr_checklist.py. Put each command's output under its own box. -->
+- [ ] `uv run --frozen ruff check tools`
+      ```
+      <output>
+      ```
+- [ ] `uv run --frozen pytest -q`
+      ```
+      <output>
+      ```
+- [ ] package rebuilt from the pin and `git status` shows the intended `pstack/` diff
+      ```
+      <git status --porcelain output, or "n/a - no pstack/ change">
+      ```
+- [ ] poteto-mode scripts green, if touched (`bun run test` + `bun run typecheck`)
+      ```
+      <output, or "n/a">
+      ```
+
+## Notes for reviewers
+<!-- Anything a reviewer should weigh: trade-offs, skipped boxes and why,
+     screenshots, follow-ups. Optional. -->

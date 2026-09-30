@@ -116,8 +116,12 @@ bun run typecheck                         # deps + tsc --noEmit --strict
 
 Follow [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md)
 verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
-in **three workflows** — `ci.yml`, `release.yml`, `upstream-drift-watch.yml` —
-and all three must move in the same PR. Update maps, never the package.
+in **four workflows** — `ci.yml`, `release.yml`, `publish-plugin.yml`,
+`upstream-drift-watch.yml` — and all four must move in the same PR. Update maps,
+never the package. (The build prologue itself now lives once, in the
+`.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
+`publish-plugin.yml` pass the pin to it as an input rather than each repeating
+the clone/verify/convert steps.)
 
 ### Change the model panel
 

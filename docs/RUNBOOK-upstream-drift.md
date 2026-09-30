@@ -41,8 +41,9 @@ Any of these means upstream moved past the pin:
    contract or Known limitations describe, update the README template in
    `convert.py` and rebuild.
 7. **Update `UPSTREAM_PIN` everywhere it is declared.** It is repeated
-   independently in **three** workflows — `ci.yml`, `release.yml`, and
-   `upstream-drift-watch.yml` — and all three must move together. The converter
+   independently in **four** workflows — `ci.yml`, `release.yml`,
+   `publish-plugin.yml`, and `upstream-drift-watch.yml` — and all four must move
+   together. The converter
    holds no pin: it records the SHA of the clone it is pointed at, so
    `source_commit` in `.build-provenance.txt` follows the checkout.
 8. **PR** with `rebuilt from pin <sha>` in the body (the PR template carries the
@@ -51,7 +52,7 @@ Any of these means upstream moved past the pin:
 ## If upstream disappears
 
 `iap/plugins` is a fork of `cursor/plugins` kept as pin insurance. If upstream
-is deleted or moves, point the clone step in the four workflows that declare
+is deleted or moves, point the build action's `upstream-pin` input in the workflows that declare
 `UPSTREAM_PIN` (`ci.yml`, `release.yml`, `publish-plugin.yml`,
 `upstream-drift-watch.yml`) at the fork — the port then continues from the
 frozen pin. Users are never affected: installs and updates come from

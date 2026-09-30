@@ -23,64 +23,84 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Record SOURCE_DATE_EPOCH
-        shell: bash
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+      # Shared build prologue (SOURCE_DATE_EPOCH, uv, upstream clone at the pin,
+      # SHA verification, Convert, Validate, Scanner gate). The action cannot set
+      # `permissions:` itself - that is job/workflow level - so this job's
+      # workflow-level `contents: read` above is what authorises the clone.
+      - name: Build package from pin
+        id: build
+        uses: ./.github/actions/build-package
         with:
-          enable-cache: true
+          upstream-pin: ${{ env.UPSTREAM_PIN }}
 
-      - name: Clone upstream pstack at pin
+      # The gate the previous implementation got wrong: it hashed
+      # $GITHUB_WORKSPACE/pstack *after* the build step had already replaced that
+      # directory, so it compared build1 against build2 and could never detect a
+      # hand-edited or stale committed package. This hashes the committed blobs
+      # straight out of the git object store, then compares them against a fresh
+      # build from the pin.
+      - name: Verify committed package matches a fresh build from the pin
         shell: bash
-        run: |
-          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
-          git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
-
-      - name: Verify pinned SHA
-        shell: bash
-        run: |
-          got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
-          if [ "$got" != "$UPSTREAM_PIN" ]; then
-            echo "::error::SHA mismatch: got $got, want $UPSTREAM_PIN"
-            exit 1
-          fi
-          echo "pinned upstream SHA verified: $got"
-
-      - name: Convert
-        shell: bash
-        run: uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out pstack
-
-      - name: Validate
-        shell: bash
-        run: uv run --frozen tools/validate.py --package pstack
-
-      - name: Scanner gate
-        shell: bash
-        run: uv run --frozen tools/scanner_gate.py --package pstack
-
-      - name: Verify reproducible build
-        shell: bash
+        env:
+          UPSTREAM_CLONE: ${{ steps.build.outputs.upstream-clone-path }}
+          PACKAGE_PATH: pstack
         run: |
           set -euo pipefail
-          tree_hash() {
-            ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
-                | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
+          # Both sides must hash the SAME path strings or they can never match:
+          # git reports "pstack/...", a cd+find reports "./...". Normalise both to
+          # the package-relative form before hashing.
+          hash_git_tree() {
+            local prefix="$1/"
+            git ls-tree -r --name-only HEAD -- "$1" \
+              | grep -v '\.build-provenance\.txt$' \
+              | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "${f#"$prefix"}"
+                done \
+              | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
-          # Rebuild into a scratch directory to compare against the untouched checkout
-          uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out "$RUNNER_TEMP/pstack-rebuilt"
-          committed="$(tree_hash "$GITHUB_WORKSPACE/pstack")"
-          rebuilt="$(tree_hash "$RUNNER_TEMP/pstack-rebuilt")"
+          hash_dir_tree() {
+            local root="$1"
+            # GNU-only flags (sed -z) are deliberately avoided: this job also runs
+            # on windows-latest, where the shell is Git-bash but BSD/GNU userland
+            # differences have bitten this repo before.
+            ( cd "$root" && find . -type f ! -name ".build-provenance.txt" \
+                | sed 's|^\./||' \
+                | LC_ALL=C sort \
+                | while IFS= read -r f; do
+                    printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
+                  done \
+                | sha256sum | cut -d' ' -f1 )
+          }
+          committed="$(hash_git_tree "$PACKAGE_PATH")"
+          rebuilt_dir="$RUNNER_TEMP/pstack-rebuilt"
+          uv run --frozen tools/convert.py --source "$UPSTREAM_CLONE" --out "$rebuilt_dir"
+          rebuilt="$(hash_dir_tree "$rebuilt_dir")"
           echo "committed: $committed"
           echo "rebuilt:   $rebuilt"
           if [ "$committed" != "$rebuilt" ]; then
-            echo "::error::committed pstack/ drifts from a fresh build - hand-edits or stale package"
-            diff -r --exclude=.build-provenance.txt "$GITHUB_WORKSPACE/pstack" "$RUNNER_TEMP/pstack-rebuilt" || true
+            echo "::error::committed $PACKAGE_PATH/ is not reproducible from pin $UPSTREAM_PIN - hand edits, a stale package, or a missing rebuild"
             exit 1
           fi
-          echo "reproducible build: OK (byte-identical to fresh rebuild)"
+          echo "reproducible build: OK (committed package is byte-identical to a fresh build from the pin)"
+
+      # A stale build must never leave scratch siblings behind in the working
+      # tree; if one appears, the tree is not clean and the gate above is suspect.
+      # A rebuild legitimately rewrites .build-provenance.txt (it re-stamps
+      # converted_at), and BOTH hash gates exclude that file by design - it
+      # carries a timestamp. Asserting on it would fail every run. Everything
+      # else must be untouched: a hand-edited package file, or a leftover
+      # pstack.tmp-build / pstack.prev-build scratch dir, still fails here.
+      - name: Assert no tracked file changed by the build
+        shell: bash
+        run: |
+          set -euo pipefail
+          dirty="$(git status --porcelain -- . ':(exclude)pstack/.build-provenance.txt')"
+          if [ -n "$dirty" ]; then
+            echo "::error::the build modified tracked files other than the provenance stamp"
+            echo "$dirty"
+            exit 1
+          fi
+          echo "no unexpected tracked changes: OK"
 
       - name: Upload package artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -164,3 +184,39 @@ jobs:
       - name: Typecheck (poteto-mode scripts)
         working-directory: pstack/skills/poteto-mode/scripts
         run: tsc --project watch-pr/tsconfig.json --noEmit --strict
+
+  pr-checklist:
+    # Advisory: reports whether the PR's machine-checkable claims hold. It never
+    # blocks a merge - the `build` job is the enforcing gate. Scoped to
+    # pull_request only; a push has no PR body to read.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+        with:
+          enable-cache: true
+
+      - name: Check PR description against the tree it proposes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr view "$PR_NUMBER" --json body --jq .body > "$RUNNER_TEMP/pr-body.md"
+          rc=0
+          uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" \
+            --provenance pstack/.build-provenance.txt || rc=$?
+          echo "pr-checklist exit: $rc (0 = consistent, 1 = contradiction)"
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::pr-checklist found a contradiction. This job is ADVISORY - it reports, it does not block. The enforcing gate is the build job."
+          fi
+          exit 0

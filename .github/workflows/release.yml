@@ -26,28 +26,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Record SOURCE_DATE_EPOCH
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+      # release.yml previously carried its own copy of the build prologue AND was
+      # missing the "Verify pinned SHA" step that ci.yml and publish-plugin.yml
+      # had, so a release could be cut from a pin that silently failed to
+      # resolve. The shared action gives every caller the verified-pin behaviour.
+      - name: Build package from pin
+        uses: ./.github/actions/build-package
         with:
-          enable-cache: true
-
-      - name: Clone upstream pstack at pin
-        run: |
-          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
-          git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
-
-      - name: Convert
-        run: uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out pstack
-
-      - name: Validate
-        run: uv run --frozen tools/validate.py --package pstack
-
-      - name: Scanner gate
-        run: uv run --frozen tools/scanner_gate.py --package pstack
+          upstream-pin: ${{ env.UPSTREAM_PIN }}
 
       - name: Package plugin
         run: |

@@ -138,7 +138,9 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 
 - **Pin lock-step.** `UPSTREAM_PIN`
   (`93b00b89ef425a9c1bac0d0b317dfc49c930ac99`) is declared in `ci.yml`,
-  `release.yml`, and `upstream-drift-watch.yml` — all three move together.
+  `release.yml`, `publish-plugin.yml`, and `upstream-drift-watch.yml` — all four
+  move together. The build steps that consume it are shared via
+  `.github/actions/build-package`.
   Procedure: [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
 - **Anchors audited.** A converter transform whose anchor matches nothing in
   the upstream build fails loudly. Re-anchor or prune; never silence the audit.
