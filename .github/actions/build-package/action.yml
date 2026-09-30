@@ -1,0 +1,94 @@
+name: Build pstack package
+description: >-
+  Shared build prologue for every workflow that produces the generated pstack/
+  package: pin the upstream clone, verify it resolved, convert, validate and
+  scanner-gate. Extracted from the step bodies that ci.yml, release.yml and
+  publish-plugin.yml each carried their own copy of, so all three callers now
+  get the same fail-loud SHA verification.
+
+# PERMISSIONS: a composite action cannot declare `permissions:` - that is a
+# workflow/job-level concept. Callers MUST set `permissions: contents: read`
+# themselves. The clone step is anonymous (no credentials) and the caller's
+# checkout should use persist-credentials: false.
+
+inputs:
+  upstream-pin:
+    description: Full 40-char commit SHA of cursor/plugins to build from.
+    required: true
+  package-path:
+    description: Package directory to build, relative to the workspace.
+    required: false
+    default: pstack
+  upstream-url:
+    description: Upstream git remote to clone.
+    required: false
+    default: https://github.com/cursor/plugins.git
+
+outputs:
+  upstream-clone-path:
+    description: Path to the checked-out upstream pstack source tree.
+    value: ${{ steps.locate.outputs.upstream_clone_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Record SOURCE_DATE_EPOCH
+      shell: bash
+      run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+      with:
+        enable-cache: true
+
+    - name: Clone upstream pstack at pin
+      shell: bash
+      env:
+        UPSTREAM_URL: ${{ inputs.upstream-url }}
+        UPSTREAM_PIN: ${{ inputs.upstream-pin }}
+      run: |
+        set -euo pipefail
+        target="$RUNNER_TEMP/cursor-plugins"
+        rm -rf "$target"
+        git clone --no-checkout "$UPSTREAM_URL" "$target"
+        git -C "$target" fetch origin "$UPSTREAM_PIN"
+        git -C "$target" checkout -q "$UPSTREAM_PIN"
+
+    - name: Verify pinned SHA
+      shell: bash
+      env:
+        UPSTREAM_PIN: ${{ inputs.upstream-pin }}
+      run: |
+        set -euo pipefail
+        target="$RUNNER_TEMP/cursor-plugins"
+        got="$(git -C "$target" rev-parse HEAD)"
+        if [ "$got" != "$UPSTREAM_PIN" ]; then
+          echo "::error::SHA mismatch: got $got, want $UPSTREAM_PIN"
+          exit 1
+        fi
+        echo "pinned upstream SHA verified: $got"
+
+    - id: locate
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "upstream_clone_path=$RUNNER_TEMP/cursor-plugins/pstack" >> "$GITHUB_OUTPUT"
+
+    - name: Convert
+      shell: bash
+      env:
+        UPSTREAM_CLONE: ${{ steps.locate.outputs.upstream_clone_path }}
+        PACKAGE_PATH: ${{ inputs.package-path }}
+      run: uv run --frozen tools/convert.py --source "$UPSTREAM_CLONE" --out "$PACKAGE_PATH"
+
+    - name: Validate
+      shell: bash
+      env:
+        PACKAGE_PATH: ${{ inputs.package-path }}
+      run: uv run --frozen tools/validate.py --package "$PACKAGE_PATH"
+
+    - name: Scanner gate
+      shell: bash
+      env:
+        PACKAGE_PATH: ${{ inputs.package-path }}
+      run: uv run --frozen tools/scanner_gate.py --package "$PACKAGE_PATH"

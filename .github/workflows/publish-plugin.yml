@@ -41,47 +41,16 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
-      - name: Record SOURCE_DATE_EPOCH
-        shell: bash
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10
+      # Shared build prologue - same action ci.yml and release.yml use, so the
+      # published tree can never be built by a divergent copy of the steps.
+      - name: Build package from pin
+        uses: ./.github/actions/build-package
         with:
-          enable-cache: true
-
-      - name: Clone upstream pstack at pin
-        shell: bash
-        run: |
-          git clone --no-checkout https://github.com/cursor/plugins.git "$RUNNER_TEMP/cursor-plugins"
-          git -C "$RUNNER_TEMP/cursor-plugins" fetch origin "$UPSTREAM_PIN"
-          git -C "$RUNNER_TEMP/cursor-plugins" checkout -q "$UPSTREAM_PIN"
-
-      - name: Verify pinned SHA
-        shell: bash
-        run: |
-          got="$(git -C "$RUNNER_TEMP/cursor-plugins" rev-parse HEAD)"
-          if [ "$got" != "$UPSTREAM_PIN" ]; then
-            echo "::error::SHA mismatch: got $got, want $UPSTREAM_PIN"
-            exit 1
-          fi
-          echo "pinned upstream SHA verified: $got"
-
-      - name: Convert
-        shell: bash
-        run: uv run --frozen tools/convert.py --source "$RUNNER_TEMP/cursor-plugins/pstack" --out pstack
-
-      - name: Validate
-        shell: bash
-        run: uv run --frozen tools/validate.py --package pstack
-
-      - name: Scanner gate
-        shell: bash
-        run: uv run --frozen tools/scanner_gate.py --package pstack
+          upstream-pin: ${{ env.UPSTREAM_PIN }}
 
       - name: Publish dist tree
         shell: bash
