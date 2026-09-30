@@ -6,6 +6,18 @@ description: >-
   publish-plugin.yml each carried their own copy of, so all three callers now
   get the same fail-loud SHA verification.
 
+# WHY A COMPOSITE ACTION AND NOT A REUSABLE WORKFLOW
+# A reusable workflow (`uses: ./.github/workflows/build.yml`) would have to contain
+# the caller's ENTIRE job, because a `uses:` job cannot be followed by more steps
+# in that same job. All three callers continue past the shared prologue with their
+# own steps (ci: reproducibility gate + artifact upload; release: zip + notes +
+# gh release; publish: dist push + tag), so a reusable workflow cannot express
+# this shape without duplicating those steps into the called file. A composite
+# action composes into the middle of a job and is the correct tool here.
+# The usual reason to prefer a reusable workflow - secrets - does not apply: this
+# prologue clones upstream anonymously and never reads the `secrets` context.
+# Reference: https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
+
 # PERMISSIONS: a composite action cannot declare `permissions:` - that is a
 # workflow/job-level concept. Callers MUST set `permissions: contents: read`
 # themselves. The clone step is anonymous (no credentials) and the caller's
