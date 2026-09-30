@@ -171,3 +171,5 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   stock package skills — personal improvements belong in a skill tap or dist
   fork; durable package changes go through the converter
   (see [docs/USING.md](docs/USING.md)).
+
+# policy probe
