@@ -2,6 +2,12 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Dist repo line endings: `publish-plugin.yml` now writes a `.gitattributes` (`* text=auto eol=lf`, `*.png binary`) into the published `iap/pstack` tree. The dist repo is consumed by `hermes plugins install` as a git clone, so on a consumer with `core.autocrlf=true` (the Windows default) every text file - including the user-editable `config/models.json` - was checked out as CRLF, and `hermes plugins update`'s stash/pull/reapply then rewrote it again, drifting the package away from its own LF-only contract. Measured on a forced checkout with `autocrlf=true`: 38 CRLF before, 0 after, `assets/logo.png` byte-identical either way.
+- `test_validate_encoding.py` fixture: wrote the LF-only `SKILL.md` fixture with `write_text`, which translates `\n` to `os.linesep` on Windows, so the assertion failed there for a platform reason rather than a product reason. Now uses `write_bytes` with explicit `\n`. `check_encoding` itself was correct and is unchanged; this only makes the fixture platform-independent. (`lint-and-tests` runs on `ubuntu-latest` only, so the `windows-latest` build matrix never exercised this test.)
+
 ## [0.4.3] - 2026-09-18
 
 ### Added

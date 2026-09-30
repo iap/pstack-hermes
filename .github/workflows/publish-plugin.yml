@@ -79,6 +79,13 @@ jobs:
           # commit on top of main so installed clones can fast-forward.
           find "$dist" -mindepth 1 -maxdepth 1 -not -name ".git" -exec rm -rf {} +
           cp -a pstack/. "$dist/"
+          # The dist repo is consumed by `hermes plugins install` (a git clone), so it needs
+          # its own .gitattributes. The package contract is LF-only (tools/validate.py fails on
+          # any CRLF), but without this a consumer on Windows -- where core.autocrlf=true is
+          # common -- checks the package out as CRLF and then `hermes plugins update`'s
+          # stash/pull/reapply silently rewrites their customized config/models.json.
+          # *.png is binary: text=auto would corrupt assets/logo.png.
+          printf '* text=auto eol=lf\n*.png binary\n' > "$dist/.gitattributes"
           git -C "$dist" add -A
           if git -C "$dist" diff --cached --quiet; then
             echo "dist tree unchanged - nothing to publish"
