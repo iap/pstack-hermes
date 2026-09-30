@@ -31,7 +31,9 @@ FENCE_RE = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 CHECKED_BOX_RE = re.compile(r"^\s*[-*]\s*\[x\]\s*(.+?)\s*$", re.MULTILINE | re.IGNORECASE)
-EVIDENCE_HINT_RE = re.compile(r"evidence\s*:", re.IGNORECASE)
+# Evidence is either an explicit "Evidence:" label or a fenced code block
+# (which is what .github/PULL_REQUEST_TEMPLATE.md actually asks for).
+EVIDENCE_HINT_RE = re.compile(r"evidence\s*:|^\s*```", re.IGNORECASE | re.MULTILINE)
 
 
 PLACEHOLDER_RE = re.compile(r"<[^>]*>|\b(your|fill|todo|tbd)\b", re.IGNORECASE)
@@ -76,6 +78,13 @@ def read_provenance_file(path: Path) -> dict[str, str]:
     return data
 
 
+def strip_html_comments(body: str) -> str:
+    """Remove <!-- ... --> blocks. The template embeds its instructions as HTML
+    comments, and a checked box plus its placeholder output live inside those
+    comments in the template itself - not a contributor claim."""
+    return re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+
+
 def check_box_evidence(body: str) -> list[str]:
     """A checked box with no pasted evidence proves nothing - the template says
     so itself. Flag every checked box whose own section carries no evidence."""
@@ -103,6 +112,7 @@ def check_box_evidence(body: str) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(
         prog="pr_checklist.py",
         description=__doc__,
@@ -127,6 +137,10 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     notes: list[str] = []
+    # Evidence is only meaningful for the Verification section. Boxes elsewhere
+    # (e.g. "Affected surface") are scope declarations, not claims backed by
+    # pasted output, so requiring evidence for them would be noise.
+    verification_only = "--all-boxes" not in argv
 
     claimed = parse_provenance_block(body)
     actual = read_provenance_file(args.provenance)
@@ -160,7 +174,16 @@ def main(argv: list[str] | None = None) -> int:
     elif not args.provenance.is_file():
         notes.append(f"provenance file absent at {args.provenance}; pin check skipped")
 
-    failures.extend(check_box_evidence(body))
+    body_wo_comments = strip_html_comments(body)
+    if not verification_only:
+        failures.extend(check_box_evidence(body_wo_comments))
+    else:
+        section = re.search(r"^##\s+Verification\b(.*?)(?=^##\s|\Z)",
+                            body_wo_comments, re.MULTILINE | re.DOTALL)
+        if section:
+            failures.extend(check_box_evidence(section.group(1)))
+        else:
+            notes.append("no '## Verification' section found; box-evidence check skipped")
 
     for note in notes:
         print(f"note: {note}")

@@ -210,12 +210,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           gh pr view "$PR_NUMBER" --json body --jq .body > "$RUNNER_TEMP/pr-body.md"
+          rc=0
           uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" \
-            --provenance pstack/.build-provenance.txt
-          rc=$?
+            --provenance pstack/.build-provenance.txt || rc=$?
+          echo "pr-checklist exit: $rc (0 = consistent, 1 = contradiction)"
           if [ "$rc" -ne 0 ]; then
-            echo "::warning::pr-checklist found a contradiction (exit $rc). This job is advisory: it reports, it does not block. The enforcing gate is the build job."
+            echo "::warning::pr-checklist found a contradiction. This job is ADVISORY - it reports, it does not block. The enforcing gate is the build job."
           fi
           exit 0
