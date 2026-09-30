@@ -85,16 +85,22 @@ jobs:
 
       # A stale build must never leave scratch siblings behind in the working
       # tree; if one appears, the tree is not clean and the gate above is suspect.
-      - name: Assert clean working tree after build
+      # A rebuild legitimately rewrites .build-provenance.txt (it re-stamps
+      # converted_at), and BOTH hash gates exclude that file by design - it
+      # carries a timestamp. Asserting on it would fail every run. Everything
+      # else must be untouched: a hand-edited package file, or a leftover
+      # pstack.tmp-build / pstack.prev-build scratch dir, still fails here.
+      - name: Assert no tracked file changed by the build
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::working tree is dirty after the build; a rebuild wrote into the tracked package or left scratch dirs"
-            git status --porcelain
+          dirty="$(git status --porcelain -- . ':(exclude)pstack/.build-provenance.txt')"
+          if [ -n "$dirty" ]; then
+            echo "::error::the build modified tracked files other than the provenance stamp"
+            echo "$dirty"
             exit 1
           fi
-          echo "clean tree: OK"
+          echo "no unexpected tracked changes: OK"
 
       - name: Upload package artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
