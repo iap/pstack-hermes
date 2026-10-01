@@ -50,13 +50,55 @@ def test_clean_tree_passes(tmp_path, monkeypatch):
     assert _run(pkg, attrs, monkeypatch) == 0
 
 
-def test_missing_rule_fails_with_crlf(tmp_path, monkeypatch):
-    # An empty attributes file reproduces the pre-fix state: autocrlf=true on the
-    # consumer turns every text file CRLF, which is the bug the rule prevents.
+def test_checker_reports_crlf_when_the_rule_does_not_pin_lf(tmp_path, monkeypatch, capsys):
+    """The pre-fix state must be reported as CRLF, on every host.
+
+    Asserted via the file's actual bytes rather than by relying on the host's
+    own autocrlf behaviour: git ignores core.autocrlf=true on POSIX, so on a
+    Linux runner a checkout comes out LF whatever the attributes say. The checker
+    solves that with a simulated-consumer attributesFile, but a test that depends
+    on the *runner* converting line endings would pass vacuously on Linux - which
+    is exactly how this case failed its first CI run.
+    """
     attrs = tmp_path / "attrs"
-    attrs.write_text("", encoding="utf-8", newline="")
+    # A real, wrong rule rather than an empty file: `eol=crlf` is what a consumer
+    # default degrades to, so the checkout genuinely comes back CRLF everywhere.
+    attrs.write_text("* text=auto eol=crlf\n", encoding="utf-8", newline="")
     pkg = _package(tmp_path, None)
     assert _run(pkg, attrs, monkeypatch) == 1
+    assert "CRLF" in capsys.readouterr().err
+
+
+def test_empty_rule_leaves_eol_unspecified(tmp_path, monkeypatch):
+    """`git check-attr` is the deterministic half of the contract.
+
+    The published rule must make `eol` explicit for every text file. This does
+    not depend on any conversion actually happening, so it holds identically on
+    Windows and Linux - which the byte-level assertions above cannot.
+    """
+    import subprocess
+
+    good = _package(tmp_path, None)
+    (good / checker.ATTRS_NAME).write_text(
+        "* text=auto eol=lf\n*.png binary\n", encoding="utf-8", newline=""
+    )
+    bad = tmp_path / "pkg-bad"
+    bad.mkdir()
+    (bad / "a.md").write_text("x\n", encoding="utf-8", newline="")
+    (bad / checker.ATTRS_NAME).write_text("", encoding="utf-8", newline="")
+
+    def eol_for(pkg: Path) -> str:
+        subprocess.run(["git", "init", "-q", str(pkg)], capture_output=True, check=False)
+        out = subprocess.run(
+            ["git", "-C", str(pkg), "check-attr", "eol", "--", "a.md"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        return out.strip().rsplit(":", 1)[-1].strip()
+
+    assert eol_for(good) == "lf"
+    assert eol_for(bad) == "unspecified"
 
 
 def test_png_marked_text_is_caught(tmp_path, monkeypatch):
