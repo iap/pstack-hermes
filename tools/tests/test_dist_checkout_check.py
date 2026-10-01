@@ -154,6 +154,39 @@ def test_shipped_rule_matches_the_asset_the_publisher_copies():
     assert "*.png binary" in body
 
 
+def test_extension_less_text_files_are_still_checked(tmp_path, monkeypatch):
+    """Every tracked file must land in exactly one branch.
+
+    This package ships extension-less text files - LICENSE and the watch-pr
+    launcher. They are in neither TEXT_EXTS nor TEXT_NAMES and carry no NUL byte,
+    so an earlier suffix-based classifier called them neither text nor binary and
+    silently skipped them: the checker reported a clean tree while never looking
+    at 2 of 134 files. Text is now the default and binary requires a NUL byte, so
+    the two branches are mutually exclusive and exhaustive.
+    """
+    staged = tmp_path / "staged"
+    (staged / "skills").mkdir(parents=True)
+    (staged / "LICENSE").write_bytes(b"MIT License\n\nCopyright\n")
+    (staged / "skills" / "watch-pr").write_bytes(b"#!/usr/bin/env bun\n")
+    (staged / "assets").mkdir()
+    (staged / "assets" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\x01\x02")
+
+    assert checker.is_text_file(staged, "LICENSE")
+    assert checker.is_text_file(staged, "skills/watch-pr")
+    assert not checker.is_text_file(staged, "assets/logo.png")
+
+
+def test_extension_less_text_file_is_caught_when_it_comes_back_crlf(tmp_path, monkeypatch, capsys):
+    """The end-to-end consequence: a CRLF extension-less file must be reported."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=crlf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    (pkg / "LICENSE").write_bytes(b"MIT License\n")
+    assert _run(pkg, attrs, monkeypatch) == 1
+    err = capsys.readouterr().err
+    assert "CRLF" in err
+    assert "LICENSE" in err
+
 def test_checker_does_not_mutate_the_package(tmp_path, monkeypatch):
     attrs = tmp_path / "attrs"
     attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")

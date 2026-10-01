@@ -62,23 +62,29 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def is_text_file(rel: str) -> bool:
-    p = Path(rel)
-    return p.suffix.lower() in TEXT_EXTS or p.name in TEXT_NAMES
+def is_text_file(staged: Path, rel: str) -> bool:
+    """True when *rel* is text, and crucially: every tracked file gets an answer.
 
+    The two checks are mutually exclusive by construction - a NUL byte means
+    binary, anything else is text - so no file can fall through both branches and
+    go unchecked. That gap was real: this package ships extension-less text files
+    (``LICENSE`` and the ``watch-pr`` launcher), which are in neither TEXT_EXTS nor
+    TEXT_NAMES and carry no NUL byte, so an earlier suffix-based test classified
+    them as neither text nor binary and silently skipped them.
 
-def is_binary_blob(staged: Path, rel: str) -> bool:
-    """True when the *staged* bytes look binary (a NUL byte, the signal git sniffs with).
-
-    Read from the source tree, not from the checkout: git rewrites what it thinks
-    is text, so a mangled binary can come back without a NUL byte and be mistaken
-    for text. Classification therefore has to happen before the conversion.
+    A known extension still wins over the content sniff, so a mislabelled binary
+    (say a ``.png`` that is really text) is judged by what git will do with it
+    rather than by its name.
     """
     path = staged / rel
     try:
-        return b"\x00" in path.read_bytes()
+        data = path.read_bytes()
     except OSError:
+        # Unreadable: treat as binary so the byte-identity assertion still runs.
         return False
+    if Path(rel).suffix.lower() in TEXT_EXTS or Path(rel).name in TEXT_NAMES:
+        return True
+    return b"\x00" not in data
 
 def stage_tree(package: Path, dest: Path) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
@@ -227,29 +233,20 @@ def main(argv: list[str] | None = None) -> int:
             before = source_hashes.get(rel)
             if before is None:
                 continue
-            if is_text_file(rel):
+            if is_text_file(staged, rel):
                 checked_text += 1
                 if b"\r\n" in target.read_bytes():
                     crlf.append(rel)
             else:
-                # Extension-less text files exist in this package (LICENSE, the
-                # watch-pr launcher), so "not in TEXT_EXTS" does not mean binary.
-                # Decide by content: a NUL byte is the same signal git itself uses
-                # to sniff a binary. Such a file must survive byte-for-byte, whether
-                # or not git can classify it from its name - that is the assertion
-                # that would catch a future `text=auto` overreach. A format-specific
-                # suffix list would not, because git already protects the formats it
-                # can sniff.
-                # Classify from the STAGED bytes, never from the checked-out ones.
-                # git rewrites whatever it believes is text during checkout, so a
-                # binary it mangled can come back with no NUL byte and sail straight
-                # past a check that only inspected the result. Deciding from the
-                # source is what makes an altered binary always detectable.
-                if is_binary_blob(staged, rel):
-                    checked_binary += 1
-                    if sha256(target) != before:
-                        mangled.append(rel)
-
+                # A binary must survive the checkout byte-for-byte. Classified from
+                # the STAGED bytes, never from the checked-out ones: git rewrites
+                # whatever it believes is text, so a binary it mangled can come back
+                # with no NUL byte and sail past a check that only inspected the
+                # result. Deciding from the source is what makes an altered binary
+                # always detectable.
+                checked_binary += 1
+                if sha256(target) != before:
+                    mangled.append(rel)
         failures: list[str] = []
         if crlf:
             failures.append(
