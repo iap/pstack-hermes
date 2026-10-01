@@ -85,8 +85,18 @@ jobs:
           # common -- checks the package out as CRLF and then `hermes plugins update`'s
           # stash/pull/reapply silently rewrites their customized config/models.json.
           # *.png is binary: text=auto would corrupt assets/logo.png.
-          printf '* text=auto eol=lf\n*.png binary\n' > "$dist/.gitattributes"
+          # The rule itself lives in tools/assets/dist.gitattributes so this publisher and
+          # tools/dist_checkout_check.py (the regression test for it) cannot drift apart.
+          cp -a tools/assets/dist.gitattributes "$dist/.gitattributes"
           git -C "$dist" add -A
+          # Gate on the tree we are about to publish, as a consumer would receive it.
+          # validate.py checks the source pstack/ directory on disk, where files are LF
+          # because the converter wrote them that way; it cannot see a line-ending or
+          # binary-asset regression introduced by the staging above.
+          if ! uv run --frozen tools/dist_checkout_check.py --package "$dist"; then
+            echo "::error::staged dist tree fails the consumer checkout check - refusing to publish"
+            exit 1
+          fi
           if git -C "$dist" diff --cached --quiet; then
             echo "dist tree unchanged - nothing to publish"
             exit 0
