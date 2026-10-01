@@ -121,9 +121,28 @@ def clone_like_consumer(staged: Path, workdir: Path) -> Path:
     res = run_git(["clone", "-q", str(repo), str(clone)], workdir)
     if res.returncode != 0:
         raise RuntimeError(f"git clone failed: {res.stderr.strip()}")
+    # Model a Windows consumer on every host.
+    #
+    # core.autocrlf=true alone is not enough: git ignores it on POSIX, so on a
+    # Linux runner the clone comes out LF and this check would pass no matter what
+    # the dist attributes rule said - precisely the false negative it exists to
+    # catch. The conversion pressure is therefore expressed as a repository-level
+    # attributesFile, which git honours identically on every platform.
+    #
+    # core.attributesFile sits at the BOTTOM of git's attributes precedence chain,
+    # below the repository's own .gitattributes - the same relative position the
+    # real consumer default occupies versus the published rule. So a dist tree
+    # that pins eol=lf still wins, and a dist tree that omits it gets converted.
+    # $GIT_DIR/info/attributes was tried first and is wrong for this: it
+    # outranks the repository's own .gitattributes, so it would override the very
+    # rule under test.
     run_git(["config", "core.autocrlf", "true"], clone)
-    # Force every tracked file back through checkout so the attributes rule,
-    # not the staging bytes, decides the working-tree form.
+    run_git(["config", "core.eol", "crlf"], clone)
+    consumer_attrs = workdir / "windows-consumer.attributes"
+    consumer_attrs.write_text("* text=auto eol=crlf\n", encoding="utf-8", newline="")
+    run_git(["config", "core.attributesFile", str(consumer_attrs)], clone)
+    # Force every tracked file back through checkout so the attributes rules,
+    # not the staging bytes, decide the working-tree form.
     run_git(["checkout", "-f", "HEAD", "--", "."], clone)
     return clone
 
@@ -189,14 +208,18 @@ def main(argv: list[str] | None = None) -> int:
                 if b"\r\n" in target.read_bytes():
                     crlf.append(rel)
             else:
-                # Every non-text tracked file must survive the checkout byte-for-byte,
-                # whether or not it is a format git happens to sniff as binary. This is
-                # the assertion that would catch a future `text=auto` overreach; a
-                # format-specific suffix list would not, because git already protects
-                # the formats it can sniff.
-                checked_binary += 1
-                if sha256(target) != before:
-                    mangled.append(rel)
+                # Extension-less text files exist in this package (LICENSE, the
+                # watch-pr launcher), so "not in TEXT_EXTS" does not mean binary.
+                # Decide by content: a NUL byte is the same signal git itself uses
+                # to sniff a binary. Such a file must survive byte-for-byte, whether
+                # or not git can classify it from its name - that is the assertion
+                # that would catch a future `text=auto` overreach. A format-specific
+                # suffix list would not, because git already protects the formats it
+                # can sniff.
+                if b"\x00" in target.read_bytes():
+                    checked_binary += 1
+                    if sha256(target) != before:
+                        mangled.append(rel)
 
         failures: list[str] = []
         if crlf:
