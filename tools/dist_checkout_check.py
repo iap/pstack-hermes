@@ -67,9 +67,18 @@ def is_text_file(rel: str) -> bool:
     return p.suffix.lower() in TEXT_EXTS or p.name in TEXT_NAMES
 
 
-def is_binary_file(rel: str) -> bool:
-    return Path(rel).suffix.lower() in BINARY_SUFFIXES
+def is_binary_blob(staged: Path, rel: str) -> bool:
+    """True when the *staged* bytes look binary (a NUL byte, the signal git sniffs with).
 
+    Read from the source tree, not from the checkout: git rewrites what it thinks
+    is text, so a mangled binary can come back without a NUL byte and be mistaken
+    for text. Classification therefore has to happen before the conversion.
+    """
+    path = staged / rel
+    try:
+        return b"\x00" in path.read_bytes()
+    except OSError:
+        return False
 
 def stage_tree(package: Path, dest: Path) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
@@ -136,14 +145,26 @@ def clone_like_consumer(staged: Path, workdir: Path) -> Path:
     # $GIT_DIR/info/attributes was tried first and is wrong for this: it
     # outranks the repository's own .gitattributes, so it would override the very
     # rule under test.
-    run_git(["config", "core.autocrlf", "true"], clone)
-    run_git(["config", "core.eol", "crlf"], clone)
+    # Every one of these must succeed. A failed checkout would leave the initial
+    # clone in place and the check would then report success on a tree that was
+    # never put through the consumer path at all - a silent false pass.
+    for cfg in (
+        ["config", "core.autocrlf", "true"],
+        ["config", "core.eol", "crlf"],
+    ):
+        if run_git(cfg, clone).returncode != 0:
+            raise RuntimeError(f"git {cfg[0]} failed in the simulated consumer clone")
     consumer_attrs = workdir / "windows-consumer.attributes"
     consumer_attrs.write_text("* text=auto eol=crlf\n", encoding="utf-8", newline="")
-    run_git(["config", "core.attributesFile", str(consumer_attrs)], clone)
+    if run_git(["config", "core.attributesFile", str(consumer_attrs)], clone).returncode != 0:
+        raise RuntimeError("git config core.attributesFile failed")
     # Force every tracked file back through checkout so the attributes rules,
     # not the staging bytes, decide the working-tree form.
-    run_git(["checkout", "-f", "HEAD", "--", "."], clone)
+    forced = run_git(["checkout", "-f", "HEAD", "--", "."], clone)
+    if forced.returncode != 0:
+        raise RuntimeError(
+            f"forced checkout failed: {forced.stderr.strip() or forced.stdout.strip()}"
+        )
     return clone
 
 
@@ -185,7 +206,10 @@ def main(argv: list[str] | None = None) -> int:
 
         clone = clone_like_consumer(staged, workdir)
 
-        tracked = run_git(["ls-files"], clone).stdout.split()
+        # -z: paths may legitimately contain spaces (an upstream skill could ship
+        # "a b.md"), and a plain .split() would tear one path into several entries
+        # and report valid files as missing.
+        tracked = [p for p in run_git(["ls-files", "-z"], clone).stdout.split("\0") if p]
         if not tracked:
             print("error: the consumer checkout tracked no files", file=sys.stderr)
             return 2
@@ -216,7 +240,12 @@ def main(argv: list[str] | None = None) -> int:
                 # that would catch a future `text=auto` overreach. A format-specific
                 # suffix list would not, because git already protects the formats it
                 # can sniff.
-                if b"\x00" in target.read_bytes():
+                # Classify from the STAGED bytes, never from the checked-out ones.
+                # git rewrites whatever it believes is text during checkout, so a
+                # binary it mangled can come back with no NUL byte and sail straight
+                # past a check that only inspected the result. Deciding from the
+                # source is what makes an altered binary always detectable.
+                if is_binary_blob(staged, rel):
                     checked_binary += 1
                     if sha256(target) != before:
                         mangled.append(rel)

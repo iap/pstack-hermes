@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import dist_checkout_check as checker  # noqa: E402
 
@@ -109,6 +111,34 @@ def test_png_marked_text_is_caught(tmp_path, monkeypatch):
     pkg = _package(tmp_path, None)
     assert _run(pkg, attrs, monkeypatch) == 1
 
+
+def test_path_with_a_space_is_not_reported_missing(tmp_path, monkeypatch):
+    """`ls-files` must be read with -z.
+
+    A plain .split() tears "a b.md" into two entries, and the checker would then
+    report a perfectly valid file as absent from the checkout.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    spaced = pkg / "skills" / "demo" / "a b.md"
+    spaced.write_text("spaced\n", encoding="utf-8", newline="")
+    assert _run(pkg, attrs, monkeypatch) == 0
+
+
+def test_forced_checkout_failure_is_a_tool_error(tmp_path, monkeypatch):
+    """A failed checkout must not be reported as a clean pass."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    monkeypatch.setattr(checker, "ATTRS_SOURCE", attrs)
+    monkeypatch.setattr(
+        checker,
+        "run_git",
+        lambda args, cwd: checker.subprocess.CompletedProcess(args, 1, "", "boom"),
+    )
+    with pytest.raises(RuntimeError):
+        checker.main(["--package", str(pkg)])
 
 def test_missing_package_is_tool_error(tmp_path, monkeypatch):
     attrs = tmp_path / "attrs"
