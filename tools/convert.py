@@ -362,6 +362,44 @@ def replace_required(path: Path, old: str, new: str, label: str) -> None:
     path.write_bytes(text.replace(old, new, 1).encode("utf-8"))
 
 
+# G1 (T7) anchor for poteto-mode/SKILL.md.
+#
+# Anchored on the POST-Phase-2A text on purpose, and tolerant of both pins.
+# Two transformations happen before the T7 pass reads the file:
+#   1. Phase-2A maps `subagent_type` -> "delegate role", so the anchor has to be
+#      written against that wording rather than upstream's;
+#   2. upstream c47b1284 additionally split the sentence, so it now reads
+#      "review. Respect". No map undoes that part.
+# Both tails are accepted so this pass builds against 93b00b8 and c47b1284 alike,
+# which keeps the re-pin from having to rewrite it as collateral damage.
+#
+# Module-level (not a local of apply_phase1_transforms) so tools/tests can drive
+# the real substitution rather than a copy of it.
+G1_PM_HEAD = ("Routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`) set "
+              "their own delegate role for diverse-model review")
+G1_PM_TAILS = (
+    "; respect what the skill prescribes, don't override to `poteto-agent`.",
+    ". Respect what the skill prescribes, don't override to `poteto-agent`.",
+)
+G1_PM_ESCATHAT = (" Exception (hermes port): for surgical, fully-specified edits to files "
+                  "already resident in your context, implement in-thread and use a "
+                  "`delegate_task` leaf as the independent reviewer of the diff instead "
+                  "of the author.")
+
+
+def g1_pm_substitute(text: str) -> str | None:
+    """Append the hermes delegation escape hatch to the poteto-mode Subagents note.
+
+    Returns the rewritten text, or None when the anchor is absent. Accepts either
+    known upstream separator but preserves whichever one it found: the port
+    appends, it does not normalise upstream's own punctuation.
+    """
+    matched = next((G1_PM_HEAD + t for t in G1_PM_TAILS if G1_PM_HEAD + t in text), None)
+    if matched is None:
+        return None
+    tail = next(t for t in G1_PM_TAILS if matched.endswith(t))
+    return text.replace(matched, G1_PM_HEAD + tail + G1_PM_ESCATHAT, 1)
+
 def apply_stack_provider_patch(out: Path, st: Stats) -> None:
     """Add provider-neutral frontier discovery to the generated orch scripts."""
     store = out / "skills" / "poteto-mode" / "scripts" / "orch" / "store.ts"
@@ -1321,29 +1359,6 @@ The parent locates the current session via `session_search` (hermes stores sessi
                       "implement in-thread — but review separation is still mandatory: spawn "
                       "a leaf delegate as an independent reviewer of the diff before "
                       "committing, and note the in-thread implementation in the todolist.")
-    # Anchored on the POST-Phase-2A text on purpose, and tolerant of both pins.
-    #
-    # Two transformations happen before this pass reads the file:
-    #   1. Phase-2A maps `subagent_type` -> "delegate role", so the anchor must be
-    #      written against that wording, not upstream's;
-    #   2. upstream c47b1284 additionally split the sentence, turning
-    #      "review; respect" into "review. Respect". No map undoes that.
-    # Both tails are therefore accepted, which lets this pass build against
-    # 93b00b8 and c47b1284 without being rewritten for the re-pin.
-    #
-    # Verified by applying DELEGATION_MAP to the real upstream file at both pins
-    # rather than by reading the diff - reading the diff is what produced an
-    # earlier, wrong anchor for this pass.
-    G1_PM_HEAD = ("Routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`) set "
-                  "their own delegate role for diverse-model review")
-    G1_PM_TAILS = (
-        "; respect what the skill prescribes, don't override to `poteto-agent`.",
-        ". Respect what the skill prescribes, don't override to `poteto-agent`.",
-    )
-    G1_PM_ESCATHAT = (" Exception (hermes port): for surgical, fully-specified edits to files "
-                      "already resident in your context, implement in-thread and use a "
-                      "`delegate_task` leaf as the independent reviewer of the diff instead "
-                      "of the author.")
     feat_md = out / "skills" / "poteto-mode" / "playbooks" / "feature.md"
     fm_text = feat_md.read_text(encoding="utf-8")
     if G1_FEATURE_OLD not in fm_text:
@@ -1351,15 +1366,12 @@ The parent locates the current session via `session_search` (hermes stores sessi
     feat_md.write_bytes(fm_text.replace(G1_FEATURE_OLD, G1_FEATURE_NEW, 1).encode("utf-8"))
     pm_md = out / "skills" / "poteto-mode" / "SKILL.md"
     pm_text = pm_md.read_text(encoding="utf-8")
-    g1_pm_old = next((G1_PM_HEAD + t for t in G1_PM_TAILS if G1_PM_HEAD + t in pm_text), None)
-    if g1_pm_old is None:
+    g1_pm_text = g1_pm_substitute(pm_text)
+    if g1_pm_text is None:
         raise ConvertError(
             "poteto-mode/SKILL.md: G1 anchor not found (tried both sentence separators)"
         )
-    g1_pm_tail = next(t for t in G1_PM_TAILS if g1_pm_old.endswith(t))
-    pm_md.write_bytes(
-        pm_text.replace(g1_pm_old, G1_PM_HEAD + g1_pm_tail + G1_PM_ESCATHAT, 1).encode("utf-8")
-    )
+    pm_md.write_bytes(g1_pm_text.encode("utf-8"))
     st.fixes.append("G1: delegation escape hatch added to feature.md + poteto-mode "
                     "Subagents (in-thread authoring allowed for resident surgical "
                     "edits, with mandatory independent delegate review)")
