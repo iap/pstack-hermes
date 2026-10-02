@@ -38,10 +38,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 ATTRS_NAME = ".gitattributes"
 ATTRS_SOURCE = SCRIPT_DIR / "assets" / "dist.gitattributes"
-# The source package directory. Its name is how the gate tells a source tree
-# (legitimately has no .gitattributes; the publisher adds one) from a staged
-# dist tree (must carry one, and must not be handed a substitute).
-DEFAULT_PACKAGE_NAME = "pstack"
+
 
 # Reuse the converter's single definition of "this file is text" so the checkout
 # check and the build-time encoding gate agree on the file set.
@@ -95,7 +92,7 @@ def is_text_file(staged: Path, rel: str) -> bool:
         return True
     return b"\x00" not in data
 
-def stage_tree(package: Path, dest: Path) -> None:
+def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
     for item in package.iterdir():
         if item.name == ".git":
@@ -111,28 +108,32 @@ def stage_tree(package: Path, dest: Path) -> None:
     # gate validate its own copy instead of the published one, so a missing or
     # stale rule in the tree - precisely the regression this gate exists to catch
     # - would pass silently. Verify the tree's file instead.
+    # A tree that is going to be published must carry the rule; the check never
+    # installs its own copy, because substituting it is exactly what would blind
+    # this gate to a missing or stale rule in the tree it is meant to police.
+    #
+    # The exemption is an explicit --source-tree flag, NOT a guess based on the
+    # directory name: a staged dist checkout can legitimately be called "pstack"
+    # (that is its published name), and a name-based exemption let that case
+    # through with no rule at all.
     tree_attrs = package / ATTRS_NAME
     if not tree_attrs.is_file():
-        if package.name == DEFAULT_PACKAGE_NAME:
-            # The source tree genuinely has no .gitattributes: the publisher adds
-            # it when it stages the dist repo, so requiring it here would fail the
-            # build job for a condition that is correct by design. Stage a
-            # throwaway copy so the line-ending question can still be asked; the
-            # published-tree case below is the one that must not be substituted.
+        if source_tree:
+            # The source pstack/ tree has no .gitattributes by design: the
+            # publisher copies one in when it stages the dist repo. Stage a
+            # throwaway copy so the line-ending question can still be asked.
             shutil.copy2(ATTRS_SOURCE, dest / ATTRS_NAME)
             return
-        else:
-            raise RuntimeError(
-                f"package has no {ATTRS_NAME}: a published tree must carry the rule, "
-                "and the gate must not install its own copy (that would blind it to "
-                "the regression it exists to catch)"
-            )
+        raise RuntimeError(
+            f"package has no {ATTRS_NAME}: a published tree must carry the rule, "
+            "and the gate must not install its own copy (that would blind it to "
+            "the regression it exists to catch)"
+        )
     if tree_attrs.read_bytes() != ATTRS_SOURCE.read_bytes():
         raise RuntimeError(
             f"package {ATTRS_NAME} differs from {ATTRS_SOURCE.name}: the published rule "
             "would not match the rule this gate tests against"
         )
-
 
 def clone_like_consumer(staged: Path, workdir: Path) -> Path:
     """Materialize a checkout of the staged tree with autocrlf=true.
@@ -218,6 +219,13 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="dist tree to verify (usually the staged copy the publisher builds)",
     )
+    ap.add_argument(
+        "--source-tree",
+        action="store_true",
+        help="package is the source pstack/ tree, which legitimately carries no"
+             " .gitattributes because the publisher adds one when staging the dist"
+             " repo. Without this flag a tree missing the rule is refused.",
+    )
     args = ap.parse_args(argv)
 
     package: Path = args.package
@@ -235,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         staged = workdir / "staged"
         staged.mkdir()
-        stage_tree(package, staged)
+        stage_tree(package, staged, source_tree=args.source_tree)
         source_hashes = {
             str(p.relative_to(staged)).replace("\\", "/"): sha256(p)
             for p in staged.rglob("*")
@@ -250,6 +258,19 @@ def main(argv: list[str] | None = None) -> int:
         tracked = [p for p in run_git(["ls-files", "-z"], clone).stdout.split("\0") if p]
         if not tracked:
             print("error: the consumer checkout tracked no files", file=sys.stderr)
+            return 2
+
+        # A package file that git never tracked - typically excluded by a packaged
+        # .gitignore - would never be iterated below, so the checkout could be
+        # declared clean with that file unverified. Compare the package against the
+        # index and refuse rather than silently narrowing coverage.
+        not_tracked = sorted(set(source_hashes) - set(tracked))
+        if not_tracked:
+            print(
+                f"error: {len(not_tracked)} package file(s) are not tracked by git and"
+                f" would never be verified: {not_tracked[:10]}",
+                file=sys.stderr,
+            )
             return 2
 
         crlf: list[str] = []

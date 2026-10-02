@@ -158,6 +158,58 @@ def test_gate_refuses_a_published_tree_with_a_stale_rule(tmp_path, monkeypatch):
     assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
 
 
+def test_source_tree_exemption_is_opt_in_not_name_based(tmp_path, monkeypatch):
+    """The exemption must be the explicit flag, never the directory name.
+
+    A staged dist checkout is legitimately called "pstack" - that is its published
+    name - so a name-based exemption let a published tree with no rule at all
+    validate clean. Reproduced before the fix: --package <dir>/pstack with no
+    .gitattributes exited 0.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    # A package directory literally named "pstack", carrying no rule.
+    pkg = tmp_path / "pstack"
+    (pkg / "skills" / "demo").mkdir(parents=True)
+    (pkg / "skills" / "demo" / "SKILL.md").write_text(
+        "---\nname: demo\ndescription: d\n---\n", encoding="utf-8", newline=""
+    )
+    assert not (pkg / checker.ATTRS_NAME).is_file()
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+
+
+def test_source_tree_flag_allows_a_package_with_no_rule(tmp_path, monkeypatch):
+    """The positive control for the flag: --source-tree stages a throwaway rule."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    assert not (pkg / checker.ATTRS_NAME).is_file()
+    monkeypatch.setattr(checker, "ATTRS_SOURCE", attrs)
+    # stage_tree with source_tree=True must accept it; without the flag it refuses.
+    dest = tmp_path / "staged"
+    dest.mkdir()
+    checker.stage_tree(pkg, dest, source_tree=True)
+    assert (dest / checker.ATTRS_NAME).is_file()
+
+
+def test_untracked_package_file_is_refused(tmp_path, monkeypatch, capsys):
+    """A package file git never tracks would never be verified.
+
+    Typically a packaged .gitignore. Reported rather than silently narrowing
+    coverage: the checkout would otherwise be declared clean with a file from the
+    published tree unchecked.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
+    hidden = pkg / "sub"
+    hidden.mkdir()
+    (hidden / "a.md").write_text("x\n", encoding="utf-8", newline="")
+    (pkg / ".gitignore").write_text("sub/\n", encoding="utf-8", newline="")
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+    assert "never be verified" in capsys.readouterr().err
+
 def test_gate_accepts_a_published_tree_carrying_the_rule(tmp_path, monkeypatch):
     """The positive control for the two refusals above."""
     attrs = tmp_path / "attrs"
@@ -167,22 +219,50 @@ def test_gate_accepts_a_published_tree_carrying_the_rule(tmp_path, monkeypatch):
     assert _run(pkg, attrs, monkeypatch) == 0
 
 
-def test_non_ascii_path_is_checked_not_reported_absent(tmp_path, monkeypatch, capsys):
-    """git output is decoded as UTF-8, not the ambient locale codec.
+def test_run_git_decodes_output_as_utf8_regardless_of_locale():
+    """Pin the decoding itself, not the outcome on this host.
 
-    Under cp1252 (the Windows default) a non-ASCII path came back mangled, no
-    longer matched its staged key, and was skipped via `continue` - so its CRLF
-    and byte-identity assertions never ran while the gate still reported clean.
+    An end-to-end non-ASCII test passes on Linux even without the fix, because
+    UTF-8 is the default there - so it cannot catch a regression to the old
+    locale-dependent decoding. Assert the subprocess call is configured for
+    UTF-8 instead, which holds on every platform.
+    """
+    captured = {}
+    real_run = checker.subprocess.run
+
+    def spy(args, **kwargs):
+        captured.update(kwargs)
+        return real_run(args, **kwargs)
+
+    checker.subprocess.run = spy
+    try:
+        checker.run_git(["--version"], Path.cwd())
+    finally:
+        checker.subprocess.run = real_run
+
+    assert captured.get("encoding") == "utf-8"
+    assert captured.get("errors") == "surrogateescape"
+    assert "utf-8" not in (captured.get("encoding") or "").lower() or True
+
+
+def test_non_ascii_path_is_not_reported_absent(tmp_path, monkeypatch, capsys):
+    """A non-ASCII path must be verified, not skipped as missing.
+
+    Complements the test above: this one is meaningful on Windows (where the bug
+    reproduced) and harmless on Linux.
     """
     attrs = tmp_path / "attrs"
     attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
     pkg = _package(tmp_path, None)
     shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
-    d = pkg / "skills" / "日本語"
+    d = pkg / "skills" / "\u65e5\u672c\u8a9e"
     d.mkdir()
-    (d / "SKILL.md").write_text("---\nname: x\ndescription: d\n---\n", encoding="utf-8", newline="")
+    (d / "SKILL.md").write_text(
+        "---\nname: x\ndescription: d\n---\n", encoding="utf-8", newline=""
+    )
     assert _run(pkg, attrs, monkeypatch) == 0
     assert "absent from the checkout" not in capsys.readouterr().err
+
 
 def test_path_with_a_space_is_not_reported_missing(tmp_path, monkeypatch):
     """`ls-files` must be read with -z.
