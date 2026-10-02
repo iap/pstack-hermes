@@ -39,13 +39,13 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ATTRS_NAME = ".gitattributes"
 ATTRS_SOURCE = SCRIPT_DIR / "assets" / "dist.gitattributes"
 
+
 # Reuse the converter's single definition of "this file is text" so the checkout
 # check and the build-time encoding gate agree on the file set.
 sys.path.insert(0, str(SCRIPT_DIR))
 from convert import TEXT_EXTS  # noqa: E402
 
 TEXT_NAMES = {ATTRS_NAME, ".gitignore", ".build-provenance.txt"}
-BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".woff", ".woff2"}
 
 
 def run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -54,6 +54,12 @@ def run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
         cwd=cwd,
         capture_output=True,
         text=True,
+        # Pin UTF-8 rather than inheriting the locale codec. git paths are bytes;
+        # decoding them as cp1252 (the Windows default) mangles non-ASCII names,
+        # so they stop matching the staged keys and get skipped as "missing" - a
+        # silent false pass. surrogateescape keeps undecodable bytes round-trippable.
+        encoding="utf-8",
+        errors="surrogateescape",
         check=False,
     )
 
@@ -86,7 +92,7 @@ def is_text_file(staged: Path, rel: str) -> bool:
         return True
     return b"\x00" not in data
 
-def stage_tree(package: Path, dest: Path) -> None:
+def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
     for item in package.iterdir():
         if item.name == ".git":
@@ -96,8 +102,38 @@ def stage_tree(package: Path, dest: Path) -> None:
             shutil.copytree(item, target)
         else:
             shutil.copy2(item, target)
-    shutil.copy2(ATTRS_SOURCE, dest / ATTRS_NAME)
-
+    # Do NOT install ATTRS_SOURCE here. The package under test is supposed to
+    # carry its own .gitattributes (the publisher copies the asset into the dist
+    # tree before this gate runs). Substituting the canonical rule would make the
+    # gate validate its own copy instead of the published one, so a missing or
+    # stale rule in the tree - precisely the regression this gate exists to catch
+    # - would pass silently. Verify the tree's file instead.
+    # A tree that is going to be published must carry the rule; the check never
+    # installs its own copy, because substituting it is exactly what would blind
+    # this gate to a missing or stale rule in the tree it is meant to police.
+    #
+    # The exemption is an explicit --source-tree flag, NOT a guess based on the
+    # directory name: a staged dist checkout can legitimately be called "pstack"
+    # (that is its published name), and a name-based exemption let that case
+    # through with no rule at all.
+    tree_attrs = package / ATTRS_NAME
+    if not tree_attrs.is_file():
+        if source_tree:
+            # The source pstack/ tree has no .gitattributes by design: the
+            # publisher copies one in when it stages the dist repo. Stage a
+            # throwaway copy so the line-ending question can still be asked.
+            shutil.copy2(ATTRS_SOURCE, dest / ATTRS_NAME)
+            return
+        raise RuntimeError(
+            f"package has no {ATTRS_NAME}: a published tree must carry the rule, "
+            "and the gate must not install its own copy (that would blind it to "
+            "the regression it exists to catch)"
+        )
+    if tree_attrs.read_bytes() != ATTRS_SOURCE.read_bytes():
+        raise RuntimeError(
+            f"package {ATTRS_NAME} differs from {ATTRS_SOURCE.name}: the published rule "
+            "would not match the rule this gate tests against"
+        )
 
 def clone_like_consumer(staged: Path, workdir: Path) -> Path:
     """Materialize a checkout of the staged tree with autocrlf=true.
@@ -115,10 +151,7 @@ def clone_like_consumer(staged: Path, workdir: Path) -> Path:
         raise RuntimeError("git init failed")
     run_git(["config", "user.email", "ci@example.invalid"], repo)
     run_git(["config", "user.name", "ci"], repo)
-    shutil.copy2(ATTRS_SOURCE, repo / ATTRS_NAME)
     for item in staged.iterdir():
-        if item.name == ATTRS_NAME:
-            continue
         target = repo / item.name
         if item.is_dir():
             shutil.copytree(item, target)
@@ -186,6 +219,13 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="dist tree to verify (usually the staged copy the publisher builds)",
     )
+    ap.add_argument(
+        "--source-tree",
+        action="store_true",
+        help="package is the source pstack/ tree, which legitimately carries no"
+             " .gitattributes because the publisher adds one when staging the dist"
+             " repo. Without this flag a tree missing the rule is refused.",
+    )
     args = ap.parse_args(argv)
 
     package: Path = args.package
@@ -203,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         staged = workdir / "staged"
         staged.mkdir()
-        stage_tree(package, staged)
+        stage_tree(package, staged, source_tree=args.source_tree)
         source_hashes = {
             str(p.relative_to(staged)).replace("\\", "/"): sha256(p)
             for p in staged.rglob("*")
@@ -220,9 +260,23 @@ def main(argv: list[str] | None = None) -> int:
             print("error: the consumer checkout tracked no files", file=sys.stderr)
             return 2
 
+        # A package file that git never tracked - typically excluded by a packaged
+        # .gitignore - would never be iterated below, so the checkout could be
+        # declared clean with that file unverified. Compare the package against the
+        # index and refuse rather than silently narrowing coverage.
+        not_tracked = sorted(set(source_hashes) - set(tracked))
+        if not_tracked:
+            print(
+                f"error: {len(not_tracked)} package file(s) are not tracked by git and"
+                f" would never be verified: {not_tracked[:10]}",
+                file=sys.stderr,
+            )
+            return 2
+
         crlf: list[str] = []
         mangled: list[str] = []
         missing: list[str] = []
+        unverified: list[str] = []
         checked_text = 0
         checked_binary = 0
         for rel in tracked:
@@ -232,6 +286,11 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             before = source_hashes.get(rel)
             if before is None:
+                # A package file git never tracked (e.g. excluded by a
+                # .gitignore) is unverified. Saying so beats skipping it
+                # quietly: an unverified file reported as clean is the exact
+                # false pass this gate exists to prevent.
+                unverified.append(rel)
                 continue
             if is_text_file(staged, rel):
                 checked_text += 1
@@ -252,6 +311,11 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(
                 f"{len(crlf)} text file(s) checked out as CRLF under autocrlf=true: "
                 f"{crlf[:10]}"
+            )
+        if unverified:
+            failures.append(
+                f"{len(unverified)} tracked file(s) had no staged counterpart to verify"
+                f" against: {unverified[:10]}"
             )
         if missing:
             failures.append(f"{len(missing)} tracked file(s) absent from the checkout: {missing[:10]}")
@@ -281,4 +345,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # A git failure raises RuntimeError inside main(); the documented contract is
+    # exit 2 for "input unreadable or git unavailable", not a traceback at exit 1.
+    try:
+        raise SystemExit(main())
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None

@@ -6,6 +6,7 @@ the CRLF assertion, stops comparing binaries, stages before writing the
 attributes file) fails here instead of shipping.
 """
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,7 +20,13 @@ ATTRS_NAME = checker.ATTRS_NAME
 
 
 def _package(tmp_path: Path, attrs: str | None) -> Path:
-    """Build a minimal dist-like package, optionally with an attributes rule."""
+    """Build a minimal dist-like package.
+
+    ``attrs`` is the .gitattributes content the PACKAGE itself carries. The gate
+    refuses to install its own copy - that would blind it to a published tree whose
+    rule is missing or stale - so a fixture representing something the publisher
+    would actually stage must supply one. Pass None to exercise that refusal.
+    """
     pkg = tmp_path / "pkg"
     (pkg / "skills" / "demo").mkdir(parents=True)
     (pkg / "skills" / "demo" / "SKILL.md").write_text(
@@ -40,9 +47,23 @@ def _package(tmp_path: Path, attrs: str | None) -> Path:
     return pkg
 
 
-def _run(package: Path, attrs_source: Path, monkeypatch) -> int:
+def _run(package: Path, attrs_source: Path, monkeypatch, *, mirror: bool = True) -> int:
+    """Run the gate; ATTRS_SOURCE is monkeypatched to the test rule.
+
+    The package under test must carry the same rule as a published tree would,
+    so mirror attrs_source into the package unless a test is exercising the
+    "no rule in the tree" refusal.
+    """
+    tree_attrs = package / checker.ATTRS_NAME
+    if mirror and attrs_source.is_file() and package.is_dir() and not tree_attrs.is_file():
+        shutil.copy2(attrs_source, tree_attrs)
     monkeypatch.setattr(checker, "ATTRS_SOURCE", attrs_source)
-    return checker.main(["--package", str(package)])
+    try:
+        return checker.main(["--package", str(package)])
+    except RuntimeError:
+        # main() normally converts RuntimeError to exit 2 at the entrypoint;
+        # call it directly so the refusal is observable here too.
+        return 2
 
 
 def test_clean_tree_passes(tmp_path, monkeypatch):
@@ -110,6 +131,137 @@ def test_png_marked_text_is_caught(tmp_path, monkeypatch):
     attrs.write_text("* text=auto eol=lf\n*.png text\n", encoding="utf-8", newline="")
     pkg = _package(tmp_path, None)
     assert _run(pkg, attrs, monkeypatch) == 1
+
+
+def test_gate_refuses_a_published_tree_with_no_rule(tmp_path, monkeypatch):
+    """The gate must not install its own rule over the tree's.
+
+    This was the reason the gate could not see the regression it exists to catch:
+    stage_tree used to copy ATTRS_SOURCE in unconditionally, so a dist tree whose
+    publisher step had been deleted still validated clean. Reproduced before the
+    fix as exit 0 with no .gitattributes present.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)  # package carries NO .gitattributes
+    assert not (pkg / checker.ATTRS_NAME).is_file()
+    # mirror=False: do NOT stage the rule into the tree - that absence is the condition
+    # under test, and mirroring it would defeat the assertion.
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+
+def test_gate_refuses_a_published_tree_with_a_stale_rule(tmp_path, monkeypatch):
+    """A tree whose rule differs from the tested rule must not be validated."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    (pkg / checker.ATTRS_NAME).write_text("* text=auto eol=crlf\n", encoding="utf-8", newline="")
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+
+
+def test_source_tree_exemption_is_opt_in_not_name_based(tmp_path, monkeypatch):
+    """The exemption must be the explicit flag, never the directory name.
+
+    A staged dist checkout is legitimately called "pstack" - that is its published
+    name - so a name-based exemption let a published tree with no rule at all
+    validate clean. Reproduced before the fix: --package <dir>/pstack with no
+    .gitattributes exited 0.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    # A package directory literally named "pstack", carrying no rule.
+    pkg = tmp_path / "pstack"
+    (pkg / "skills" / "demo").mkdir(parents=True)
+    (pkg / "skills" / "demo" / "SKILL.md").write_text(
+        "---\nname: demo\ndescription: d\n---\n", encoding="utf-8", newline=""
+    )
+    assert not (pkg / checker.ATTRS_NAME).is_file()
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+
+
+def test_source_tree_flag_allows_a_package_with_no_rule(tmp_path, monkeypatch):
+    """The positive control for the flag: --source-tree stages a throwaway rule."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    assert not (pkg / checker.ATTRS_NAME).is_file()
+    monkeypatch.setattr(checker, "ATTRS_SOURCE", attrs)
+    # stage_tree with source_tree=True must accept it; without the flag it refuses.
+    dest = tmp_path / "staged"
+    dest.mkdir()
+    checker.stage_tree(pkg, dest, source_tree=True)
+    assert (dest / checker.ATTRS_NAME).is_file()
+
+
+def test_untracked_package_file_is_refused(tmp_path, monkeypatch, capsys):
+    """A package file git never tracks would never be verified.
+
+    Typically a packaged .gitignore. Reported rather than silently narrowing
+    coverage: the checkout would otherwise be declared clean with a file from the
+    published tree unchecked.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
+    hidden = pkg / "sub"
+    hidden.mkdir()
+    (hidden / "a.md").write_text("x\n", encoding="utf-8", newline="")
+    (pkg / ".gitignore").write_text("sub/\n", encoding="utf-8", newline="")
+    assert _run(pkg, attrs, monkeypatch, mirror=False) == 2
+    assert "never be verified" in capsys.readouterr().err
+
+def test_gate_accepts_a_published_tree_carrying_the_rule(tmp_path, monkeypatch):
+    """The positive control for the two refusals above."""
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
+    assert _run(pkg, attrs, monkeypatch) == 0
+
+
+def test_run_git_decodes_output_as_utf8_regardless_of_locale():
+    """Pin the decoding itself, not the outcome on this host.
+
+    An end-to-end non-ASCII test passes on Linux even without the fix, because
+    UTF-8 is the default there - so it cannot catch a regression to the old
+    locale-dependent decoding. Assert the subprocess call is configured for
+    UTF-8 instead, which holds on every platform.
+    """
+    captured = {}
+    real_run = checker.subprocess.run
+
+    def spy(args, **kwargs):
+        captured.update(kwargs)
+        return real_run(args, **kwargs)
+
+    checker.subprocess.run = spy
+    try:
+        checker.run_git(["--version"], Path.cwd())
+    finally:
+        checker.subprocess.run = real_run
+    assert captured.get("encoding") == "utf-8"
+    assert captured.get("errors") == "surrogateescape"
+
+
+
+
+def test_non_ascii_path_is_not_reported_absent(tmp_path, monkeypatch, capsys):
+    """A non-ASCII path must be verified, not skipped as missing.
+
+    Complements the test above: this one is meaningful on Windows (where the bug
+    reproduced) and harmless on Linux.
+    """
+    attrs = tmp_path / "attrs"
+    attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
+    pkg = _package(tmp_path, None)
+    shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
+    d = pkg / "skills" / "\u65e5\u672c\u8a9e"
+    d.mkdir()
+    (d / "SKILL.md").write_text(
+        "---\nname: x\ndescription: d\n---\n", encoding="utf-8", newline=""
+    )
+    assert _run(pkg, attrs, monkeypatch) == 0
+    assert "absent from the checkout" not in capsys.readouterr().err
 
 
 def test_path_with_a_space_is_not_reported_missing(tmp_path, monkeypatch):
@@ -191,6 +343,9 @@ def test_checker_does_not_mutate_the_package(tmp_path, monkeypatch):
     attrs = tmp_path / "attrs"
     attrs.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="")
     pkg = _package(tmp_path, None)
+    # A publisher would have staged the rule before the gate ran; put it there
+    # up front so the baseline below is the tree the gate actually receives.
+    shutil.copy2(attrs, pkg / checker.ATTRS_NAME)
     before = subprocess.run(
         ["git", "init", "-q", str(pkg)], capture_output=True, text=True, check=False
     )
