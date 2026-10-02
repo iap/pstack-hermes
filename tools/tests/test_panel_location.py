@@ -110,30 +110,43 @@ def test_converter_source_has_no_in_package_write_target():
     assert NEXT_TO_MANIFEST not in src
 
 
-def test_read_side_offers_the_legacy_location():
-    """Consumers and setup-pstack must both still find an in-package panel.
+def test_read_side_points_at_the_user_level_panel():
+    """Every map that writes or reads the panel must name the user-level path.
 
-    Without this, a user who customised the panel before this change would have it
-    silently ignored rather than migrated. Asserted per map entry rather than on a
-    single phrase: T10 words it "a legacy ... still exists inside", the consumer
-    maps word it "or a legacy ...", so one substring cannot cover both.
+    Per-map rather than "any map mentions it": a single-map assertion passes while
+    one shipped skill has quietly stopped reading the panel, which is the failure
+    this is guarding. Also asserts the in-package fallback is GONE - reading it
+    after an update would copy the shipped default over the user's saved choices,
+    so its presence is worse than its absence.
     """
-    # The legacy path is named in each map's REPLACEMENT text (the hermes-side
-    # wording), not the upstream anchor, so assert over both halves.
-    t10 = _load_t10_map()
-    assert any(
-        "legacy `config/models.json`" in side
-        for pair in t10
-        for side in pair
-    ), "T10 no longer tells setup-pstack to read a legacy in-package panel"
+    src = CONVERT.read_text(encoding="utf-8")
 
-    consumers = _load_named_maps(("T8_MAP", "T9_MAP", "T13_MAP"))
-    assert any(
-        "legacy `config/models.json`" in side
-        for mapping in consumers
-        for pair in mapping
-        for side in pair
-    ), "no consumer map offers the legacy in-package panel any more"
+    # setup-pstack: writes it, and reads it back.
+    t10 = _load_t10_map()
+    assert any("pstack-models.json" in side for pair in t10 for side in pair), (
+        "T10 no longer points at the user-level panel"
+    )
+
+    # Every map entry whose REPLACEMENT text names a panel path must name the
+    # user-level one. Scoped to replacement text deliberately: upstream anchors
+    # legitimately mention models.json in other contexts (the shipped default
+    # panel, prose about the Cursor rule) and matching those produced false
+    # positives on T8.
+    for name in ("T8_MAP", "T9_MAP", "T13_MAP"):
+        for _, replacement in _load_named_maps((name,))[0]:
+            if "models.json" not in replacement and "model panel" not in replacement:
+                continue
+            assert "pstack-models.json" in replacement, (
+                f"{name} writes panel guidance without naming pstack-models.json: "
+                f"{replacement[:90]!r}"
+            )
+
+    # The in-package fallback must not come back: see the module docstring.
+    assert "legacy `config/models.json`" not in src, (
+        "a map still tells the agent to recover the in-package panel; after an "
+        "update that file holds the shipped default, so migrating it would discard "
+        "the user's configuration"
+    )
 
 
 def test_shipped_default_panel_still_lives_in_the_package():

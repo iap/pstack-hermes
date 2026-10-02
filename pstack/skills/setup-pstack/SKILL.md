@@ -15,7 +15,7 @@ Enumerate the model slugs available in this session (the configured providers' c
 
 ### 2. Load current state
 
-The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its values as the current choices. Otherwise, if a legacy `config/models.json` still exists inside the plugin directory, read that instead and plan to migrate it. Failing both, start from these defaults.
+The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its values as the current choices. Otherwise start from these defaults. Do NOT try to recover an older in-package `config/models.json`: a plugin update replaces that file with the shipped default before this skill runs, so anything found there is the default rather than the user saved choices, and copying it forward would silently discard their configuration. If they expected a configuration to still be there, tell them plainly that an update overwrote it and ask them to re-run setup-pstack.
 
 ### 3. Map and confirm
 
