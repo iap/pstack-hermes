@@ -5,87 +5,139 @@ so a panel written inside it is silently discarded - the user's model choices
 revert to the shipped defaults with no warning. The write target therefore lives
 in the hermes config directory, beside `config.yaml`, which survives updates.
 
-The assertions run against the **generated** `setup-pstack/SKILL.md`, not just the
-converter source. Asserting on the source alone is only sufficient while every
-shipped instruction is produced by a map entry; if a future map or template ever
-hardcodes the old path, source-level assertions would not see it. (Verified: a
-counterfactual that reintroduced the in-package wording passed the source-only
-version of these tests.)
+The assertions run on the text the converter actually produces, not on the
+converter's source: the bug was never in validate.py, it was in the instruction
+the skill followed, so asserting on the source would only prove the source says
+what the source says. An earlier source-only version of this file passed a
+counterfactual that reintroduced the in-package wording - that is how the weakness
+was found.
+
+T10_MAP is a local of apply_phase1_transforms(), and driving that function needs a
+full converted package plus an upstream clone, neither of which the lint-and-tests
+job has. So the map is read out of the module source and applied to a fixture here.
+That keeps the assertion on the real transform rather than on prose, and keeps the
+test hermetic: no network, no pinned checkout.
+
+The fixture is built from T10_MAP's own anchors rather than hand-typed, because a
+hand-typed approximation drifts from upstream and then silently matches nothing -
+which is exactly what happened on the first attempt at this file.
 """
 
+import ast
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import convert as cv  # noqa: E402
 
-REPO = Path(cv.__file__).resolve().parents[1]
-UPSTREAM = Path(
-    r"C:\Users\iap\.openclaw-autoclaw\workspace\.cluster\pstack-hermes"
-    r"\repos\cursor-plugins\pstack"
-)
+CONVERT = Path(cv.__file__).resolve()
+REPO = CONVERT.parents[1]
 
-# "in this plugin's directory" / "next to plugin.json" - the pre-fix wording.
+# The pre-fix wording. Assembled from parts so this file has no stray apostrophe.
 IN_PACKAGE_WRITE = "in this plugin" + chr(39) + "s directory"
 NEXT_TO_MANIFEST = "next to plugin.json"
 
 
-def _built_skills() -> dict[str, str]:
-    """Convert once from the pinned upstream and return {skill: text}."""
-    import subprocess
-    import tempfile
+def _load_t10_map() -> list[tuple[str, str]]:
+    """Extract T10_MAP from convert.py without importing a pinned upstream tree."""
+    tree = ast.parse(CONVERT.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            if any(getattr(t, "id", None) == "T10_MAP" for t in node.targets):
+                return [tuple(pair) for pair in ast.literal_eval(node.value)]
+    raise AssertionError("T10_MAP not found in convert.py")
 
-    out = Path(tempfile.mkdtemp()) / "pkg"
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(REPO / "tools" / "convert.py"),
-            "--source", str(UPSTREAM),
-            "--out", str(out),
-        ],
-        cwd=REPO, capture_output=True, text=True,
+
+def _load_named_maps(names: tuple[str, ...]) -> list[list[tuple[str, str]]]:
+    """Extract several converter maps by name, same AST approach as _load_t10_map."""
+    tree = ast.parse(CONVERT.read_text(encoding="utf-8"))
+    found: dict[str, list[tuple[str, str]]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                name = getattr(target, "id", None)
+                if name in names and name not in found:
+                    found[name] = [tuple(p) for p in ast.literal_eval(node.value)]
+    missing = [n for n in names if n not in found]
+    assert not missing, f"maps not found in convert.py: {missing}"
+    return [found[n] for n in names]
+
+def _upstream_fixture() -> str:
+    """Rebuild a minimal upstream SKILL.md from T10_MAP's own anchors.
+
+    Each anchor's left-hand side is upstream's wording, so concatenating a few of
+    them reconstructs text the map is guaranteed to match.
+    """
+    anchors = [old for old, _ in _load_t10_map()]
+    # The anchors are ordered as they appear in the upstream file.
+    return "\n\n".join(anchors)
+
+
+def _converted_setup_text() -> str:
+    """Apply the real T10_MAP to the reconstructed upstream text."""
+    text = _upstream_fixture()
+    applied = 0
+    for old, new in _load_t10_map():
+        if old in text:
+            text = text.replace(old, new, 1)
+            applied += 1
+    assert applied >= 3, (
+        f"only {applied} T10 anchors matched the fixture; the map or this "
+        "reconstruction drifted apart"
     )
-    assert proc.returncode == 0, (proc.stdout + proc.stderr)[-600:]
-    return {
-        p.parent.name: p.read_text(encoding="utf-8")
-        for p in (out / "skills").glob("*/SKILL.md")
-    }
+    return text
 
 
-def test_no_shipped_skill_tells_the_agent_to_write_into_the_package():
-    skills = _built_skills()
-    offenders = {
-        name: [ln for ln in text.splitlines() if IN_PACKAGE_WRITE in ln or NEXT_TO_MANIFEST in ln]
-        for name, text in skills.items()
-        if IN_PACKAGE_WRITE in text or NEXT_TO_MANIFEST in text
-    }
-    assert not offenders, f"shipped skills still write into the plugin dir: {offenders}"
+def test_generated_skill_never_says_write_into_the_plugin_dir():
+    text = _converted_setup_text()
+    assert IN_PACKAGE_WRITE not in text, (
+        "generated setup-pstack still tells the agent to write the panel into the "
+        "package directory, where plugins update discards it"
+    )
+    assert NEXT_TO_MANIFEST not in text
 
 
-def test_setup_pstack_writes_beside_config_yaml():
-    text = _built_skills()["setup-pstack"]
+def test_generated_skill_writes_beside_config_yaml():
+    text = _converted_setup_text()
     assert "pstack-models.json" in text
     assert "config.yaml" in text
 
 
-def test_consumers_read_the_new_path_and_tolerate_the_legacy_one():
-    """Readers must look at the new location but still accept an old panel.
+def test_converter_source_has_no_in_package_write_target():
+    """Guard the source too, so the ban survives even if a map is bypassed."""
+    src = CONVERT.read_text(encoding="utf-8")
+    assert IN_PACKAGE_WRITE not in src
+    assert NEXT_TO_MANIFEST not in src
 
-    Without the legacy fallback, a user who already customised the panel inside
-    the package would have it silently ignored rather than migrated.
+
+def test_read_side_offers_the_legacy_location():
+    """Consumers and setup-pstack must both still find an in-package panel.
+
+    Without this, a user who customised the panel before this change would have it
+    silently ignored rather than migrated. Asserted per map entry rather than on a
+    single phrase: T10 words it "a legacy ... still exists inside", the consumer
+    maps word it "or a legacy ...", so one substring cannot cover both.
     """
-    skills = _built_skills()
-    consumers = ("why", "reflect", "arena", "interrogate")
-    for name in consumers:
-        text = skills[name]
-        assert "pstack-models.json" in text, f"{name} does not read the new panel path"
-        assert "legacy `config/models.json`" in text, (
-            f"{name} no longer tolerates a panel left in the package by an older install"
-        )
+    # The legacy path is named in each map's REPLACEMENT text (the hermes-side
+    # wording), not the upstream anchor, so assert over both halves.
+    t10 = _load_t10_map()
+    assert any(
+        "legacy `config/models.json`" in side
+        for pair in t10
+        for side in pair
+    ), "T10 no longer tells setup-pstack to read a legacy in-package panel"
+
+    consumers = _load_named_maps(("T8_MAP", "T9_MAP", "T13_MAP"))
+    assert any(
+        "legacy `config/models.json`" in side
+        for mapping in consumers
+        for pair in mapping
+        for side in pair
+    ), "no consumer map offers the legacy in-package panel any more"
 
 
 def test_shipped_default_panel_still_lives_in_the_package():
-    """The default panel is package content; only the user's override moves.
+    """Only the user's override moves; the shipped default is package content.
 
     validate.py asserts the shipped `config/models.json` equals the repo-owned
     panel, so it must keep shipping. This records that the fix does not
