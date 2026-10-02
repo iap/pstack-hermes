@@ -239,10 +239,10 @@ def test_run_git_decodes_output_as_utf8_regardless_of_locale():
         checker.run_git(["--version"], Path.cwd())
     finally:
         checker.subprocess.run = real_run
-
     assert captured.get("encoding") == "utf-8"
     assert captured.get("errors") == "surrogateescape"
-    assert "utf-8" not in (captured.get("encoding") or "").lower() or True
+
+
 
 
 def test_non_ascii_path_is_not_reported_absent(tmp_path, monkeypatch, capsys):
