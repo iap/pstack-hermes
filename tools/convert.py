@@ -1157,13 +1157,13 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     # hermes-native mechanisms (session_search, session tool catalog).
     T10_MAP = [
         ('Detects your available models and writes an always-applied rule that overrides the skill defaults.',
-         'Detects your available models and writes config/models.json that overrides the skill defaults.'),
+         'Detects your available models and writes a per-role panel beside `config.yaml` in the hermes config directory, outside the plugin tree, so it survives plugin updates.'),
         ('Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack\'s model per role. The skills read it and fall back to their inline defaults when a line is absent, so this is an override layer, not a requirement.',
-         'Write `config/models.json` in this plugin\'s directory (next to plugin.json); it sets pstack\'s model per role. poteto-mode reads it and falls back to `inherit-parent` (the parent chat model) when a role is absent, so this is an override layer, not a requirement.'),
+         'Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.config/hermes/` on Linux, `%LOCALAPPDATA%\hermes\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls. poteto-mode reads it and falls back to `inherit-parent` (the parent chat model) when a role is absent, so this is an override layer, not a requirement. If an older `config/models.json` still sits inside the plugin directory, read its values and migrate them here.'),
         ('Enumerate the model slugs you can pass to a `delegate_task` subagent in this session; that is the dependable source. If Cursor also exposes a models API or CLI that lists the user\'s entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.',
          'Enumerate the model slugs available in this session (the configured providers\' catalog); that is the dependable source. If you cannot detect any, ask the user via `clarify` to paste the slugs they have access to. Never write a real slug you have not confirmed is available. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic).'),
         ('The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.',
-         'The default role-to-model mapping is the shape shown in step 5 below. If `config/models.json` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.'),
+         'The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its values as the current choices. Otherwise, if a legacy `config/models.json` still exists inside the plugin directory, read that instead and plan to migrate it. Failing both, start from these defaults.'),
         ('offering the detected models plus `inherit-parent` and `auto` (both mean: this role runs on the parent chat model, which is how Auto users stay on Auto) as the options.',
          'offering the detected models plus `inherit-parent` (this role runs on the parent chat model) as the options.'),
         ('Every real slug written must be in the detected set; `inherit-parent` and `auto` always pass.',
@@ -1202,7 +1202,7 @@ interrogate reviewers: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-
 ```''',
          '''### 5. Write the config
 
-Write `config/models.json` in this plugin's directory with one entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+Write `pstack-models.json` in the hermes config directory (next to `config.yaml`), never inside the plugin directory - a panel stored with the package is lost on the next `plugins update`. One entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
 
 ```json
 {
@@ -1258,9 +1258,9 @@ Panel roles (how critics, arena runners, arena cross-judge pool, architect runne
         ('Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.',
          'Before spawning investigators, list the MCP tools available in this session (the configured MCP servers\' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.'),
         ('- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)',
-         '- `model`: the why-investigators role model from `config/models.json` (fallback: the parent chat model)'),
+         '- `model`: the why-investigators role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: the parent chat model)'),
         ('- `model`: your configured why-synthesizer model (default `claude-fable-5-1-thinking-max`)',
-         '- `model`: the why-synthesizer role model from `config/models.json` (fallback: the parent chat model)'),
+         '- `model`: the why-synthesizer role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: the parent chat model)'),
         ('''### 1. Locate the active transcript
 
 The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory; use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
@@ -1276,13 +1276,13 @@ For each candidate, read the first JSONL line and check that `message.content[0]
 
 The parent locates the current session via `session_search` (hermes stores sessions in its SQLite store; there are no JSONL transcript files). Query for the active conversation and take the most recent matching session id. If the exact session cannot be resolved, write a tight digest of the conversation and pass that instead.'''),
         ('| Judgment | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/judgment-reviewer.md` |',
-         '| Judgment | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/judgment-reviewer.md` |'),
+         '| Judgment | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: parent chat model) | `references/judgment-reviewer.md` |'),
         ('| Tooling | your configured reflect-tooling model (default `gpt-5.6-sol-max`) | `references/tooling-reviewer.md` |',
-         '| Tooling | the reflect-tooling role model from `config/models.json` (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
+         '| Tooling | the reflect-tooling role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
         ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/divergent-reviewer.md` |',
-         '| Divergent | the reflect-judgment role model from `config/models.json` (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
+         '| Divergent | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
         ('One `delegate_task` call (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
-         'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from `config/models.json` (fallback: parent chat model), agent mode (`readonly: false`).'),
+         'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) (fallback: parent chat model), agent mode (`readonly: false`).'),
         ('Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).',
          'Use the provided Hermes session id to inspect the active conversation with `session_search`, or use the digest below if no session id is given.'),
         ('Pass each template verbatim, substituting the transcript path or digest where marked.',
@@ -1427,9 +1427,9 @@ The parent locates the current session via `session_search` (hermes stores sessi
 # a regex false positive in the audit.
 T11_MAP = [
     ('Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.',
-     'Use `arena runners` from `config/models.json` when present.'),
+     'Use `arena runners` from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) when present.'),
     ('Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry,',
-     'Use the `interrogate reviewers` list from `config/models.json` when present, one reviewer per entry,'),
+     'Use the `interrogate reviewers` list from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`, or a legacy `config/models.json` in the plugin directory) when present, one reviewer per entry,'),
     ('Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user\'s handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.',
      'Look recursively for `*-mode/SKILL.md` matching the user\'s handle: in this plugin\'s `skills/` directory, in `~/.hermes/skills/`, or wherever the user\'s mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level.'),
     ('Locate the active workspace\'s transcripts before fanning out. The system prompt names the workspace\'s `agent-transcripts/` directory. Use only that path. Don\'t glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.',
