@@ -84,7 +84,9 @@ jobs:
           # any CRLF), but without this a consumer on Windows -- where core.autocrlf=true is
           # common -- checks the package out as CRLF and then `hermes plugins update`'s
           # stash/pull/reapply silently rewrites their customized config/models.json.
-          # *.png is binary: text=auto would corrupt assets/logo.png.
+          # Defensive: git already sniffs PNG as binary by content, so this line is not
+          # what currently protects assets/logo.png. It pins the intent, so a future
+          # `text` rule cannot silently start rewriting it.
           # The rule itself lives in tools/assets/dist.gitattributes so this publisher and
           # tools/dist_checkout_check.py (the regression test for it) cannot drift apart.
           cp -a tools/assets/dist.gitattributes "$dist/.gitattributes"
