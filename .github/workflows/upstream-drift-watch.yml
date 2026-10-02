@@ -26,34 +26,58 @@ jobs:
   check-pin:
     runs-on: ubuntu-latest
     steps:
+      # `gh issue list/comment/create` are called below WITHOUT --repo, so gh
+      # resolves the target repository from the git checkout. Without this step
+      # there is no repository in the workspace and gh fails with
+      # "failed to run git: fatal: not a git repository" - the failure this job
+      # hit on every run since 2026-09-14, masked by the clone guard.
+      # persist-credentials: false because nothing here pushes; GH_TOKEN is
+      # supplied explicitly for the API calls. Matches model-drift-watch.yml.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
       - name: Check upstream pstack for movement past the pin
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          head="$(git ls-remote https://github.com/cursor/plugins.git HEAD | cut -f1)"
+          upstream_url="https://github.com/cursor/plugins.git"
+          head="$(git ls-remote "$upstream_url" HEAD | cut -f1)"
           echo "upstream HEAD: $head"
           if [ "$head" = "$UPSTREAM_PIN" ]; then
             echo "no drift: upstream HEAD still at the pin"
             exit 0
           fi
 
-          # Blobless clone: diff the pinned tree against HEAD for pstack/ only.
-          # The blobless filter can leave a partially-initialized repo on some
-          # runners (the clone reports success but `git -C` then reports "not a
-          # git repository"). Verify the clone is usable and fall back to a
-          # plain shallow clone rather than failing the drift check outright.
+          usable() {
+            [ -d "$RUNNER_TEMP/upstream/.git" ] \
+              && git -C "$RUNNER_TEMP/upstream" rev-parse --git-dir >/dev/null 2>&1
+          }
+
+          # Plain shallow clone, no partial-clone filter. A blobless
+          # --filter=blob:none clone creates a promisor repo whose trees are
+          # fetched on demand, which needs network at diff time and has proven
+          # fragile on hosted runners. This job only needs two commits of
+          # pstack/, so the filter bought nothing worth that fragility.
           rm -rf "$RUNNER_TEMP/upstream"
-          if ! git clone --no-checkout --filter=blob:none \
-              https://github.com/cursor/plugins.git "$RUNNER_TEMP/upstream" \
-              || ! git -C "$RUNNER_TEMP/upstream" rev-parse --git-dir >/dev/null 2>&1; then
-            echo "::warning::blobless clone did not produce a usable repo; retrying with a plain shallow clone"
-            rm -rf "$RUNNER_TEMP/upstream"
-            git clone --no-checkout --depth 1 \
-              https://github.com/cursor/plugins.git "$RUNNER_TEMP/upstream"
+          if ! clone_log="$(git clone --no-checkout --depth 1 \
+              "$upstream_url" "$RUNNER_TEMP/upstream" 2>&1)" \
+              || ! usable; then
+            echo "::error::could not clone $upstream_url: ${clone_log:-unknown error}"
+            exit 1
           fi
           git -C "$RUNNER_TEMP/upstream" fetch --depth 1 origin "$UPSTREAM_PIN" "$head"
-          if git -C "$RUNNER_TEMP/upstream" diff --quiet "$UPSTREAM_PIN" "$head" -- pstack; then
+          # The diff needs the pinned tree. Capture its exit status instead of
+          # using it only as a condition: 0 and 1 are real answers (identical /
+          # differs), anything above 1 is a failure and is reported as one.
+          diff_status=0
+          git -C "$RUNNER_TEMP/upstream" diff --quiet "$UPSTREAM_PIN" "$head" -- pstack || diff_status=$?
+          if [ "$diff_status" -gt 1 ]; then
+            echo "::error::could not diff $UPSTREAM_PIN..$head for pstack/ (git exit $diff_status)"
+            exit 1
+          fi
+          if [ "$diff_status" -eq 0 ]; then
             echo "upstream moved ($UPSTREAM_PIN -> $head) but pstack/ is unchanged"
             exit 0
           fi
