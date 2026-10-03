@@ -36,16 +36,27 @@ convenience route when you want `/poteto-mode` style commands.
    as installed for the dist package, or a resolved local path for a branch
    tree.
 2. **Configure the model panel** — run the `setup-pstack` skill once. It writes
-   `config/models.json` mapping pstack's roles (code, prose, judgment, tooling,
-   cross-judge, and the panel roles) to models available to you. `inherit-parent`
-   means "use the parent chat model". The shipped workflow skills consume their
-   roles from it — `why`, `reflect`, `arena`, and `interrogate` name the file
-   directly; `how` reads `your configured how-explorer model` / `the configured
-   how-critics list`; `swarm` reads `swarm workers` from `the configured pstack
-   model panel`. A bad slug here is a local config problem that shows up later,
-   at delegation time — not an upstream bug.
+   the model panel **outside** the package (typically `pstack-models.json`
+   beside hermes `config.yaml`) so plugin updates do not discard your choices.
+   Roles map code, prose, judgment, tooling, cross-judge, and panel roles to
+   models available to you. `inherit-parent` means "use the parent chat model".
+   Workflow skills consume those roles; a bad slug shows up later at delegation
+   time — not as an upstream bug.
 3. **Give it a real task** and load `poteto-mode`. It classifies the work and
    routes to the right playbook; you do not pick the playbook yourself.
+
+## Stack forge (Graphite / GitHub)
+
+When playbooks talk about stacks and frontiers:
+
+- **Default:** Graphite (`gt`) when installed and working.
+- **Fallback:** GitHub (`gh`) PR base/head topology when Graphite is absent or
+  when the provider is set to `github` / auto-fallback.
+- **GitLab (`glab`):** not supported in this port (future / halted).
+
+Missing Graphite is not a hard failure if GitHub can complete the task. Some
+operations (e.g. certain restacks) still need Graphite; treat those verdicts as
+incomplete when `gt` is unavailable rather than inventing a substitute.
 
 ## What to expect
 
@@ -63,35 +74,28 @@ convenience route when you want `/poteto-mode` style commands.
 
 ## Customizing skills
 
-Pick by what you want to change — one of three routes:
+Stock pstack skills are a **versioned product**. Hermes self-improvement
+(`skill_manage`, `/learn`, background learning) is for **your** procedural
+memory — not for silently rewriting the installed plugin tree.
 
-- **Tweak a line or two (model slug, thresholds, wording) — edit in place.**
-  The installed plugin is plain files under the hermes plugins dir; edit any
-  `SKILL.md`, then `hermes gateway restart`. Nothing re-scans local edits.
-  On a root install (`iap/pstack`), `hermes plugins update pstack`
-  autostashes uncommitted edits and reapplies them — keep them uncommitted;
-  locally committed changes block the fast-forward update. Subdir installs
-  have no `.git`: reinstalling to update **wipes** in-place edits, so copy
-  modified skills out first.
-- **Own several changed skills, keep them versioned — fork the dist repo.**
-  `iap/pstack` is the plain package (manifest at root, no tooling): fork it,
-  commit your changes, install from your fork
-  (`hermes plugins install <you>/pstack --enable`). Updates become a normal
-  git pull/merge from upstream.
-- **Add your own new skills alongside pstack — a skill tap.** A tap is just
-  a GitHub repo of `skills/<name>/SKILL.md` directories:
-  `hermes skills tap add <you>/skills-repo`, then
-  `hermes skills install <you>/skills-repo/<skill>`. No fork of pstack, no
-  touching the installed tree; pstack's own skills stay stock. Prefer this
-  (or hermes `skill_manage` / `/learn` into your tap) for *new* skills —
-  keep stock pstack skills stock. Hermes skill improvement and optional
-  self-evolution belong on **your** tap or fork copies, not on the installed
-  stock tree: updates and dist republishes will collide with those edits.
+Pick by what you want to change — one of three durable routes:
+
+| Intent | Route | Notes |
+|---|---|---|
+| Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Keep edits **uncommitted** on root installs so `hermes plugins update` can autostash/reapply. Subdir installs **wipe** edits on reinstall — copy out first. Not a durable learning path. |
+| Own several changed skills, versioned | **Fork** dist repo `iap/pstack`, install from your fork | `hermes plugins install <you>/pstack --enable`. Merge upstream when you choose. |
+| New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
 Structural changes that must survive upstream re-pins (new adaptations,
 model-panel defaults, exclusions) belong in a fork of the development repo
 (`pstack-hermes`), via the converter — see its CONTRIBUTING.md. Broadly
 useful fixes are welcome as PRs there.
+
+> [!WARNING]
+> **Anti-pattern:** using Hermes learning / `skill_manage` to "fix" or evolve
+> **stock** pstack skills inside the plugin install (including namespaced
+> `agent-plugin-pstack-…` skills). Updates and dist republishes collide with
+> those edits. Put improvements on a tap, a fork, or local skills instead.
 
 > [!WARNING]
 > Keep the hermes vocabulary when editing skills — `delegate_task`,
@@ -112,3 +116,4 @@ that reproduces without this port → `cursor/plugins`.
 - [ADAPTATIONS.md](ADAPTATIONS.md) — what changed from upstream and why
 - [RUNBOOK-upstream-drift.md](RUNBOOK-upstream-drift.md) — re-pinning procedure
 - [PATCHES.md](PATCHES.md) — hermes-fork patches (historical)
+- [AGENTS.md](../AGENTS.md) — agent rules for working on this repository

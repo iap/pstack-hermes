@@ -5,8 +5,10 @@
 > Cursor's *pstack* agent-method plugin to the **Hermes Agent** platform
 > (`NousResearch/hermes-agent`). The runtime target is **hermes**. Cursor is
 > upstream attribution and an inert dual-load surface only — not the delivery
-> path. Do not invent Cursor IDE, Graphite, or Cursor-plugin authoring
-> workflows to implement or verify this package.
+> path. Do not invent Cursor IDE or Cursor-plugin authoring workflows to
+> implement or verify this package. Stack tooling follows the policy below
+> (Graphite default, GitHub fallback) — that is product behavior, not a
+> Cursor-only verify path.
 
 Instructions for AI coding agents (and humans in a hurry) working **on this
 repository** to ship pstack onto hermes. End-user invoke/config:
@@ -25,6 +27,47 @@ repository** to ship pstack onto hermes. End-user invoke/config:
 
 Everything else in this file follows from that rule.
 
+## Stock skills vs Hermes self-improvement (hard gap)
+
+Hermes can improve procedural memory via `skill_manage`, `/learn`, and the
+background learning loop. That loop writes **profile-local** skills under
+`~/.hermes/skills/` (or a skill tap). It must **not** be treated as the path
+to improve **stock** pstack skills shipped in this package.
+
+| Intent | Path | Survives `hermes plugins update`? |
+|---|---|---|
+| Change stock method for all users | Converter / `tools/assets/` → rebuild → validate → release | Yes (product) |
+| Personal or project procedure | `skill_manage` / `/learn` into **local** `~/.hermes/skills/` | Yes (outside package) |
+| Owned variant of pstack skills | **Fork** of dist `iap/pstack`, install from the fork | Yes (you control merge) |
+| New skills beside pstack | **Skill tap** (`hermes skills tap add` / install) | Yes |
+| Durable "learning" into installed plugin `SKILL.md` files | **Forbidden** as source of truth | No — updates and dist republish collide |
+
+> [!WARNING]
+> Never instruct `skill_manage` (or any self-evolution path) to patch
+> **namespaced plugin skills** (`agent-plugin-pstack-…`) as the durable home
+> for improvements. Stock package text changes only through the converter and
+> a published release. In-place edits of the installed tree are temporary at
+> best (see [docs/USING.md](docs/USING.md)).
+
+When writing converter output or docs: hermes `skill_manage` replaces Cursor
+`create-skill` for *authoring* — it does not authorize mutating stock plugin
+skills in place.
+
+## Stack forge policy (product)
+
+Orchestration / frontier discovery follows this freeze (do not invert):
+
+| Provider | Status |
+|---|---|
+| **Graphite (`gt`)** | **Default** when available |
+| **GitHub (`gh`)** | **Fallback** (PR base/head topology; explicit `github` or auto fallback) |
+| **GitLab (`glab`)** | **Halted** — reserved in wording only; do not implement in active milestones |
+
+Do not open implementation work for `glab` or treat missing Graphite as a
+hard failure when GitHub fallback can satisfy the task. Restacks and some
+stack surgery may still require Graphite; document incomplete verdicts rather
+than inventing a second stacker.
+
 ## Change triage (30 seconds)
 
 Default home for work is **this repo**. Escalate only when the table says so.
@@ -32,9 +75,11 @@ Default home for work is **this repo**. Escalate only when the table says so.
 | If you need to… | Do this | Not this |
 |---|---|---|
 | Change skill prose, delegation wording, model panel, hermesbot, bans, docs, converter maps | Edit `tools/` / `tools/assets/` → rebuild → validate → (ledger row if converter changed) | Hand-edit `pstack/`; rewrite in Cursor vocabulary |
+| Personal skill improvement or new procedures | Local skills, skill tap, or fork of `iap/pstack` ([docs/USING.md](docs/USING.md)) | `skill_manage` against stock plugin skills; durable edits under the install tree |
 | Package validates / doctor is clean, but stock install misbehaves on hermes | File/fix in `NousResearch/hermes-agent`; `patches/` is **historical reference only** ([docs/PATCHES.md](docs/PATCHES.md)) | Paper over harness gaps with skill prose that claims nonexistent tools |
 | Bug reproduces on upstream Cursor pstack *without* this port | Route to `cursor/plugins` ([SECURITY.md](SECURITY.md)) | "Fix" it in the converter as if it were a port bug |
 | Touch `.cursor-plugin/`, `pstack/agents/`, attribution, excluded `benny` / `make-bot-ui` | Leave as-is (dual-load / scanner contract) | "Clean up", re-add, or modernize |
+| GitLab / `glab` stack support | Leave halted; no implementation | Add provider code or active milestone work |
 
 ## Default work loop
 
@@ -103,8 +148,9 @@ session looks right.
    run one real task. Failures with a stock package and clean doctor → hermes
    harness / routing issue, not a silent skill rewrite.
 
-Do not treat Cursor dual-load, Graphite, or Cursor-only agent tools as the
-verification surface for this port.
+Do not treat Cursor dual-load or Cursor-only agent tools as the verification
+surface for this port. Stack provider behavior is product policy (Graphite
+default / GitHub fallback), not a substitute for convert → validate → doctor.
 
 ## Hermes vocabulary (use these; ban the aliases)
 
@@ -121,7 +167,7 @@ CI scans every decodable package file (`tools/bans.py` +
 | recurring `hermes cron` wake | terminal `/loop` as the prescribed mechanism |
 | `goal.md` beside the plan in the agent store | armed Cursor `/goal` as the mechanism |
 | `hermesbot` (`hermes send` / `hermes peer` / gateway webhook) | `grokbot` / `make-bot-ui` / Tailscale bot |
-| hermes `skill_manage` | Cursor `create-skill` |
+| hermes `skill_manage` (local / tap skills — not stock plugin mutation) | Cursor `create-skill` |
 | `config/models.json` ← `tools/assets/model-panel.json` | hand-tuned shipped panel only |
 
 Cursor still appears in three **legitimate** roles only — preserve, do not
@@ -167,9 +213,10 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   `.git` and updates via `hermes plugins update pstack`; **subdir**
   (`iap/pstack-hermes/pstack`) strips `.git` → reinstall only. Docs must keep
   them distinct.
-- Using Cursor/Graphite tooling habits as the implementation or review path
-  for hermes delivery — verify with convert → validate → doctor / hermes invoke.
-- Pointing hermes `skill_manage` / `hermes learning` / self-evolution at
-  stock package skills — personal improvements belong in a skill tap or dist
-  fork; durable package changes go through the converter
+- Using Cursor IDE dual-load habits as the implementation or review path for
+  hermes delivery — verify with convert → validate → doctor / hermes invoke.
+- Pointing hermes `skill_manage` / learning / self-evolution at **stock**
+  package skills — personal improvements belong in local skills, a skill tap,
+  or a dist fork; durable package changes go through the converter
   (see [docs/USING.md](docs/USING.md)).
+- Implementing GitLab (`glab`) or treating it as an active milestone — halted.

@@ -60,12 +60,13 @@ in-place — to update one, uninstall and reinstall with the subdir form.
   (all Cursor `Task`/`subagent_type`/`run_in_background` vocabulary removed),
   discovery rewritten to hermes-native `session_search`/`session` tools,
   config shipped as hermes `config/models.json`.
-- **setup-pstack onboarding flow** adapted for hermes profiles and `config/models.json`.
+- **setup-pstack onboarding flow** adapted for hermes profiles and external
+  model-panel storage (survives plugin updates).
 
 ## Repository layout
 
 ```
-AGENTS.md          instructions for coding agents (triage, hermes work loop, vocabulary)
+AGENTS.md          instructions for coding agents (triage, write surface, vocabulary)
 pstack/            the built package (converter output; provenance in .build-provenance.txt)
 tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform passes, atomic builds)
 tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
@@ -114,9 +115,11 @@ uv run --frozen ruff check tools      # lint
 The poteto-mode checker scripts additionally run a Bun suite (CI runs the
 same): `cd pstack/skills/poteto-mode/scripts && bun run test && bun run typecheck`.
 
-Coding agents start with [AGENTS.md](AGENTS.md) (triage + hermes verify loop);
-humans continue in [CONTRIBUTING.md](CONTRIBUTING.md) for procedures, and
-[docs/PATCHES.md](docs/PATCHES.md) for historical hermes-fork patch reference.
+Coding agents start with [AGENTS.md](AGENTS.md) (triage + write surface +
+hermes verify loop); humans continue in [CONTRIBUTING.md](CONTRIBUTING.md) for
+procedures, and [docs/PATCHES.md](docs/PATCHES.md) for historical hermes-fork
+patch reference. End-user invoke and customization:
+[docs/USING.md](docs/USING.md).
 
 ## Naming
 
@@ -139,16 +142,21 @@ For real Cursor-side work, install upstream pstack instead. The
 
 ## Known limitations
 
-- **Graphite (`gt`) optional** — poteto-mode's `orch` now defaults to
-  GitHub-native stack discovery (`gh pr list` base/head chain). Graphite
-  is still supported via `--provider graphite` but is no longer required.
-- **Cloud restacks** — restacking still requires Graphite (`gt`); hermes
-  runs lanes locally via `git rebase` + `git push --force-with-lease`.
+- **Stack forge** — **Graphite (`gt`) is the default** when available; **GitHub
+  (`gh`)** is the fallback (PR base/head topology). **GitLab (`glab`) is not
+  implemented** (halted). Missing Graphite is not a hard failure when GitHub
+  can complete the task; some restack/stack-surgery paths still need `gt`.
+- **Cloud restacks** — full Graphite cloud restack behavior is not mirrored;
+  hermes runs lanes locally via `git rebase` + `git push --force-with-lease`
+  where applicable.
 - **Cursor control surfaces** — `control-ui`, `control-cli`, and `deslop`
   are Cursor-only skills with no hermes equivalent. Live UI/CLI
   verification is not available on hermes.
 - **Origin forge** — `origin pr ...` commands are Cursor's Origin CLI;
   hermes falls back to `gh` when Origin is not installed.
+- **Stock skills vs learning** — Hermes self-improvement must not target stock
+  plugin skills as durable source of truth; use a skill tap, a dist fork, or
+  local skills ([docs/USING.md](docs/USING.md)).
 
 ## License
 
