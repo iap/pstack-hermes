@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Changed
+- Docs / agent policy (Phase A, no package rebuild): `AGENTS.md` and `docs/USING.md` codify the stock-skills write surface — Hermes self-improvement (`skill_manage` / learning) targets local skills, skill taps, or a dist fork, not stock plugin skills. Stack forge freeze: **Graphite (`gt`) default**, **GitHub (`gh`) fallback**, **GitLab (`glab`) halted**. README Known limitations aligned (was incorrectly describing Graphite as optional-only).
+
 ### Fixed
 - Model panel no longer written into the plugin directory (#57). `hermes plugins update` replaces the installed package tree, so a `config/models.json` written next to `plugin.json` was silently discarded on every update - the user's per-role model choices reverted to the shipped defaults with no warning. `setup-pstack` now writes `pstack-models.json` in the hermes config directory beside `config.yaml`, which survives reinstalls, and the consuming skills (`why`, `reflect`, `arena`, `interrogate`) read that path while still tolerating a legacy in-package panel so existing customizations are migrated rather than ignored. The shipped default panel stays in the package - only the user override moves.
 - `dist_checkout_check`: the gate no longer substitutes its own `.gitattributes` for the tree's, which made it blind to the regression it exists to catch. `stage_tree` copied `tools/assets/dist.gitattributes` over whatever the dist tree actually held, so a published tree missing the rule - the publisher `cp` line deleted, or the rule stale - still validated clean. A staged tree must now carry the rule and match the tested one; the source `pstack/` tree (which legitimately has none, since the publisher adds it) is still allowed. Both refusals are counterfactual-checked: dropping either guard fails a test.
