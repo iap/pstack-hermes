@@ -1149,70 +1149,57 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     T9_MAP = [
         ('Drafts or revises a personal -mode skill via create-skill + unslop',
          'Drafts or revises a personal -mode skill via the `skill_manage` tool (action: `create`) + unslop'),
-        ('an inline mining pass (see step 1), Cursor\'s built-in `create-skill` (authoring), and the **unslop** skill',
+        ("an inline mining pass (see step 1), Cursor's built-in `create-skill` (authoring), and the **unslop** skill",
          'an inline mining pass (see step 1), the `skill_manage` tool (action: `create`, authoring), and the **unslop** skill'),
-        ('Use Cursor\'s built-in `create-skill` skill to author the skill.',
+        ("Use Cursor's built-in `create-skill` skill to author the skill.",
          'Use the `skill_manage` tool (action: `create`) to author the skill.'),
-        ('follow `create-skill`\'s YAML rules', 'follow the `skill_manage` authoring YAML rules'),
-        ('Apply the **unslop** skill and `create-skill`\'s writing guidelines to every line.',
+        ("follow `create-skill`'s YAML rules",
+         'follow the `skill_manage` authoring YAML rules'),
+        ("Apply the **unslop** skill and `create-skill`'s writing guidelines to every line.",
          'Apply the **unslop** skill and the `skill_manage` authoring writing guidelines to every line.'),
-        ('A `create-skill`-style test/iterate benchmark loop isn\'t useful here.',
-         'A skill-authoring test/iterate benchmark loop isn\'t useful here.'),
-        ('`create-skill` alone, no mining required.', 'the `skill_manage` tool alone, no mining required.'),
-        ('- Cursor\'s built-in `create-skill` skill: skill authoring process and writing guidelines.',
-         '- The `skill_manage` tool (action: `create`): skill authoring process and writing guidelines.'),
-        ('Agent-facing prose also follows the **create-skill** skill (Cursor\'s built-in for authoring SKILL.md files).',
-         'Agent-facing prose also follows the **skill_manage** tool (hermes\' authoring operation for SKILL.md files).'),
-        ('1. Use the **create-skill** skill (Cursor\'s built-in for authoring SKILL.md files).',
-         '1. Use the `skill_manage` tool (action: `create`, hermes\' authoring operation for SKILL.md files).'),
+        ("A `create-skill`-style test/iterate benchmark loop isn't useful here.",
+         "A skill-authoring test/iterate benchmark loop isn't useful here."),
+        ('`create-skill` alone, no mining required.',
+         'the `skill_manage` tool alone, no mining required.'),
+        ("Agent-facing prose also follows the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
+         "Agent-facing prose also follows the **skill_manage** tool (hermes' authoring operation for SKILL.md files)."),
+        ("1. Use the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
+         "1. Use the `skill_manage` tool (action: `create`, hermes' authoring operation for SKILL.md files)."),
         ('- Existing-skill-first: propose `new skill via create-skill:` only when no existing skill is a real home, the pattern recurs, and the topic deserves its own skill.',
          '- Existing-skill-first: propose `new skill via the skill_manage tool:` only when no existing skill is a real home, the pattern recurs, and the topic deserves its own skill.'),
         ('| <new pattern, no existing skill is a real home> | <draft a new skill via create-skill> | <new skill via create-skill: <kebab-name>> |',
          '| <new pattern, no existing skill is a real home> | <draft a new skill via the skill_manage tool> | <new skill via the skill_manage tool: <kebab-name>> |'),
         ('Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.',
-         'Before spawning investigators, list the MCP tools available in this session (the configured MCP servers\' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool.'),
-        ('- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)',
+         "Before spawning investigators, list the MCP tools available in this session (the configured MCP servers' tool catalog). If the session has no MCP tools, mark the unreachable evidence categories null in the coverage map instead of inventing a tool."),
+        ('- `model`: the `why investigators` line, default `grok-4.7-xhigh-fast`',
          '- `model`: the why-investigators role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the parent chat model)'),
-        ('- `model`: your configured why-synthesizer model (default `claude-fable-5-1-thinking-max`)',
+        ('- `model`: the `why synthesizer` line, default `claude-opus-5-5-max`',
          '- `model`: the why-synthesizer role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the parent chat model)'),
-        ('''### 1. Locate the active transcript
-
-The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory; use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
-
-```bash
-ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10
-```
-
-Three transcript layouts: legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`).
-
-For each candidate, read the first JSONL line and check that `message.content[0].text` contains the conversation's opening user prompt. Take the matching path. If no path resolves, write a tight digest of the session and pass that instead.''',
-         '''### 1. Locate the active transcript
-
-The parent locates the current session via `session_search` (hermes stores sessions in its SQLite store; there are no JSONL transcript files). Query for the active conversation and take the most recent matching session id. If the exact session cannot be resolved, write a tight digest of the conversation and pass that instead.'''),
-        ('| Judgment | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/judgment-reviewer.md` |',
+        ("### 1. Locate the active transcript\n\nThe parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory. Use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.\n\n```bash\nls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10\n```\n\nThree transcript layouts: legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`).\n\nFor each candidate, read the first JSONL line and check that `message.content[0].text` contains the conversation's opening user prompt. Take the matching path. If no path resolves, write a tight digest of the session and pass that instead.",
+         '### 1. Locate the active transcript\n\nThe parent locates the current session via `session_search` (hermes stores sessions in its SQLite store; there are no JSONL transcript files). Query for the active conversation and take the most recent matching session id. If the exact session cannot be resolved, write a tight digest of the conversation and pass that instead.'),
+        ('| Judgment | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-max` | `references/judgment-reviewer.md` |',
          '| Judgment | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/judgment-reviewer.md` |'),
-        ('| Tooling | your configured reflect-tooling model (default `gpt-5.6-sol-max`) | `references/tooling-reviewer.md` |',
+        ('| Tooling | `reflect tooling` | `gpt-5.6-sol-max` | `references/tooling-reviewer.md` |',
          '| Tooling | the reflect-tooling role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/tooling-reviewer.md` |'),
-        ('| Divergent | your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`) | `references/divergent-reviewer.md` |',
+        ('| Divergent | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-max` | `references/divergent-reviewer.md` |',
          '| Divergent | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/divergent-reviewer.md` |'),
-        ('One `delegate_task` call (role: `leaf`), using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).',
-         'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model), agent mode (`readonly: false`).'),
+        ('One `delegate_task` call (role: `leaf`), with `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-max`), agent mode (`readonly: false`).', 'One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model), agent mode (`readonly: false`).'),
         ('Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).',
          'Use the provided Hermes session id to inspect the active conversation with `session_search`, or use the digest below if no session id is given.'),
         ('Pass each template verbatim, substituting the transcript path or digest where marked.',
          'Pass each template verbatim, substituting the Hermes session id or digest where marked.'),
-        ('- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor\'s built-in `create-skill` skill and run its draft / test / iterate loop.',
-         '- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill\'s guidance, or `skill_manage(action=\'create\')`) and run its draft / test / iterate loop.'),
-        ('- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to `create-skill` and run its description-optimization loop.',
-         '- `tune description: <skill path>` (the skill exists but didn\'t trigger when it should have): hand to the hermes skill-authoring flow\'s description pass.'),
+        ("- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor's built-in `create-skill` skill and run its draft / test / iterate loop.",
+         "- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the hermes skill-authoring flow (the hermes-agent skill's guidance, or `skill_manage(action='create')`) and run its draft / test / iterate loop."),
+        ("- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `create-skill` and run its description-optimization loop.",
+         "- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to the hermes skill-authoring flow's description pass."),
         ('- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.',
          '- `new skill: <kebab-name>`: hand creation to the hermes skill-authoring flow. Do not invent the shape ad hoc.'),
         ('Transcripts live at `~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl`, where `<slug>` is the workspace path with the leading slash dropped and each "/" turned into "-" (so `/Users/you/proj` becomes `Users-you-proj`). Every line is one chat message.',
-         'Sessions live in hermes\' SQLite store; there are no JSONL transcript files. Query them via `session_search` (topic + recency filters).'),
+         "Sessions live in hermes' SQLite store; there are no JSONL transcript files. Query them via `session_search` (topic + recency filters)."),
         ('One specific prior chat to resume is the `session-pickup` playbook, not this.',
-         'One specific prior chat to resume is the session-pickup playbook (in this plugin\'s playbooks/), not this.'),
+         "One specific prior chat to resume is the session-pickup playbook (in this plugin's playbooks/), not this."),
         ('Tell every subagent to order candidates by real modification time (`ls -t`) and never by UUID name, grep the topic first and then read only the matching chats and only their relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).',
-         'Tell every subagent to query `session_search` by topic and recency, read only the matching sessions\' relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats).'),
+         "Tell every subagent to query `session_search` by topic and recency, read only the matching sessions' relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats)."),
     ]
     t910 = apply_map(sorted((out / "skills").rglob("*.md")),
                      T10_MAP, map_name="T10_MAP", st=st)
@@ -1340,51 +1327,43 @@ The parent locates the current session via `session_search` (hermes stores sessi
 # skip on hermes) with a note; provenance is by-design; github.ts:352 was
 # a regex false positive in the audit.
 T11_MAP = [
-    ('Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.',
-     'Use `arena runners` from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) when present.'),
-    ('Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry,',
-     'Use the `interrogate reviewers` list from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) when present, one reviewer per entry,'),
-    ('Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user\'s handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.',
-     'Look recursively for `*-mode/SKILL.md` matching the user\'s handle: in this plugin\'s `skills/` directory, in `~/.hermes/skills/`, or wherever the user\'s mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level.'),
-    ('Locate the active workspace\'s transcripts before fanning out. The system prompt names the workspace\'s `agent-transcripts/` directory. Use only that path. Don\'t glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.',
-     'Locate the active session history before fanning out. Query `session_search` for the active conversation\'s sessions; hermes stores them in its SQLite store. Don\'t read sessions from unrelated projects or users.'),
-    ('- Path: preserve an existing mode skill\'s category. For a new mode, use `.cursor/skills/<handle>/<handle>-mode/SKILL.md` when the repo has an established personal category for that handle; otherwise default to `.cursor/skills/<handle>-mode/SKILL.md` in the project (or `~/.cursor/skills/<handle>-mode/` if the user prefers a personal skill).',
-     '- Path: preserve an existing mode skill\'s category. For a new mode, use `skills/<handle>/<handle>-mode/SKILL.md` when the plugin has an established personal category for that handle; otherwise default to `~/.hermes/skills/<handle>-mode/SKILL.md` (a personal skill location).'),
-    ('Read each candidate\'s local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`; that crosses workspace boundaries and reads private chats from unrelated projects.',
-     'Verify each candidate\'s trail via `session_search` over the hermes session store (query the candidate\'s topic and read the matching session\'s relevant regions). Hermes sessions cross project boundaries only when the work did.'),
-    ('1. Locate the prior trail. A local transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path; do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.',
-     '1. Locate the prior trail. The hermes session store (query `session_search` for the prior conversation), a cloud-agent URL, or a pushed branch.'),
-    ('Read this run\'s transcript under the active workspace\'s `agent-transcripts/` directory (the system prompt names the path). Don\'t glob across `~/.cursor/projects/*/`; that reads unrelated private chats.',
-     'Read this run\'s history via `session_search` over the hermes session store (query this conversation). Don\'t read unrelated private sessions.'),
-    ('- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)',
-     '- `read_file` calls against any `SKILL.md` file (this plugin\'s `skills/`, `~/.hermes/skills/`, or other configured skills locations)'),
-    ('otherwise `/tmp/arena-<slug>/candidate-<n>/`',
-     'otherwise a scratch directory under the system temp (`arena-<slug>/candidate-<n>/`)'),
-    ('Save every screenshot to `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the report.',
-     'Save every screenshot to a scratch directory under the system temp (`swarm-<pr-id>/worker-<n>/<slug>.png`) and return the paths with the report.'),
-    ('write it to a file like `/tmp/<slug>-resume.md`',
-     'write it to a resume file in the system temp directory (`<slug>-resume.md`)'),
-    ('Use a worktree, branch, or `/tmp/swarm-<slug>/worker-<n>/`.',
-     'Use a worktree, branch, or a scratch directory under the system temp (`swarm-<slug>/worker-<n>/`).'),
-    ('Set `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` so concurrent runs do not share state.',
-     'Set `NOTES_DATA_DIR` to a scratch directory under the system temp (e.g. `notes-verify-$RUN_ID`) so concurrent runs do not share state.'),
-    ('6. Simulators and other reclaimers.',
-     '6. Simulators and other reclaimers (macOS/Xcode).'),
-    ('reading local transcripts under `agent-transcripts/`',
-     'reading session history from the local hermes store'),
-    ('a project-local skill (`.cursor/skills/verify-<app>/`)',
-     'a project-local skill in your harness\'s skills directory (`%LOCALAPPDATA%\\hermes\\skills\\verify-<app>/` '
-     'on hermes, `.cursor/skills/verify-<app>/` on Cursor)'),
-    ('Write `.cursor/skills/verify-<app>/SKILL.md` with YAML frontmatter',
-     'Write `verify-<app>/SKILL.md` in that skills directory with YAML frontmatter'),
-    ('Create `.cursor/skills/verify-<app>/features/README.md` plus one file per user-facing feature',
-     'Create `verify-<app>/features/README.md` in that skills directory plus one file per user-facing feature'),
-    ('(usually `.cursor/skills/verify-*/`)',
-     '(usually `verify-*/` in your harness\'s skills directory)'),
-    ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
-     '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts '
-     '(Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
-]
+        ("Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*-mode/SKILL.md` matching the user's handle. Mode skills can live in a personal category directory (`.cursor/skills/<handle>/`), not only at the top level.",
+         "Look recursively for `*-mode/SKILL.md` matching the user's handle: in this plugin's `skills/` directory, in `~/.hermes/skills/`, or wherever the user's mode skills live. Mode skills can live in a personal category directory (`skills/<handle>/`), not only at the top level."),
+        ("Locate the active workspace's transcripts before fanning out. The system prompt names the workspace's `agent-transcripts/` directory. Use only that path. Don't glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.",
+         "Locate the active session history before fanning out. Query `session_search` for the active conversation's sessions; hermes stores them in its SQLite store. Don't read sessions from unrelated projects or users."),
+        ("- Path: preserve an existing mode skill's category. For a new mode, use `.cursor/skills/<handle>/<handle>-mode/SKILL.md` when the repo has an established personal category for that handle. Otherwise default to `.cursor/skills/<handle>-mode/SKILL.md` in the project (or `~/.cursor/skills/<handle>-mode/` if the user prefers a personal skill).",
+         "- Path: preserve an existing mode skill's category. For a new mode, use `skills/<handle>/<handle>-mode/SKILL.md` when the plugin has an established personal category for that handle; otherwise default to `~/.hermes/skills/<handle>-mode/SKILL.md` (a personal skill location)."),
+        ("Read each candidate's local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.",
+         "Verify each candidate's trail via `session_search` over the hermes session store (query the candidate's topic and read the matching session's relevant regions). Hermes sessions cross project boundaries only when the work did."),
+        ("1. Locate the prior trail. A local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path. Do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.",
+         '1. Locate the prior trail. The hermes session store (query `session_search` for the prior conversation), a cloud-agent URL, or a pushed branch.'),
+        ("Read this run's transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path). Don't glob across `~/.cursor/projects/*/`. That reads unrelated private chats.",
+         "Read this run's history via `session_search` over the hermes session store (query this conversation). Don't read unrelated private sessions."),
+        ('- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)',
+         "- `read_file` calls against any `SKILL.md` file (this plugin's `skills/`, `~/.hermes/skills/`, or other configured skills locations)"),
+        ('otherwise `/tmp/arena-<slug>/candidate-<n>/`',
+         'otherwise a scratch directory under the system temp (`arena-<slug>/candidate-<n>/`)'),
+        ('Save every screenshot to `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the report.',
+         'Save every screenshot to a scratch directory under the system temp (`swarm-<pr-id>/worker-<n>/<slug>.png`) and return the paths with the report.'),
+        ('write it to a file like `/tmp/<slug>-resume.md`',
+         'write it to a resume file in the system temp directory (`<slug>-resume.md`)'),
+        ('Set `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` so concurrent runs do not share state.',
+         'Set `NOTES_DATA_DIR` to a scratch directory under the system temp (e.g. `notes-verify-$RUN_ID`) so concurrent runs do not share state.'),
+        ('6. Simulators and other reclaimers.',
+         '6. Simulators and other reclaimers (macOS/Xcode).'),
+        ('Reading local transcripts under `agent-transcripts/`',
+         'Reading session history from the local hermes store'),
+        ('a project-local skill (`.cursor/skills/verify-<app>/`)',
+         "a project-local skill in your harness's skills directory (`%LOCALAPPDATA%\\hermes\\skills\\verify-<app>/` on hermes, `.cursor/skills/verify-<app>/` on Cursor)"),
+        ('Write `.cursor/skills/verify-<app>/SKILL.md` with YAML frontmatter',
+         'Write `verify-<app>/SKILL.md` in that skills directory with YAML frontmatter'),
+        ('Create `.cursor/skills/verify-<app>/features/README.md` plus one file per user-facing feature',
+         'Create `verify-<app>/features/README.md` in that skills directory plus one file per user-facing feature'),
+        ('(usually `.cursor/skills/verify-*/`)',
+         "(usually `verify-*/` in your harness's skills directory)"),
+        ('# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.',
+         '# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts (Cursor-specific; on hermes, sessions live in SQLite and this check skips gracefully).'),
+    ]
 
 
 DELEGATION_MAP = [
@@ -1398,7 +1377,7 @@ DELEGATION_MAP = [
      'One `delegate_task` call (role: `leaf`)'),
     ("`inherit-parent` or `auto` runs that role on the parent chat model (omit Task `model`)",
      "`inherit-parent` runs that role on the parent chat model (omit the delegate's `model`)"),
-    ('Spawn a single Task subagent', 'Spawn a single delegate subagent'),
+    ('Spawn one Task subagent', 'Spawn one delegate subagent'),
     ('`subagent_type`: `generalPurpose`', '`delegate_task`: role `leaf`'),
     ('Spawn `Task` with `subagent_type: "Comment Sicko"`',
      'Read `references/comment-sicko.md`, then spawn a delegate with `delegate_task` (role: `leaf`)'),
@@ -1447,12 +1426,10 @@ T12_MAP = [
     ('"/loop until X"', '"loop until X"'),
     ("On that go, arm a `/goal` with the full program objective. The goal continues across turns until the queue is done.",
      "On that go, write the full program objective to `goal.md` beside the plan in the agent store — the armed goal. The goal persists across turns until the queue is done; every wake re-reads it."),
-    ("On her explicit go, arm a `/goal` with the full program objective. The goal continues across turns until the chain is done.",
-     "On her explicit go, write the full program objective to `goal.md` beside the plan in the agent store — the armed goal. The goal persists across turns until the chain is done; every wake re-reads it."),
+    ("On the operator's explicit go, arm a `/goal` with the full program objective. The goal continues across turns until the chain is done.", "On the operator's explicit go, write the full program objective to `goal.md` beside the plan in the agent store - the armed goal. The goal persists across turns until the chain is done; every wake re-reads it."),
     ("then re-read the armed `/goal`.",
      "then re-read the armed `goal.md` from the agent store."),
-    ("On her go, arm a `/goal` with this exact text.",
-     "On her go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal."),
+    ("On the operator's go, arm a `/goal` with this exact text.", "On the operator's go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal."),
     ("from trunk and the armed /goal. Audit the operation",
      "from trunk and the armed `goal.md` from the store. Audit the operation"),
 ]
@@ -1486,8 +1463,7 @@ T13_MAP = [
      "N is total workers, not a durability guarantee."),
     ("`cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui`",
      "The repo's control-surface skills publish `control-cli` (CLIs and TUIs) and `control-ui`"),
-    ("each a Cursor cloud agent, each exercising the real surface (`control-ui` or `control-cli` from `cursor-team-kit` as the change demands)",
-     "each a delegate subagent, each exercising the real surface (`control-ui` or `control-cli` as the change demands)"),
+    ('each a Cursor cloud agent, each exercising the real surface with the matching control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`) against parent versus head', 'each a delegate subagent, each exercising the real surface with the matching control skill (such as `control-ui` or `control-cli`) against parent versus head'),
     ("One Cursor cloud agent per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **prove-it-works** principle skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself.",
      "One delegate per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **prove-it-works** principle skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself."),
     ("One Cursor cloud agent per PR owns its change end to end: build, first push, a ready PR opened before self-proof, self-proof (gates, CI, receipts), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill (`/deslop`)), `/no-comments` (the **no-comments** skill), and babysit to green per `playbooks/babysit.md`.",
@@ -1500,10 +1476,8 @@ T13_MAP = [
      "Run `/deslop` over the diff before commit."),
     ("the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)",
      "the `deslop` skill (`/deslop`)"),
-    ("The frontier is a computed object, never narrative. Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where gt knows the stack, normally the stacker's clone; a checkout whose gt metadata never saw the submits reports no PRs and the command errors rather than guessing.",
-     "The frontier is a computed object, never narrative. Recompute `frontier.json` from the resolved forge after every merge and stack mutation: ordered PR list, branch names, head SHAs, a generation number, and the lowest unmerged PR. `orch frontier set --provider auto` tries Graphite first and then a GitHub-native chain inferred from PR base/head branches; pin with `--provider graphite` or `--provider github` when the stack source must be explicit. Resolve it in the clone that has the local branches for the stack; a checkout whose forge metadata cannot produce one connected chain errors rather than guessing."),
-    ("prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` from `cursor-team-kit` as the change demands)",
-     "prove the load-bearing behavior live on the real surface the change touches (`control-cli` or `control-ui` as the change demands)"),
+    ("The frontier is a computed object, never narrative. Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where gt knows the stack, normally the stacker's clone. A checkout whose gt metadata never saw the submits reports no PRs and the command errors rather than guessing.", 'The frontier is a computed object, never narrative. Recompute `frontier.json` from the resolved forge after every merge and stack mutation: ordered PR list, branch names, head SHAs, a generation number, and the lowest unmerged PR. `orch frontier set --provider auto` tries Graphite first and then a GitHub-native chain inferred from PR base/head branches; pin with `--provider graphite` or `--provider github` when the stack source must be explicit. Resolve it in the clone that has the local branches for the stack; a checkout whose forge metadata cannot produce one connected chain errors rather than guessing.'),
+    ('Prove the load-bearing behavior live on the real surface the change touches (with the matching control skill, such as `control-cli` or `control-ui` from `cursor-team-kit`, or a named driver where none exists)', 'Prove the load-bearing behavior live on the real surface the change touches (with the matching control skill, such as `control-cli` or `control-ui`, or a named driver where none exists)'),
     ("`control-ui` or `control-cli` runtime verification (from `cursor-team-kit`)",
      "`control-ui` or `control-cli` runtime verification"),
     ("the cloud agent's status in the Cursor dashboard",
@@ -1516,8 +1490,7 @@ T13_MAP = [
      "A local root uses the existing wake chain instead."),
     ("Never require Graphite (`gt`).",
      "Never require Graphite (`gt`); the stacker is the only topology writer."),
-    ("Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking.",
-     "Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation; they report conflicts to the stacker rather than restacking."),
+    ('Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation. They report conflicts to the stacker rather than restacking.', 'Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation. They report conflicts to the stacker rather than restacking.'),
     ("Never submit or register the chain through `gt`.",
      "Never submit or register the chain through `gt`."),
 ]
@@ -1534,24 +1507,8 @@ T13_MAP = [
 # convention as T12: never erase an absent capability, never invent an
 # equivalence that is not there.
 T14_MAP = [
-    ("Exactly one stacker per stack may run `gt`, serialized within its stack; "
-     "record the holder in the standing orders. Restacks run in cloud; a local "
-     "restack at this scale takes the laptop down.",
-     "Exactly one stacker per stack owns frontier work, serialized within its "
-     "stack; record the holder in the standing orders. Restacks require "
-     "Graphite (`gt`) and run on the stacker's clone; at this scale a local "
-     "restack takes the laptop down. The stacker is the hermes profile named "
-     "in the standing orders, and its clone is the checkout whose frontier "
-     "metadata saw the submits — that is the only host a restack can run on."),
-    ("PR closes and retargets go through the stacker only; closing a base PR "
-     "orphans every chain above it. Merges and stack surgery are units with "
-     "briefs like any other.",
-     "PR closes and retargets go through the stacker only; closing a base PR "
-     "orphans every chain above it. Retargeting through the stacker requires "
-     "Graphite (`gt`); ordinary base changes to an existing child or the "
-     "bottom PR go through the resolved forge (`origin pr edit` / `gh pr "
-     "edit`) and need no stacker. Merges and stack surgery are units with "
-     "briefs like any other."),
+    ('Exactly one stacker per stack may run `gt`, serialized within its stack. Record the holder in the standing orders. Restacks run in cloud. A local restack at this scale takes the laptop down.', "Exactly one stacker per stack owns frontier work, serialized within its stack. Record the holder in the standing orders. Restacks require Graphite (`gt`) and run on the stacker's clone; at this scale a local restack takes the laptop down. The stacker is the hermes profile named in the standing orders, and its clone is the checkout whose frontier metadata saw the submits - that is the only host a restack can run on."),
+    ('PR closes and retargets go through the stacker only. Closing a base PR orphans every chain above it. Merges and stack surgery are units with briefs like any other.', 'PR closes and retargets go through the stacker only. Closing a base PR orphans every chain above it. Retargeting through the stacker requires Graphite (`gt`); ordinary base changes to an existing child or the bottom PR go through the resolved forge (`origin pr edit` / `gh pr edit`) and need no stacker. Merges and stack surgery are units with briefs like any other.'),
 ]
 
 def apply_map(files: list[Path], mapping: list[tuple[str, str]],
