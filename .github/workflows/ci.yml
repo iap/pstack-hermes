@@ -8,12 +8,20 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded runs on PRs only. A push to main keeps its full run: its
+# artifacts feed verify-determinism, and a cancelled build would skip the
+# cross-platform comparison entirely.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   UPSTREAM_PIN: 93b00b89ef425a9c1bac0d0b317dfc49c930ac99
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: true
       matrix:
@@ -118,9 +126,13 @@ jobs:
           name: pstack-build-${{ matrix.os }}-${{ github.run_id }}
           path: pstack/
           include-hidden-files: true
+          # Short retention: verify-determinism consumes these within minutes;
+          # the artifact is a debugging aid, not a release artifact.
+          retention-days: 14
 
   verify-determinism:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
     steps:
       - name: Download platform builds
@@ -157,6 +169,7 @@ jobs:
 
   lint-and-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -167,6 +180,18 @@ jobs:
         with:
           enable-cache: true
 
+      # Cheapest first: a grep over four files, then the workflow linter,
+      # then the composite-action shell gate (actionlint does not descend
+      # into .github/actions - see tools/check_action_shell.py).
+      - name: Upstream pin is in lock-step across workflows
+        run: uv run --frozen python tools/check_pins.py
+
+      - name: Lint workflows (actionlint + shellcheck)
+        run: uv run --frozen actionlint
+
+      - name: Lint composite-action shell blocks (shellcheck)
+        run: uv run --frozen python tools/check_action_shell.py
+
       - name: Lint (ruff)
         run: uv run --frozen ruff check tools
 
@@ -175,6 +200,7 @@ jobs:
 
   poteto-mode-scripts:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -201,6 +227,7 @@ jobs:
     # pull_request only; a push has no PR body to read.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read

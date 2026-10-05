@@ -25,6 +25,7 @@ env:
 jobs:
   check-pin:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # `gh issue list/comment/create` are called below WITHOUT --repo, so gh
       # resolves the target repository from the git checkout. Without this step
@@ -33,13 +34,11 @@ jobs:
       # hit on every run since 2026-09-14, masked by the clone guard.
       # persist-credentials: false because nothing here pushes; GH_TOKEN is
       # supplied explicitly for the API calls. Matches model-drift-watch.yml.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Check upstream pstack for movement past the pin
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           upstream_url="https://github.com/cursor/plugins.git"
@@ -92,23 +91,13 @@ jobs:
             echo ""
             echo "Rebuild against the new upstream, update the transform maps for any"
             echo "reworded anchors (the converter's anchor audit will name them), bump"
-            echo "UPSTREAM_PIN in ci.yml / upstream-drift-watch.yml, and re-run the"
-            echo "pipeline."
+            echo "UPSTREAM_PIN in all four workflows (ci.yml / release.yml /"
+            echo "publish-plugin.yml / upstream-drift-watch.yml - tools/check_pins.py"
+            echo "enforces lock-step), and re-run the pipeline."
           } > "$RUNNER_TEMP/drift-body.md"
 
-          lookup_status=0
-          existing="$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
-                        --json number,title --jq '.[] | select(.title == $ENV.ISSUE_TITLE) | .number' \
-                        || lookup_status=$?)"
-          if [ "$lookup_status" -ne 0 ]; then
-            echo "::error::issue lookup failed (gh exit $lookup_status); not creating a possible duplicate"
-            exit 1
-          fi
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body-file "$RUNNER_TEMP/drift-body.md"
-            echo "updated tracking issue #$existing"
-          else
-            gh issue create --title "$ISSUE_TITLE" \
-              --body-file "$RUNNER_TEMP/drift-body.md"
-            echo "opened tracking issue"
-          fi
+      - name: Upsert tracking issue (idempotent by title)
+        uses: ./.github/actions/drift-issue-upsert
+        with:
+          title: ${{ env.ISSUE_TITLE }}
+          body-file: ${{ runner.temp }}/drift-body.md

@@ -6,7 +6,17 @@ requires-python = ">=3.11"
 dependencies = []
 
 [dependency-groups]
-dev = ["pyyaml>=6.0", "pytest>=9.0.3,<10", "ruff>=0.16.4,<0.17"]
+dev = [
+    "pyyaml>=6.0",
+    "pytest>=9.0.3,<10",
+    "ruff>=0.16.4,<0.17",
+    # Workflow linting (ci.yml "Lint workflows" step). actionlint-py ships the
+    # actionlint binary; shellcheck-py supplies the shellcheck it auto-detects,
+    # which lints every `run:` block. Versions are locked in uv.lock like every
+    # other tool, so CI does not depend on what the runner happens to have.
+    "actionlint-py>=1.7.12",
+    "shellcheck-py>=0.11.0",
+]
 
 [tool.uv]
 # Tooling repo, not an installable package.
