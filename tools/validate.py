@@ -318,7 +318,7 @@ def check_layout(pkg: Path, rep: Report) -> None:
 
 
 def check_phase1(pkg: Path, rep: Report) -> None:
-    """Phase-1 hygiene checks: R1 index generation, F16 slug override, F10-F12 portability."""
+    """Phase-1 hygiene checks: R1 index generation, F16 lane-shape invariant, F10-F12 portability."""
     # R1: the shipped index must equal what the leaves generate
     try:
         from convert import build_principles_index  # noqa: PLC0415
@@ -338,23 +338,24 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     except Exception as exc:  # import or generation failure is itself a finding
         rep.fail(f"R1 check could not run: {exc}")
 
-    # F16: check-plan.mjs must be env-overridable
+    # F16 (retired transform): the converter no longer rewrites these - the
+    # checks assert the upstream c47b1284 shapes survive conversion.
     cp = pkg / "skills" / "poteto-mode" / "scripts" / "check-plan.mjs"
     if cp.is_file():
         cp_text = cp.read_text(encoding="utf-8")
-        if "process.env.PSTACK_FAST_LANE" in cp_text:
-            rep.ok("F16: check-plan.mjs lane slug env-overridable (PSTACK_FAST_LANE)")
+        if "const LANES = /Ten lanes on" in cp_text and "at the PR head/" in cp_text:
+            rep.ok("F16: check-plan.mjs lane check is the slug-agnostic regex")
         else:
-            rep.fail("F16: check-plan.mjs still hardcodes the lane slug")
+            rep.fail("F16: check-plan.mjs lost the slug-agnostic lane regex")
 
-    # F16: the multi-phase-plan template must document the override
+    # F16 companion: the template keeps its lane-shape sentence.
     mp = pkg / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md"
     if mp.is_file():
         mp_text = mp.read_text(encoding="utf-8")
-        if "PSTACK_FAST_LANE" in mp_text and "per the boot recipe" in mp_text:
-            rep.ok("F16: multi-phase-plan template keeps the invariant sentence and documents the override")
+        if "Ten lanes on" in mp_text and "at the PR head" in mp_text:
+            rep.ok("F16: multi-phase-plan keeps the lane-shape sentence")
         else:
-            rep.fail("F16: multi-phase-plan template lost the invariant sentence or the override note")
+            rep.fail("F16: multi-phase-plan lost the lane-shape sentence")
 
     # F10-F12: worktree-audit.sh must use portable helpers, no unguarded BSD forms
     wa = pkg / "skills" / "poteto-mode" / "scripts" / "worktree-audit.sh"

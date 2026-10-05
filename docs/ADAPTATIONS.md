@@ -20,7 +20,7 @@ port-stage names, not runtime concepts.
 | Label | Stage |
 |---|---|
 | Phase-0 | initial conversion: pinned upstream → `agent-plugins-v1` package shape |
-| Phase-1 | post-copy hygiene (R1, F16, F10–F12, F-publish) |
+| Phase-1 | post-copy hygiene (R1, F10–F12, F-publish) |
 | Phase-2A | vocabulary adaptation (delegation translation) |
 | Phase-4 | native rebuild of excluded `automations/benny` — not scheduled |
 

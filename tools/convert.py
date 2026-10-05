@@ -77,7 +77,8 @@ FRONTMATTER_FIXES = {
 }
 
 # ---------------------------------------------------------------------------
-# Phase-1 hygiene transforms (study findings R1, F16, F10-F12). Each is a
+# Phase-1 hygiene transforms (study findings R1, F10-F12; F16 retired at the
+# c47b1284 re-pin because upstream now ships the slug-agnostic fix). Each is a
 # targeted post-copy edit so the upstream clone stays faithful and every
 # rebuild re-applies the fixes deterministically.
 # ---------------------------------------------------------------------------
@@ -125,20 +126,11 @@ _PRINCIPLES_HEADER = (
 )
 _NEXT_SECTION = "## Autonomy"
 
-# F16: the lane-invariant slug becomes env-overridable (default = upstream).
-CHECK_PLAN_OLD = 'const LANES = "Ten lanes on `grok-4.6-fast-xhigh` at the PR head";'
-CHECK_PLAN_NEW = (
-    "// F16 fix: the fast-lane slug is env-overridable so a reconfigured panel"
-    "\n// does not fail the playbook's own validator. Default matches upstream."
-    "\nconst FAST_LANE = process.env.PSTACK_FAST_LANE || \"grok-4.6-fast-xhigh\";"
-    "\nconst LANES = `Ten lanes on \\`${FAST_LANE}\\` at the PR head`;"
-)
-MULTIPHASE_OLD_FRAGMENT = "checked. Ten lanes on `grok-4.6-fast-xhigh` at the PR head, per the boot recipe."
-MULTIPHASE_NEW_FRAGMENT = (
-    "checked. Ten lanes on `grok-4.6-fast-xhigh` at the PR head, per the boot recipe."
-    " Set `PSTACK_FAST_LANE` to your configured fast-lane slug when the panel"
-    " was reconfigured (default `grok-4.6-fast-xhigh`)."
-)
+# F16 retired at the c47b1284 re-pin: upstream generalized both sites, so no
+# transform is needed - check-plan.mjs carries
+#   const LANES = /Ten lanes on `<slug>` at the PR head/;
+# and the multi-phase template says "Ten lanes on `<swarm workers model>` at
+# the PR head". validate.py asserts those shapes survive conversion.
 
 # F10-F12: portable mtime/epoch helpers inserted after `set -u`.
 WORKTREE_HELPERS_ANCHOR = "set -u\n"
@@ -1043,21 +1035,10 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
         st.warnings.append(f"principles index: {d}")
     pm.write_bytes((text[:start] + new_block + "\n" + text[end:]).encode("utf-8"))
 
-    # --- T2: de-hardcode check-plan.mjs lane slug (F16) ---
-    cp = out / "skills" / "poteto-mode" / "scripts" / "check-plan.mjs"
-    cp_text = cp.read_text(encoding="utf-8")
-    if CHECK_PLAN_OLD not in cp_text:
-        raise ConvertError("check-plan.mjs: LANES anchor not found (upstream changed?)")
-    cp.write_bytes(cp_text.replace(CHECK_PLAN_OLD, CHECK_PLAN_NEW, 1).encode("utf-8"))
-    st.fixes.append("F16: check-plan.mjs lane slug env-overridable via PSTACK_FAST_LANE")
-
-    # --- T3: multi-phase-plan template note (F16 companion) ---
-    mp = out / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md"
-    mp_text = mp.read_text(encoding="utf-8")
-    if MULTIPHASE_OLD_FRAGMENT not in mp_text:
-        raise ConvertError("multi-phase-plan.md: lane-sentence anchor not found")
-    mp.write_bytes(mp_text.replace(MULTIPHASE_OLD_FRAGMENT, MULTIPHASE_NEW_FRAGMENT, 1).encode("utf-8"))
-    st.fixes.append("F16: multi-phase-plan template documents the PSTACK_FAST_LANE override")
+    # --- T2/T3 (F16) retired at the c47b1284 re-pin ---
+    # Upstream ships the slug-agnostic fix itself (regex in check-plan.mjs;
+    # `<swarm workers model>` in the multi-phase template), so the
+    # env-override transform and its companion note were removed.
 
     # --- T4: worktree-audit.sh portability (F10-F12) ---
     wa = out / "skills" / "poteto-mode" / "scripts" / "worktree-audit.sh"
@@ -1103,31 +1084,28 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     # --- T8: factual fixes from the hermes deep review (readonly semantics,
     # --- swarm leftovers, tool-name mappings, doc links) -------------------
     T8_MAP = [
-        # readonly-MCP rationale: hermes readonly restricts file writes only
-        ('- `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. The source control investigator would be safe in readonly, but keep modes uniform. Investigators still shouldn\'t write anything. That\'s a posture, not a sandbox.',
-         '- `readonly`: `false` (agent mode) so investigators can record findings if needed. Note: readonly on hermes restricts file writes only - MCP access is unaffected, so read-only mode would also work for pure exploration. Investigators still shouldn\'t write anything. That\'s a posture, not a sandbox.'),
-        ('- `readonly`: `false` (agent mode). The synthesizer\'s quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.',
-         '- `readonly`: `false` (agent mode). The synthesizer\'s quality check spot-verifies citations, which can require MCP access. Readonly mode on hermes restricts file writes only - MCP access is unaffected - but agent mode keeps the option to record findings.'),
-        ('Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); readonly strips MCPs.',
-         'Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); readonly on hermes restricts file writes only, so MCP access is unaffected.'),
-        ('which can require MCP access; readonly strips MCPs.',
-         'which can require MCP access; readonly on hermes restricts file writes only, so MCP access is unaffected.'),
-        # swarm Cursor-only parameters
-        (' Use `environment: "local"` only when the worker needs access to something on the user\'s computer.', ''),
+        ("- `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.",
+         "- `readonly`: `false` (agent mode) so investigators can record findings if needed. Note: readonly on hermes restricts file writes only, so MCP access is unaffected. Investigators still shouldn't write anything."),
+        ("- `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.",
+         "- `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly mode on hermes restricts file writes only - MCP access is unaffected - but agent mode keeps the option to record findings."),
+        ('Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript). Readonly strips MCPs.',
+         'Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript). Readonly on hermes restricts file writes only, so MCP access is unaffected.'),
+        (' Use `environment: "local"` only when the worker needs access to something on the user\'s computer.',
+         ''),
         ('When a worker must start from a non-default pushed branch, pass `cloud_base_branch`.',
          'When a worker must start from a non-default branch, pass the branch name explicitly in the task prompt.'),
-        # Cursor tool names in delegate prompts -> hermes tools
         ('Use Glob to find directories and files, Grep to find key symbols, Read to understand the actual implementation.',
          'Use search_files to find directories and files and to find key symbols, read_file to understand the actual implementation.'),
-        ('Use Read, Grep, and Glob as needed.', 'Use read_file and search_files as needed.'),
+        ('Use Read, Grep, and Glob as needed.',
+         'Use read_file and search_files as needed.'),
         ('Use the tools available to you (Read, Grep, Glob) to explore.',
          'Use the file-search and file-read tools available to you to explore.'),
-        # .cursor/rules path references -> model-panel phrasing (full Phase-3 = profiles)
-        ('in `~/.cursor/rules/pstack-models.mdc` when present',
-         'in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) when present'),
-        # principle cross-link: skill_view cannot resolve relative SKILL.md links
+        ('in `~/.cursor/rules/pstack-models.mdc`',
+         'in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`)'),
         ('[Guard the Context Window](../principle-guard-the-context-window/SKILL.md)',
          'the **guard-the-context-window** principle skill'),
+        ('in the `pstack-models.mdc` rule',
+         'in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`)'),
     ]
     t8_files = apply_map(sorted((out / "skills").rglob("*.md")),
                          T8_MAP, map_name="T8_MAP", st=st)
@@ -1158,79 +1136,15 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     T10_MAP = [
         ('Detects your available models and writes an always-applied rule that overrides the skill defaults.',
          'Detects your available models and writes a per-role panel beside `config.yaml` in the hermes config directory, outside the plugin tree, so it survives plugin updates.'),
-        ('Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack\'s model per role. The skills read it and fall back to their inline defaults when a line is absent, so this is an override layer, not a requirement.',
-         'Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.config/hermes/` on Linux, `%LOCALAPPDATA%\hermes\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls. poteto-mode reads it and falls back to `inherit-parent` (the parent chat model) when a role is absent, so this is an override layer, not a requirement. If an older `config/models.json` still sits inside the plugin directory, read its values and migrate them here.'),
-        ('Enumerate the model slugs you can pass to a `delegate_task` subagent in this session; that is the dependable source. If Cursor also exposes a models API or CLI that lists the user\'s entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.',
-         'Enumerate the model slugs available in this session (the configured providers\' catalog); that is the dependable source. If you cannot detect any, ask the user via `clarify` to paste the slugs they have access to. Never write a real slug you have not confirmed is available. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic).'),
-        ('The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.',
-         'The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its values as the current choices. Otherwise start from these defaults. Do NOT try to recover an older in-package `config/models.json`: a plugin update replaces that file with the shipped default before this skill runs, so anything found there is the default rather than the user saved choices, and copying it forward would silently discard their configuration. If they expected a configuration to still be there, tell them plainly that an update overwrote it and ask them to re-run setup-pstack.'),
+        ("Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack's model per role.", 'Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.config/hermes/` on Linux, `%LOCALAPPDATA%\\hermes\\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls. If an older `config/models.json` still sits inside the plugin directory, read its values and migrate them here.'),
+        ("Enumerate the model slugs you can pass to a `delegate_task` subagent in this session. That is the dependable source. If Cursor also exposes a models API or CLI that lists the user's entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.", "Enumerate the model slugs available in this session (the configured providers' catalog); that is the dependable source. If you cannot detect any, ask the user via `clarify` to paste the slugs they have access to. Never write a real slug you have not confirmed is available. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic)."),
+        ('The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its `# budget` line and its role values as the current choices. Otherwise start from those defaults.', "The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its `budget` entry and its role values as the current choices. Otherwise start from these defaults. Do NOT try to recover an older in-package `config/models.json`: a plugin update replaces that file with the shipped default before this skill runs, so anything found there is the default rather than the user's saved choices, and copying it forward would silently discard their configuration. If they expected a configuration to still be there, tell them plainly that an update overwrote it and ask them to re-run setup-pstack."),
         ('offering the detected models plus `inherit-parent` and `auto` (both mean: this role runs on the parent chat model, which is how Auto users stay on Auto) as the options.',
          'offering the detected models plus `inherit-parent` (this role runs on the parent chat model) as the options.'),
-        ('Every real slug written must be in the detected set; `inherit-parent` and `auto` always pass.',
-         'Every real slug written must be in the detected set; `inherit-parent` always passes.'),
-        ('If the configured value is `inherit-parent` or `auto`, omit `model` instead; never treat those aliases as broken slugs or enter this fallback for them.',
-         'If the configured value is `inherit-parent`, omit `model` instead; never treat that selector as a broken slug or enter this fallback for it.'),
-        ('''### 5. Write the rule
-
-Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
-
-```
----
-description: pstack per-role model choices (overrides skill defaults)
-alwaysApply: true
----
-# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
-# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
-feature, refactoring: grok-4.6-fast-xhigh
-bug-fix: claude-fable-5-1-thinking-max
-perf-issue: claude-fable-5-1-thinking-max
-hillclimb: claude-fable-5-1-thinking-max
-judgment and prose: claude-fable-5-1-thinking-max
-hardest tasks: claude-fable-5-1-thinking-max
-how explorer: grok-4.6-fast-xhigh
-how explainer: claude-fable-5-1-thinking-max
-how critics: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-why investigators: grok-4.6-fast-xhigh
-why synthesizer: claude-fable-5-1-thinking-max
-reflect tooling: gpt-5.6-sol-max
-reflect judgment, divergent, synthesizer: claude-fable-5-1-thinking-max
-arena runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-arena cross-judge pool: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-swarm workers: grok-4.6-fast-xhigh
-architect runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-interrogate reviewers: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-```''',
-         '''### 5. Write the config
-
-Write `pstack-models.json` in the hermes config directory (next to `config.yaml`), never inside the plugin directory - a panel stored with the package is lost on the next `plugins update`. One entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
-
-```json
-{
-  "roles": {
-    "feature, refactoring": "inherit-parent",
-    "bug-fix": "inherit-parent",
-    "perf-issue": "inherit-parent",
-    "hillclimb": "inherit-parent",
-    "judgment and prose": "inherit-parent",
-    "hardest tasks": "inherit-parent",
-    "how explorer": "inherit-parent",
-    "how explainer": "inherit-parent",
-    "how critics": ["inherit-parent"],
-    "why investigators": "inherit-parent",
-    "why synthesizer": "inherit-parent",
-    "reflect tooling": "inherit-parent",
-    "reflect judgment, divergent, synthesizer": "inherit-parent",
-    "arena runners": ["inherit-parent"],
-    "arena cross-judge pool": ["inherit-parent"],
-    "swarm workers": "inherit-parent",
-    "architect runners": ["inherit-parent"],
-    "interrogate reviewers": ["inherit-parent"]
-  }
-}
-```
-Panel roles (how critics, arena runners, arena cross-judge pool, architect runners, interrogate reviewers) take an ARRAY; one subagent runs per entry, so the list length sets the count. `swarm workers` is the default for every worker unless a race assigns another model per arm.'''),
-        ('On yes, invoke `/create-verification-skill` (resolves wherever pstack is installed \u2014 workspace, user, or plugin).',
-         'On yes, load the create-verification-skill skill via skill_view (it ships in this plugin) and follow it.'),
+        ('Every real slug written must be in the detected set. `inherit-parent` and `auto` always pass.', 'Every real slug written must be in the detected set; `inherit-parent` always passes.'),
+        ('For an `auto` or `inherit-parent` entry, omit `model` so that reviewer runs on the parent model.', 'For an `inherit-parent` entry, omit `model` so that reviewer runs on the parent model.'),
+        ('### 5. Write the rule\n\nWrite `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true`, a `# budget` line with the chosen label and its target effort, and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:\n\n```\n---\ndescription: pstack per-role model choices (overrides skill defaults)\nalwaysApply: true\n---\n# pstack model configuration. One line per role. Delete a line to fall back to the skill default.\n# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.\n# budget: unlimited (max)\nfeature, refactoring: grok-4.7-xhigh-fast\nbug-fix: grok-4.7-xhigh-fast\nperf-issue: grok-4.7-xhigh-fast\nhillclimb: grok-4.7-xhigh-fast\njudgment and prose: claude-opus-5-5-max\nhardest tasks: claude-opus-5-5-max\nhow explorer: grok-4.7-xhigh-fast\nhow explainer: claude-opus-5-5-max\nwhy investigators: grok-4.7-xhigh-fast\nwhy synthesizer: claude-opus-5-5-max\nreflect tooling: gpt-5.6-sol-max\nreflect judgment, divergent, synthesizer: claude-opus-5-5-max\narena runners: claude-opus-5-5-max, gpt-5.6-sol-max, grok-4.7-xhigh-fast\narena cross-judge pool: claude-opus-5-5-max, gpt-5.6-sol-max, grok-4.7-xhigh-fast\nswarm workers: grok-4.7-xhigh-fast\narchitect runners: claude-opus-5-5-max, gpt-5.6-sol-max, grok-4.7-xhigh-fast\ninterrogate reviewers: claude-opus-5-5-max, gpt-5.6-sol-max, grok-4.7-xhigh-fast\n```', '### 5. Write the config\n\nWrite `pstack-models.json` in the hermes config directory (next to `config.yaml`), never inside the plugin directory - a panel stored with the package is lost on the next `plugins update`. One entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:\n\n```json\n{\n  "budget": "unlimited",\n  "roles": {\n    "feature, refactoring": "inherit-parent",\n    "bug-fix": "inherit-parent",\n    "perf-issue": "inherit-parent",\n    "hillclimb": "inherit-parent",\n    "judgment and prose": "inherit-parent",\n    "hardest tasks": "inherit-parent",\n    "how explorer": "inherit-parent",\n    "how explainer": "inherit-parent",\n    "how critics": ["inherit-parent"],\n    "why investigators": "inherit-parent",\n    "why synthesizer": "inherit-parent",\n    "reflect tooling": "inherit-parent",\n    "reflect judgment, divergent, synthesizer": "inherit-parent",\n    "arena runners": ["inherit-parent"],\n    "arena cross-judge pool": ["inherit-parent"],\n    "swarm workers": "inherit-parent",\n    "architect runners": ["inherit-parent"],\n    "interrogate reviewers": ["inherit-parent"]\n  }\n}\n```\nPanel roles (how critics, arena runners, arena cross-judge pool, architect runners, interrogate reviewers) take an ARRAY; one subagent runs per entry, so the list length sets the count. `swarm workers` is the default for every worker unless a race assigns another model per arm.'),
+        ('On yes, invoke `/create-verification-skill` (resolves wherever pstack is installed: workspace, user, or plugin).', 'On yes, load the create-verification-skill skill via skill_view (it ships in this plugin) and follow it.'),
     ]
     T9_MAP = [
         ('Drafts or revises a personal -mode skill via create-skill + unslop',
@@ -2025,7 +1939,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 | manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
 | R1 | poteto-mode principles index regenerated from the 21 leaves |
-| F16 | fast-lane slug overridable via `PSTACK_FAST_LANE` |
+| F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
 | F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |
 | T8/T9/T10 | `setup-pstack` writes the model panel beside hermes' `config.yaml` (outside the package, so updates do not discard it); discovery via `session_search`; hermes tool names |
