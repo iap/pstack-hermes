@@ -1,0 +1,34 @@
+# Dependabot configuration.
+#
+# Why this file exists: every action and tool in this repo is pinned - actions to
+# full commit SHAs, Python tools via uv.lock. A pin never moves on its own, so
+# without automation the pins silently rot; that is the failure mode the "pin SHA
+# must stay in lock-step" rule in AGENTS.md guards against by hand. Dependabot
+# understands SHA pins: for the github-actions ecosystem it opens a PR that
+# updates BOTH the SHA and the trailing `# vN` comment, so pins stay exact and
+# current. Review those bumps like any dependency change - the CI gates
+# (build, lint, actionlint, determinism) run on the PR as usual.
+#
+# Grouped per ecosystem so an update lands as ONE reviewable PR rather than N.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # pyproject.toml + uv.lock (the tooling venv: pyyaml, pytest, ruff,
+  # actionlint-py, shellcheck-py).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      uv:
+        patterns: ["*"]

@@ -96,6 +96,40 @@ bun run typecheck                         # deps + tsc --noEmit --strict
   [docs/PATCHES.md](docs/PATCHES.md); the drafted upstream PR text is
   [docs/UPSTREAM-PR.md](docs/UPSTREAM-PR.md).
 
+## GitHub Actions & workflow policy
+
+The `.github/` tree is hand-written and gated; these rules exist because each
+one has already caught (or would have caught) a real defect here.
+
+- **Every action is pinned to a full commit SHA** with a trailing `# vN`
+  comment. `dependabot.yml` keeps them current: the weekly `github-actions`
+  group PR updates both the SHA and the comment. Review SHA bumps like any
+  dependency change - the usual CI gates run on the PR.
+- **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,
+  `release.yml`, `publish-plugin.yml` and `upstream-drift-watch.yml`;
+  `tools/check_pins.py` fails CI when any of the four is missing, duplicated,
+  malformed, or out of step. Follow
+  [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
+- **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
+  workflows` CI step, runnable locally as `uv run --frozen actionlint`.
+- **Composite actions must pass `tools/check_action_shell.py`.** actionlint
+  does not lint `.github/actions/*/action.yml` steps, so that file's run
+  blocks get their own shellcheck pass in CI. If the gate flags something,
+  fix it or add a targeted `# shellcheck disable=` with a comment saying why
+  (see `drift-issue-upsert` for the jq `$ENV` case).
+- **Reuse: composite action when callers continue afterwards; reusable
+  workflow only when the shared thing is a whole job.** Both call sites and
+  the rationale are documented in `.github/actions/build-package/action.yml`.
+  Shared multi-step logic (build prologue, drift-issue upsert) lives in
+  `.github/actions/`, and no workflow re-inlines it.
+- **Minimal `permissions:` at workflow level**, widened only per job where a
+  step needs it. Checkouts that never push set `persist-credentials: false`.
+- **Every job sets `timeout-minutes`.** A hung step otherwise burns the
+  6-hour default before anyone notices.
+- **`pull_request_target` is allowed only for the labeler**, where no PR
+  content is checked out or executed. Never add a PR-head checkout to that
+  job; put such work in a `pull_request` workflow instead.
+
 ## Common tasks
 
 ### Add or change a converter transform
@@ -121,7 +155,8 @@ in **four workflows** — `ci.yml`, `release.yml`, `publish-plugin.yml`,
 never the package. (The build prologue itself now lives once, in the
 `.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
 `publish-plugin.yml` pass the pin to it as an input rather than each repeating
-the clone/verify/convert steps.)
+the clone/verify/convert steps. `tools/check_pins.py` now enforces the
+lock-step rule in CI, so a missed file fails fast instead of at release time.)
 
 ### Change the model panel
 
