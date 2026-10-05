@@ -40,6 +40,7 @@ jobs:
           enable-cache: true
 
       - name: Check configured slugs against the live catalog
+        id: check
         shell: bash
         run: |
           set -euo pipefail
@@ -70,8 +71,12 @@ jobs:
             echo "They are informational: update them in the skill files when the"
             echo "provider catalog changes, or leave them as-is if they are still valid."
           } > "$RUNNER_TEMP/drift-body.md"
+          # Guard for the next step: split across steps, the no-drift `exit 0`s
+          # above stop this script but not the job - only a body write may upsert.
+          echo "drift=true" >> "$GITHUB_OUTPUT"
 
       - name: Upsert tracking issue (idempotent by title)
+        if: steps.check.outputs.drift == 'true'
         uses: ./.github/actions/drift-issue-upsert
         with:
           title: ${{ env.ISSUE_TITLE }}

@@ -8,11 +8,15 @@ on:
 permissions:
   contents: read
 
-# Cancel superseded runs on PRs only. A push to main keeps its full run: its
+# Cancel superseded runs on PRs only. A push to main must keep its full run: its
 # artifacts feed verify-determinism, and a cancelled build would skip the
-# cross-platform comparison entirely.
+# cross-platform comparison entirely. cancel-in-progress protects only runs that
+# have already started; by default only ONE run may be pending per group and a
+# newer pending run cancels the older pending one, so two quick merges could
+# cancel a queued main run before it ever starts. Non-PR runs therefore take a
+# per-run group and never share a queue slot.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
