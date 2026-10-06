@@ -70,26 +70,30 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    directory, elsewhere it can resolve to an installed package. For branch
    verification, pass the resolved local path (`$(pwd)/pstack`); for the
    installed dist package, use the name as installed.
-4. **Publish** — on every push to `main`,
+4. **Publish** — on every push to `master`,
    [publish-dist.yml](.github/workflows/publish-dist.yml) re-runs
    convert → validate → scanner gate and appends the built tree to
    the `dist` branch of this same repository (append-only commits). `dist`
    is the **default branch**, so `hermes plugins install iap/pstack-hermes`
    clones it root-level and `hermes plugins update pstack` fast-forwards
    installed clones. No second repository; build output is never edited by
-   hand. The branch also carries one tiny `scheduler.yml` stub: GitHub fires
-   `schedule` only for files on the default branch, so the stub dispatches
-   the weekly drift watchers on `main`. It is bootstrapped once with a user
-   credential (bot tokens cannot push workflow files) and the publisher
-   never touches `.github/` on `dist`; source of truth for a re-bootstrap:
-   `tools/assets/dist-scheduler.yml`. Recovery for dispatch-only workflows
-   (not shown in the Actions UI because it lists the default branch):
-   `gh workflow run <file> --ref main`.
+   hand. The branch also carries the default-branch shims that cannot live
+   on a non-default branch: `scheduler.yml` (GitHub fires `schedule` only for
+   files on the default branch; it dispatches the weekly drift watchers on
+   `master`), `labeler.yml` (the same rule for `pull_request_target`), and
+   `.github/dependabot.yml` (dependabot reads its configuration from the
+   default branch; its `target-branch: master` keeps scans and PRs on the dev
+   tree). All three are bootstrapped once with a user credential (bot tokens
+   cannot push workflow files) and the publisher never touches `.github/` on
+   `dist`. Re-bootstrap sources: `tools/assets/dist-scheduler.yml`, this
+   repo's `.github/workflows/labeler.yml`, and `.github/dependabot.yml`.
+   Recovery for dispatch-only workflows (not shown in the Actions UI because
+   it lists the default branch): `gh workflow run <file> --ref master`.
 
 ## Repository contract
 
 - The default branch is `dist` (build output). Open PRs explicitly against
-  `main` (`gh pr create --base main`; the GitHub UI needs `base: main` set
+  `master` (`gh pr create --base master`; the GitHub UI needs `base: master` set
   manually).
 
 - `pstack/` is **generated content** — never hand-edit; change the converter
@@ -200,7 +204,7 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 ### Release
 
 1. Add the `CHANGELOG.md` section for the new `v0.4.x` version (the repo
-   release line; the package itself keeps the upstream `0.14.8` and is never
+   release line; the package itself keeps the upstream `0.15.5` and is never
    renumbered).
 2. Tag `v*`; [release.yml](.github/workflows/release.yml) rebuilds from the
    pin, validates, runs the scanner gate, zips `pstack-<version>.zip`, and

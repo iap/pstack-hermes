@@ -9,25 +9,26 @@
 # (update = git pull --ff-only on every install, so a rewritten remote would
 # break every user's in-place update).
 #
-# The dev tree (tools/, .github, docs) stays on `main`; only the validated
+# The dev tree (tools/, .github, docs) stays on `master`; only the validated
 # `pstack/` output is synced onto `dist`. This publisher NEVER touches
-# `dist/.github/`: bot tokens cannot push workflow files, so the weekly
-# scheduler stub there (.github/workflows/scheduler.yml - it dispatches the
-# drift watchers on `main`, because GitHub fires `schedule` only from the
-# default branch) was bootstrapped once with a user credential and is left
-# alone. Source of truth for a manual re-bootstrap:
-# tools/assets/dist-scheduler.yml.
+# `dist/.github/`: bot tokens cannot push workflow files, so the
+# default-branch shims that cannot live on a non-default branch were
+# bootstrapped once with a user credential and are left alone - the scheduler
+# stub (.github/workflows/scheduler.yml - it dispatches the weekly drift
+# watchers on `master`, because GitHub fires `schedule` only from the default
+# branch), the labeler workflow, and the dependabot config. Re-bootstrap
+# sources are listed in CONTRIBUTING.
 #
 # Manual recovery: the Actions UI lists workflows from the default branch
 # only, so this file's 'Run workflow' button is not shown there - trigger it
-# against `main` from the CLI instead (verified working):
-#   gh workflow run publish-dist.yml --ref main
+# against `master` from the CLI instead (verified working):
+#   gh workflow run publish-dist.yml --ref master
 
 name: publish-dist
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:

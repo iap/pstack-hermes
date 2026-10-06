@@ -4,7 +4,7 @@
 # workflow files present on the DEFAULT branch. The default branch is `dist`
 # (the install tree), so the watchers' real workflows - which need the dev
 # tree and its composite actions - cannot own the schedule themselves.
-# This stub dispatches them on `main`, where they live.
+# This stub dispatches them on `master`, where they live.
 #
 # Recovery/manual use: `gh workflow run scheduler.yml --ref dist` (the Actions
 # UI does not list it, because the UI lists workflows from the default branch
@@ -26,11 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Dispatch drift watchers on main
+      - name: Dispatch drift watchers on master
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for wf in upstream-drift-watch.yml model-drift-watch.yml; do
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/dispatches" -f ref=main
-            echo "dispatched ${wf} on main"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/dispatches" -f ref=master
+            echo "dispatched ${wf} on master"
           done
