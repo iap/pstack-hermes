@@ -79,8 +79,12 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    installed clones. No second repository; build output is never edited by
    hand. The branch also carries one tiny `scheduler.yml` stub: GitHub fires
    `schedule` only for files on the default branch, so the stub dispatches
-   the weekly drift watchers on `main`. Recovery for dispatch-only workflows
-   (not shown in the Actions UI because it lists the default branch): then `gh workflow run <file> --ref main`.
+   the weekly drift watchers on `main`. It is bootstrapped once with a user
+   credential (bot tokens cannot push workflow files) and the publisher
+   never touches `.github/` on `dist`; source of truth for a re-bootstrap:
+   `tools/assets/dist-scheduler.yml`. Recovery for dispatch-only workflows
+   (not shown in the Actions UI because it lists the default branch):
+   `gh workflow run <file> --ref main`.
 
 ## Repository contract
 

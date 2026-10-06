@@ -10,10 +10,13 @@
 # break every user's in-place update).
 #
 # The dev tree (tools/, .github, docs) stays on `main`; only the validated
-# `pstack/` output is synced onto `dist`, plus one tiny scheduler stub
-# (tools/assets/dist-scheduler.yml) - GitHub fires `schedule` only for
-# workflow files on the DEFAULT branch, so the weekly drift watchers are
-# dispatched by that stub on `main`.
+# `pstack/` output is synced onto `dist`. This publisher NEVER touches
+# `dist/.github/`: bot tokens cannot push workflow files, so the weekly
+# scheduler stub there (.github/workflows/scheduler.yml - it dispatches the
+# drift watchers on `main`, because GitHub fires `schedule` only from the
+# default branch) was bootstrapped once with a user credential and is left
+# alone. Source of truth for a manual re-bootstrap:
+# tools/assets/dist-scheduler.yml.
 #
 # Manual recovery: the Actions UI lists workflows from the default branch
 # only, so this file's 'Run workflow' button is not shown there - trigger it
@@ -69,7 +72,7 @@ jobs:
 
           # Replace the tree with the fresh build (.git kept): an append-only
           # commit on top of dist so installed clones can fast-forward.
-          find "$dist" -mindepth 1 -maxdepth 1 -not -name ".git" -exec rm -rf {} +
+          find "$dist" -mindepth 1 -maxdepth 1 -not -name ".git" -not -name ".github" -exec rm -rf {} +
           cp -a pstack/. "$dist/"
           # The dist branch is consumed by `hermes plugins install` (a git
           # clone), so it needs its own .gitattributes. The package contract is
@@ -80,10 +83,8 @@ jobs:
           # config/models.json. The rule lives in tools/assets/dist.gitattributes
           # so this publisher and tools/dist_checkout_check.py cannot drift.
           cp -a tools/assets/dist.gitattributes "$dist/.gitattributes"
-          # The weekly scheduler stub must live on the default branch for
-          # `schedule` to fire; it only dispatches the watchers on `main`.
-          mkdir -p "$dist/.github/workflows"
-          cp -a tools/assets/dist-scheduler.yml "$dist/.github/workflows/scheduler.yml"
+          # dist/.github/ is preserved untouched (see the header): the stub
+          # is bootstrapped once; bots cannot push workflow files.
           git -C "$dist" add -A
 
           # Gate on the tree we are about to publish, as a consumer receives it.
