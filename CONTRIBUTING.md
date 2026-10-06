@@ -114,6 +114,11 @@ one has already caught (or would have caught) a real defect here.
   [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
 - **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
   workflows` CI step, runnable locally as `uv run --frozen actionlint`.
+- **Action inputs must be declared by the action they target.** `tools/`
+  `check_action_inputs.py` fails on a `with:` key the pinned action does not
+  declare - the runner only warns and silently ignores such a key (the
+  `syncLabels` / `sync-labels` defect), and actionlint cannot see it because it
+  does not read remote action metadata.
 - **Composite actions must pass `tools/check_action_shell.py`.** actionlint
   does not lint `.github/actions/*/action.yml` steps, so that file's run
   blocks get their own shellcheck pass in CI. If the gate flags something,

@@ -196,6 +196,14 @@ jobs:
       - name: Lint composite-action shell blocks (shellcheck)
         run: uv run --frozen python tools/check_action_shell.py
 
+      # Needs network: reads each pinned action's action.yml from
+      # raw.githubusercontent.com. The runner only WARNS on an undeclared
+      # `with:` key and silently ignores it (how `syncLabels` vs `sync-labels`
+      # shipped), so this is the gate for that class. actionlint cannot cover
+      # it: it exits 0 on the exact defect (verified by reintroducing it).
+      - name: 'Lint action inputs (undeclared with: keys)'
+        run: uv run --frozen python tools/check_action_inputs.py
+
       - name: Lint (ruff)
         run: uv run --frozen ruff check tools
 
