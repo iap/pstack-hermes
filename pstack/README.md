@@ -8,12 +8,13 @@ package keeps the upstream identity pstack v0.15.5.*
 ## Install
 
 ```sh
-hermes plugins install iap/pstack-hermes/pstack --enable
+hermes plugins install iap/pstack-hermes --enable
 ```
 
-Update: `hermes plugins install iap/pstack-hermes/pstack --force`
-(subdir installs have no `.git`, so `hermes plugins update` does not apply).
-Pin a commit with `--ref <40-character SHA>` for an immutable install.
+The repository's default branch is `dist` - the built package CI produces
+from the pinned upstream. Root installs keep `.git`, so `hermes plugins
+update pstack` fast-forwards it. Pin a commit with `--ref <40-character
+SHA>` for an immutable install.
 
 ## First run
 
@@ -36,11 +37,11 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 ## Update
 
 ```sh
-hermes plugins install iap/pstack-hermes/pstack --force
+hermes plugins update pstack
 ```
 
-Subdir installs strip `.git`, so updates are reinstalls; local skill edits are
-wiped on reinstall - copy them out first.
+Root installs keep `.git`: this pulls the latest published build and
+autostashes uncommitted local skill edits.
 
 ## Customizing skills
 

@@ -92,8 +92,8 @@ jobs:
             echo ""
             echo "Rebuild against the new upstream, update the transform maps for any"
             echo "reworded anchors (the converter's anchor audit will name them), bump"
-            echo "UPSTREAM_PIN in all three workflows (ci.yml / release.yml /"
-            echo "upstream-drift-watch.yml - tools/check_pins.py"
+            echo "UPSTREAM_PIN in all four workflows (ci.yml / release.yml /"
+            echo "publish-dist.yml / upstream-drift-watch.yml - tools/check_pins.py"
             echo "enforces lock-step), and re-run the pipeline."
           } > "$RUNNER_TEMP/drift-body.md"
           # Guard for the next step: split across steps, the no-drift `exit 0`s

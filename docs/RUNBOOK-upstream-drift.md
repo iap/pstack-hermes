@@ -53,10 +53,10 @@ Any of these means upstream moved past the pin:
 
 `iap/plugins` is a fork of `cursor/plugins` kept as pin insurance. If upstream
 is deleted or moves, point the build action's `upstream-pin` input in the workflows that declare
-`UPSTREAM_PIN` (`ci.yml`, `release.yml`,
+`UPSTREAM_PIN` (`ci.yml`, `release.yml`, `publish-dist.yml`,
 `upstream-drift-watch.yml`) at the fork — the port then continues from the
-frozen pin. Users are never affected: installs come from this repo's `pstack/`
-subdir, not upstream.
+frozen pin. Users are never affected: installs and updates come from this
+repo's `dist` branch, not upstream.
 
 ## Do not
 

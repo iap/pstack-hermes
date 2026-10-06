@@ -38,9 +38,9 @@ to improve **stock** pstack skills shipped in this package.
 |---|---|---|
 | Change stock method for all users | Converter / `tools/assets/` → rebuild → validate → release | Yes (product) |
 | Personal or project procedure | `skill_manage` / `/learn` into **local** `~/.hermes/skills/` | Yes (outside package) |
-| Owned variant of pstack skills | **Fork** of this repo, install from the fork's `pstack/` subdir | Yes (you control merge) |
+| Owned variant of pstack skills | **Fork** of this repo, install from the fork | Yes (you control merge) |
 | New skills beside pstack | **Skill tap** (`hermes skills tap add` / install) | Yes |
-| Durable "learning" into installed plugin `SKILL.md` files | **Forbidden** as source of truth | No — reinstalls overwrite the installed tree |
+| Durable "learning" into installed plugin `SKILL.md` files | **Forbidden** as source of truth | No — `dist` publishes overwrite the installed tree |
 
 > [!WARNING]
 > Never instruct `skill_manage` (or any self-evolution path) to patch
@@ -184,7 +184,8 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 
 - **Pin lock-step.** `UPSTREAM_PIN`
   (`c47b12849e43f18d5c374c7069c744cc55b0ea00`) is declared in `ci.yml`,
-  `release.yml`, and `upstream-drift-watch.yml` — all three move together. The build steps that consume it are shared via
+  `release.yml`, `publish-dist.yml`, and `upstream-drift-watch.yml` — all four
+  move together. The build steps that consume it are shared via
   `.github/actions/build-package`.
   Procedure: [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
 - **Anchors audited.** A converter transform whose anchor matches nothing in
@@ -196,10 +197,11 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   reviewer check + rebuilt `pstack/` in the same PR.
 - **Excluded upstreams stay excluded.** `automations/benny` and
   `skills/make-bot-ui` omitted (slot filled by repo-owned `hermesbot`).
-- **Single-source installs.** Installs come from this repo's `pstack/` subdir
-  (`hermes plugins install iap/pstack-hermes/pstack`). The old dist repo
-  `iap/pstack` is retired — never publish there again; never document a
-  root install of this dev repo (scanner sees `tools/` ban needles).
+- **The `dist` branch is build output (and the default branch).** It is
+  written only by CI (`publish-dist.yml`), append-only. Never hand-edit or
+  hand-push `dist`; never publish to any other repository. Root installs of
+  `dist` are the supported route; a root install of the `main` dev tree is
+  impossible (the install scanner flags `tools/`).
 
 ## Common traps
 
@@ -209,9 +211,9 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   `tools/assets/model-panel.json` and rebuild; `validate.py` checks they match.
 - "Fixing" Cursor mentions that are attribution or dual-load — correct as-is.
 - Rewriting hermes primitives back into Cursor vocabulary — bans catch this.
-- Install-update mechanics: subdir installs strip `.git` (hermes design), so
-  `hermes plugins update` does NOT work for them — updates are reinstalls
-  (`hermes plugins install iap/pstack-hermes/pstack --force`). Docs must say so.
+- Install-update mechanics: root installs of `dist` keep `.git` and update
+  natively (`hermes plugins update pstack`); subdir installs of `main`'s
+  `pstack/` strip `.git` — reinstall only. Docs keep the routes distinct.
 - Using Cursor IDE dual-load habits as the implementation or review path for
   hermes delivery — verify with convert → validate → doctor / hermes invoke.
 - Pointing hermes `skill_manage` / learning / self-evolution at **stock**
