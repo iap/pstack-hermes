@@ -41,7 +41,7 @@ Build its prompt from `references/explainer-prompt.md` without the explorer-find
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one Task subagent to synthesize their findings into one explanation:
+Once all explorers have returned, spawn one delegate subagent to synthesize their findings into one explanation:
 
 - `delegate_task`: role `leaf`
 - `model`: the `how explainer` line, default `claude-opus-5-5-max`

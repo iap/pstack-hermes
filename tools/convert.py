@@ -96,6 +96,7 @@ PRINCIPLE_GROUPS = [
         "principle-experience-first",
         "principle-exhaust-the-design-space",
         "principle-build-the-lever",
+        "principle-attack-the-premise",
     ]),
     ("Architecture", [
         "principle-model-the-domain",
@@ -109,6 +110,7 @@ PRINCIPLE_GROUPS = [
         "principle-prove-it-works",
         "principle-fix-root-causes",
         "principle-sequence-verifiable-units",
+        "principle-test-behavior-not-implementation",
     ]),
     ("Delegation", [
         "principle-guard-the-context-window",
@@ -1029,8 +1031,10 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     old_block = text[start:end]
     new_block, drift = build_principles_index(out / "skills")
     if old_block.rstrip("\n") != new_block.rstrip("\n"):
-        st.fixes.append("R1: poteto-mode principles index regenerated from 21 leaves "
-                        "(single source of truth; hand-maintained wording replaced)")
+        st.fixes.append(
+            f"R1: poteto-mode principles index regenerated from "
+            f"{sum(len(g) for _, g in PRINCIPLE_GROUPS)} leaves "
+            "(single source of truth; hand-maintained wording replaced)")
     for d in drift:
         st.warnings.append(f"principles index: {d}")
     pm.write_bytes((text[:start] + new_block + "\n" + text[end:]).encode("utf-8"))
@@ -1409,7 +1413,7 @@ DELEGATION_MAP = [
      'agent mode (readonly restricts file writes only; MCP access is unaffected)'),
     ('the Task tool', 'delegate_task'),
     ('`Task`', '`delegate_task`'),
-]
+('spawn one Task subagent', 'spawn one delegate subagent')]
 # Re-exported from bans.py (single source of truth) so the converter's
 # leftover check and the scanner gate can never drift apart.
 from bans import DELEGATION_VOCAB_BANS as DELEGATION_FORBIDDEN  # noqa: E402
@@ -1909,7 +1913,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 |---|---|
 | manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
-| R1 | poteto-mode principles index regenerated from the 21 leaves |
+| R1 | poteto-mode principles index regenerated from the 23 leaves |
 | F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
 | F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |

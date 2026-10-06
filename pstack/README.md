@@ -82,7 +82,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 |---|---|
 | manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
-| R1 | poteto-mode principles index regenerated from the 21 leaves |
+| R1 | poteto-mode principles index regenerated from the 23 leaves |
 | F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
 | F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |
