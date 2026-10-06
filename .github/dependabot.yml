@@ -10,11 +10,19 @@
 # (build, lint, actionlint, determinism) run on the PR as usual.
 #
 # Grouped per ecosystem so an update lands as ONE reviewable PR rather than N.
+#
+# Default-branch note: dependabot reads this file from the DEFAULT branch, which
+# is `dist` (the install tree). This master copy is the source of truth; the
+# dist copy is bootstrapped once (user credential) and must stay identical. All
+# entries carry `target-branch: master` so manifest discovery and PRs stay on
+# the dev tree either way - with the config read from `dist`, `directory: "/"`
+# would otherwise look for pyproject.toml in the package.
 
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "master"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -30,6 +38,7 @@ updates:
   # (cf. actions/github-script).
   - package-ecosystem: "github-actions"
     directory: "/.github/actions/build-package"
+    target-branch: "master"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -38,6 +47,7 @@ updates:
   # actionlint-py, shellcheck-py).
   - package-ecosystem: "uv"
     directory: "/"
+    target-branch: "master"
     schedule:
       interval: "weekly"
       day: "monday"

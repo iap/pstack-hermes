@@ -200,7 +200,7 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 - **The `dist` branch is build output (and the default branch).** It is
   written only by CI (`publish-dist.yml`), append-only. Never hand-edit or
   hand-push `dist`; never publish to any other repository. Root installs of
-  `dist` are the supported route; a root install of the `main` dev tree is
+  `dist` are the supported route; a root install of the `master` dev tree is
   impossible (the install scanner flags `tools/`).
 
 ## Common traps
@@ -212,7 +212,7 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 - "Fixing" Cursor mentions that are attribution or dual-load — correct as-is.
 - Rewriting hermes primitives back into Cursor vocabulary — bans catch this.
 - Install-update mechanics: root installs of `dist` keep `.git` and update
-  natively (`hermes plugins update pstack`); subdir installs of `main`'s
+  natively (`hermes plugins update pstack`); subdir installs of `master`'s
   `pstack/` strip `.git` — reinstall only. Docs keep the routes distinct.
 - Using Cursor IDE dual-load habits as the implementation or review path for
   hermes delivery — verify with convert → validate → doctor / hermes invoke.
