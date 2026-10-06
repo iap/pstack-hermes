@@ -2,8 +2,8 @@ package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone; public origin in source_url)
 source_url: https://github.com/cursor/plugins.git
 source_commit: c47b12849e43f18d5c374c7069c744cc55b0ea00
-converted_at: 2026-10-06T00:18:16Z
-converter: convert.py (sha256[:16]=79f24856020d5e0a)
+converted_at: 2026-10-06T00:23:20Z
+converter: convert.py (sha256[:16]=6df999a96a62ecd9)
 schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
 fixes:
   - F-publish: skills/make-bot-ui excluded (Tailscale privilege-escalation scan; F33; upstream flattened the grokbot container)
@@ -30,7 +30,7 @@ fixes:
   - plugin.json: injected exact agent-plugins-v1 $schema at ROOT (9 whitelisted fields; displayName/category/tags/agents/skills omitted)
   - after-install.md: install-completion panel (gateway restart, setup-pstack, poteto-mode routing)
   - text normalization: UTF-8 without BOM, LF line endings (files normalized: 125, BOM stripped: 0, CRLF fixed: 125)
-  - anchor audit: 128/128 transform anchors applied (0 dead; the converter fails loudly on upstream drift)
+  - anchor audit: 129/129 transform anchors applied (0 dead; the converter fails loudly on upstream drift)
 counts:
   skills_loaded: 47 (24 workflow/mode + 23 principle)
   skill_md_on_disk: 47 (skills/ only; automations/benny + make-bot-ui excluded for the install scanner)
