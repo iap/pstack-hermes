@@ -127,7 +127,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | `tools/assets/` | inputs the converter copies in (`model-panel.json`, `hermesbot/SKILL.md`) | edit here, then rebuild |
 | `docs/` | ADAPTATIONS ledger, USING, RUNBOOK, PATCHES | converter pass → new ADAPTATIONS row |
 | `patches/` | historical hermes-fork patch reference | not required to load/install; see PATCHES.md |
-| `.github/` | CI, labeler, issue templates | pin SHA must stay in lock-step across workflows (enforced: `tools/check_pins.py`); workflow edits must pass actionlint and `tools/check_action_shell.py`; action pins are bumped by dependabot, not by hand |
+| `.github/` | CI, labeler, issue templates | pin SHA must stay in lock-step across workflows (enforced: `tools/check_pins.py`); workflow edits must pass actionlint, `tools/check_action_shell.py` and `tools/check_action_inputs.py`; action pins are bumped by dependabot (workflows and each composite action have their own entry), not by hand |
 | `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | hand-written | repo-level contract |
 | `.venv/`, `.kilo/`, `pstack.tmp-build/`, `.pytest-tmp/` | local scratch | never commit |
 
