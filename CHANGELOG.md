@@ -9,6 +9,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 - The `master` rename is wired end to end: CI and publish triggers filter on `master`, the drift-watcher scheduler stub dispatches `ref=master` (source asset and dist copy), and the CONTRIBUTING/AGENTS install-route references are updated. The dist default-branch shims are now documented as a set — scheduler, labeler, dependabot — with their re-bootstrap sources.
 
 ### Fixed
+- Labeler restored after the default-branch flip: `pull_request_target` fires only from the default branch, so it had silently stopped labeling PRs. `dist` now carries the labeler workflow **and** its config (the action resolves `configuration-path` via the API at the default-branch ref - the first shim run 404'd without it) plus the dependabot config (`target-branch: master`). Verified live: a probe PR received its labels again, and the drift-watcher stub dispatches `ref=master`.
 - `labels-bootstrap` could never succeed: the job has no checkout, so its `gh label` calls failed with "not a git repository" (both recorded runs failed the same way). It now passes `GH_REPO` explicitly, so the ensure-labels recovery path works.
 
 ## [0.4.4] - 2026-10-06
