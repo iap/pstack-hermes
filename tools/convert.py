@@ -1838,11 +1838,12 @@ package keeps the upstream identity pstack v{manifest['version']}.*
 ## Install
 
 ```sh
-hermes plugins install iap/pstack --enable
+hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-Legacy route: `hermes plugins install iap/pstack-hermes/pstack --enable`
-(the dev repo's subdir; works, but cannot update in-place).
+Update: `hermes plugins install iap/pstack-hermes/pstack --force`
+(subdir installs have no `.git`, so `hermes plugins update` does not apply).
+Pin a commit with `--ref <40-character SHA>` for an immutable install.
 
 ## First run
 
@@ -1865,19 +1866,18 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 ## Update
 
 ```sh
-hermes plugins update pstack
+hermes plugins install iap/pstack-hermes/pstack --force
 ```
 
-Root installs keep `.git`: this pulls the latest published build and
-autostashes uncommitted local skill edits. Subdir installs strip `.git` —
-reinstall to update (local edits are wiped; copy them out first).
+Subdir installs strip `.git`, so updates are reinstalls; local skill edits are
+wiped on reinstall - copy them out first.
 
 ## Customizing skills
 
 - **Tweak a line or two** — edit the installed `SKILL.md`, restart the
   gateway, keep the edit uncommitted (updates autostash it).
-- **Own several changed skills** — fork `iap/pstack`, commit, install from
-  your fork (`hermes plugins install <you>/pstack --enable`).
+- **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
+  your fork's subdir (`hermes plugins install <you>/pstack-hermes/pstack --enable`).
 - **Add your own new skills alongside** — a skill tap:
   `hermes skills tap add <you>/skills-repo`, then
   `hermes skills install <you>/skills-repo/<skill>`.
@@ -1966,8 +1966,8 @@ ledger with reviewer checks lives in the dev repo
 Skills are opt-in on the portable path: load one with
 `skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
 `skills/` dir to `skills.external_dirs` in the hermes config for
-`/<name>` slash commands. Update anytime with `hermes plugins update pstack`.
-Docs: <https://github.com/iap/pstack#readme>
+`/<name>` slash commands. Update with a reinstall: `hermes plugins install iap/pstack-hermes/pstack --force`.
+Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
     st.files_copied += 1

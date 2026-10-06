@@ -82,8 +82,8 @@ Pick by what you want to change — one of three durable routes:
 
 | Intent | Route | Notes |
 |---|---|---|
-| Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Keep edits **uncommitted** on root installs so `hermes plugins update` can autostash/reapply. Subdir installs **wipe** edits on reinstall — copy out first. Not a durable learning path. |
-| Own several changed skills, versioned | **Fork** dist repo `iap/pstack`, install from your fork | `hermes plugins install <you>/pstack --enable`. Merge upstream when you choose. |
+| Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Keep edits small and copy them out before a reinstall — subdir installs **wipe** edits, and `hermes plugins update` does not apply to them. Not a durable learning path. |
+| Own several changed skills, versioned | **Fork** this repo, install from your fork's `pstack/` subdir | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Merge upstream when you choose. |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
 Structural changes that must survive upstream re-pins (new adaptations,

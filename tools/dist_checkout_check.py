@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Regression check: a checkout of the DIST tree must be LF-only, with binaries intact.
+"""Regression check: a checkout of the package (install clone) must be LF-only, with binaries intact.
 
 Why this exists
 ---------------
 The package contract is LF-only (see ``tools/validate.py::check_encoding``), and
-the dist repo is what ``hermes plugins install iap/pstack`` actually clones. The
+the pstack/ subtree is what ``hermes plugins install
+iap/pstack-hermes/pstack`` actually clones. The
 ``build`` CI job validates the *source* ``pstack/`` directory, where files are LF
 because ``tools/convert.py`` wrote them that way. That job is structurally
 incapable of catching a line-ending or binary-asset regression introduced by the
@@ -15,9 +16,10 @@ So this check does the one thing nothing else does: build a throwaway git repo
 from a staged dist tree with ``core.autocrlf=true``, the default on Windows, and
 assert that what a consumer would receive is byte-correct.
 
-The attributes rule lives in ``tools/assets/dist.gitattributes`` and is copied to
-both the staged dist tree and this check, so the publisher and the regression
-test cannot drift apart. ``--package`` may be used to verify a real checkout.
+For ``--source-tree`` the staged copy is governed by the repository root
+``.gitattributes`` - the rules an install clone actually receives. The legacy
+dist rule set lives in ``tools/assets/dist.gitattributes``. ``--package`` may
+be used to verify a real checkout.
 
 Exit codes:
   0  every text file checked out LF, every binary byte-identical
@@ -119,10 +121,11 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     tree_attrs = package / ATTRS_NAME
     if not tree_attrs.is_file():
         if source_tree:
-            # The source pstack/ tree has no .gitattributes by design: the
-            # publisher copies one in when it stages the dist repo. Stage a
-            # throwaway copy so the line-ending question can still be asked.
-            shutil.copy2(ATTRS_SOURCE, dest / ATTRS_NAME)
+            # The source pstack/ tree ships no .gitattributes of its own; the
+            # repository root's rules govern what an install clone receives.
+            # Stage a throwaway copy with those rules so the line-ending
+            # question can still be asked.
+            shutil.copy2(SCRIPT_DIR.parent / ATTRS_NAME, dest / ATTRS_NAME)
             return
         raise RuntimeError(
             f"package has no {ATTRS_NAME}: a published tree must carry the rule, "

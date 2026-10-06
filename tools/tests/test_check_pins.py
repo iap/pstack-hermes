@@ -15,7 +15,7 @@ import check_pins  # noqa: E402
 
 SHA = "93b00b89ef425a9c1bac0d0b317dfc49c930ac99"
 OTHER = "4e5b1cf2ccb0ea3716f08c8ee0a5856b5ab93536"
-REQUIRED = ("ci.yml", "release.yml", "publish-plugin.yml", "upstream-drift-watch.yml")
+REQUIRED = ("ci.yml", "release.yml", "upstream-drift-watch.yml")
 
 
 def _decl(value: str) -> str:
