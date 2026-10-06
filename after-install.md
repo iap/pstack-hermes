@@ -1,0 +1,13 @@
+# pstack installed
+
+1. `hermes gateway restart`
+2. Run the `setup-pstack` skill once - it writes `pstack-models.json` beside hermes' `config.yaml`, outside this package, so plugin updates do not discard it
+   (the model panel the workflow skills read).
+3. Load `poteto-mode` and hand it a real task — it classifies the work and
+   routes to the right playbook.
+
+Skills are opt-in on the portable path: load one with
+`skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
+`skills/` dir to `skills.external_dirs` in the hermes config for
+`/<name>` slash commands. Update with a reinstall: `hermes plugins install iap/pstack-hermes/pstack --force`.
+Docs: <https://github.com/iap/pstack-hermes#readme>
