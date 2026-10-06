@@ -10,7 +10,15 @@
 # break every user's in-place update).
 #
 # The dev tree (tools/, .github, docs) stays on `main`; only the validated
-# `pstack/` output is synced onto `dist`. Nothing else is touched.
+# `pstack/` output is synced onto `dist`, plus one tiny scheduler stub
+# (tools/assets/dist-scheduler.yml) - GitHub fires `schedule` only for
+# workflow files on the DEFAULT branch, so the weekly drift watchers are
+# dispatched by that stub on `main`.
+#
+# Manual recovery: the Actions UI lists workflows from the default branch
+# only, so this file's 'Run workflow' button is not shown there - trigger it
+# against `main` from the CLI instead (verified working):
+#   gh workflow run publish-dist.yml --ref main
 
 name: publish-dist
 
@@ -72,6 +80,10 @@ jobs:
           # config/models.json. The rule lives in tools/assets/dist.gitattributes
           # so this publisher and tools/dist_checkout_check.py cannot drift.
           cp -a tools/assets/dist.gitattributes "$dist/.gitattributes"
+          # The weekly scheduler stub must live on the default branch for
+          # `schedule` to fire; it only dispatches the watchers on `main`.
+          mkdir -p "$dist/.github/workflows"
+          cp -a tools/assets/dist-scheduler.yml "$dist/.github/workflows/scheduler.yml"
           git -C "$dist" add -A
 
           # Gate on the tree we are about to publish, as a consumer receives it.

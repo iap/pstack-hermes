@@ -77,7 +77,10 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    is the **default branch**, so `hermes plugins install iap/pstack-hermes`
    clones it root-level and `hermes plugins update pstack` fast-forwards
    installed clones. No second repository; build output is never edited by
-   hand.
+   hand. The branch also carries one tiny `scheduler.yml` stub: GitHub fires
+   `schedule` only for files on the default branch, so the stub dispatches
+   the weekly drift watchers on `main`. Recovery for dispatch-only workflows
+   (not shown in the Actions UI because it lists the default branch): then `gh workflow run <file> --ref main`.
 
 ## Repository contract
 
