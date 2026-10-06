@@ -23,4 +23,8 @@ jobs:
           configuration-path: .github/labeler.yml
           # Keep labels accurate as the PR evolves: stale labels are removed
           # on synchronize, not just added.
-          syncLabels: true
+          # NOTE: the input id is kebab-case. `syncLabels` is silently ignored -
+          # the runner logs "Unexpected input(s) 'syncLabels'" and the action
+          # falls back to its default (off), which is why stale labels were
+          # never actually removed until this was corrected.
+          sync-labels: true
