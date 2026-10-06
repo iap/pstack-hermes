@@ -3,7 +3,7 @@
 *The pstack agent method — go fast by going deep first — packaged for the
 Hermes Agent portable plugin path. Unofficial port of
 <https://github.com/cursor/plugins/tree/main/pstack> (MIT, © Lauren Tan);
-package keeps the upstream identity pstack v0.14.8.*
+package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
@@ -60,8 +60,8 @@ a hermes defect that reproduces with the plugin disabled →
 
 ## What hermes loads
 
-- **45 skills** (24 workflow/mode +
-  21 `principle-*`), single-level `skills/<dir>/SKILL.md`,
+- **47 skills** (24 workflow/mode +
+  23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
   discovered via the root `plugin.json` (agent-plugins-v1 manifest,
   9 whitelisted fields).
 - `skills/hermesbot/` — hermes-native control-surface skill on the gateway
@@ -83,7 +83,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 | manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
 | R1 | poteto-mode principles index regenerated from the 21 leaves |
-| F16 | fast-lane slug overridable via `PSTACK_FAST_LANE` |
+| F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
 | F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |
 | T8/T9/T10 | `setup-pstack` writes the model panel beside hermes' `config.yaml` (outside the package, so updates do not discard it); discovery via `session_search`; hermes tool names |

@@ -1106,7 +1106,7 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
          'the **guard-the-context-window** principle skill'),
         ('in the `pstack-models.mdc` rule',
          'in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`)'),
-    ]
+    ('which can require MCP access. Readonly strips MCPs.', 'which can require MCP access. Readonly on hermes restricts file writes only, so MCP access is unaffected.')]
     t8_files = apply_map(sorted((out / "skills").rglob("*.md")),
                          T8_MAP, map_name="T8_MAP", st=st)
     note_added = False
