@@ -85,8 +85,11 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    default branch; its `target-branch: master` keeps scans and PRs on the dev
    tree). All three are bootstrapped once with a user credential (bot tokens
    cannot push workflow files) and the publisher never touches `.github/` on
-   `dist`. Re-bootstrap sources: `tools/assets/dist-scheduler.yml`, this
-   repo's `.github/workflows/labeler.yml`, and `.github/dependabot.yml`.
+   `dist`. Re-bootstrap sources: `tools/assets/dist-scheduler.yml`,
+   `.github/workflows/labeler.yml` **and the label config `.github/labeler.yml`**
+   (the labeler resolves its config via the API at the default-branch ref -
+   verified live: without the config copy on `dist` its first run 404'd), and
+   `.github/dependabot.yml`.
    Recovery for dispatch-only workflows (not shown in the Actions UI because
    it lists the default branch): `gh workflow run <file> --ref master`.
 
