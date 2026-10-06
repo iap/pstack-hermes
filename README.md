@@ -41,7 +41,9 @@ hermes plugins update pstack
 ```
 
 Root installs keep `.git`: this pulls the latest published build and
-autostashes uncommitted local skill edits.
+autostashes uncommitted local skill edits. A legacy subdir install
+(`iap/pstack-hermes/pstack`) strips `.git` - reinstall it with
+`hermes plugins install iap/pstack-hermes/pstack --force`.
 
 ## Customizing skills
 
