@@ -1,19 +1,20 @@
 # Pstack Hermes
 
-*Unofficial community port of Lauren Tan's **pstack** agent method for the
-**Hermes Agent** plugin platform. Not affiliated with Cursor or Lauren Tan.
-If you use Cursor, install the original instead:
-<https://github.com/cursor/plugins/tree/main/pstack>.*
+*The pstack agent method as a **native Hermes Agent plugin installation** —
+an unofficial community port of Lauren Tan's
+[pstack](https://github.com/cursor/plugins/tree/main/pstack). Not affiliated
+with Cursor or Lauren Tan; if you use Cursor, install the original instead.*
 
-*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.14.8) ·
+*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.15.5) ·
 Upstream pinned at `c47b1284` (MIT).*
 
-**What this project is:** the Hermes integration, adjustment, and compatibility
-layer for pstack — a self-contained `agent-plugins-v1` package plus the
-converter/validator tooling that keeps it faithful to upstream. **What it is
-not:** a Cursor plugin, a fork of the Cursor plugins repo, or the place to
-report upstream Cursor issues. Port problems belong here (Issues); original
-Cursor-plugin bugs that reproduce without this port belong upstream.
+**What this project is:** a native hermes plugin — a self-contained
+`agent-plugins-v1` package published on the `dist` branch and installed and
+updated through `hermes plugins`, plus the converter/validator tooling that
+keeps it faithful to upstream. **What it is not:** a Cursor plugin, a fork of
+the Cursor plugins repo, or the place to report upstream Cursor issues. Port
+problems belong here (Issues); original issues that reproduce without this
+port belong upstream.
 
 ## Install
 
@@ -31,8 +32,8 @@ hermes plugins install iap/pstack-hermes --ref <40-character commit SHA>
 > ([publish-dist.yml](.github/workflows/publish-dist.yml)). That is what the
 > install clones, so the plain repo command works and updates are native:
 > `hermes plugins update pstack` fast-forwards the installed clone. The
-> development tree lives on `main`; installing `main`'s `pstack/` subdir is a
-> legacy alternative that cannot update in place.
+> development tree lives on `master`; installing `master`'s `pstack/` subdir is
+> a legacy alternative that cannot update in place.
 
 > [!NOTE]
 > The bare-name form `hermes plugins install pstack` is not available —
@@ -60,7 +61,8 @@ in-place — to update one, uninstall and reinstall with the subdir form.
   discovery rewritten to hermes-native `session_search`/`session` tools,
   config shipped as hermes `config/models.json`.
 - **setup-pstack onboarding flow** adapted for hermes profiles and external
-  model-panel storage (survives plugin updates).
+  model-panel storage (survives plugin updates). The upstream-name →
+  hermes-default model mapping is documented in [docs/MODELS.md](docs/MODELS.md).
 
 ## Repository layout
 
@@ -131,13 +133,13 @@ patch reference. End-user invoke and customization:
 | Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
-## Cursor dual-load (incidental, unsupported)
+## Heritage layout (inert on hermes)
 
-`.cursor-plugin/plugin.json` is preserved unchanged, so this same directory still
-loads as a Cursor plugin structurally — but the skills' *content* is fully
-hermes-adapted and Cursor-side behavior is neither tested nor supported here.
-For real Cursor-side work, install upstream pstack instead. The
-`.cursor-plugin/` and `agents/` surfaces are inert on hermes.
+A `.cursor-plugin/plugin.json` is preserved for provenance from the upstream
+tree; the `.cursor-plugin/` and `agents/` surfaces are inert here — the package
+is a hermes plugin, the skills' content is hermes-adapted, and Cursor-side
+behavior is neither tested nor supported. For Cursor-side work, install
+upstream pstack instead.
 
 ## Known limitations
 
