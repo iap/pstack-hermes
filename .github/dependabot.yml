@@ -22,6 +22,18 @@ updates:
       actions:
         patterns: ["*"]
 
+  # Composite actions need their own entry. The root entry above covers
+  # .github/workflows plus a repo-root action.yml, but NOT
+  # .github/actions/*/action.yml - observed live: the setup-uv bump landed in
+  # every workflow and skipped .github/actions/build-package, leaving that pin
+  # to rot silently. Directory-scoped entries are the documented pattern
+  # (cf. actions/github-script).
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/build-package"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
   # pyproject.toml + uv.lock (the tooling venv: pyyaml, pytest, ruff,
   # actionlint-py, shellcheck-py).
   - package-ecosystem: "uv"

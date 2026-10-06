@@ -104,7 +104,9 @@ one has already caught (or would have caught) a real defect here.
 - **Every action is pinned to a full commit SHA** with a trailing `# vN`
   comment. `dependabot.yml` keeps them current: the weekly `github-actions`
   group PR updates both the SHA and the comment. Review SHA bumps like any
-  dependency change - the usual CI gates run on the PR.
+  dependency change - the usual CI gates run on the PR. The root entry does
+  **not** cover `.github/actions/*/action.yml`, so each composite action with
+  its own `uses:` needs a directory-scoped entry there.
 - **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,
   `release.yml`, `publish-plugin.yml` and `upstream-drift-watch.yml`;
   `tools/check_pins.py` fails CI when any of the four is missing, duplicated,

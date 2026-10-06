@@ -1,4 +1,4 @@
-# Path-based PR labels (actions/labeler v5).
+# Path-based PR labels (actions/labeler v7).
 # Labels must exist in the repo before this matches — run
 # .github/workflows/labels-bootstrap.yml once after publishing to create them.
 #
