@@ -1,0 +1,36 @@
+# Weekly scheduler stub for the drift watchers.
+#
+# Why this file lives on `dist`: GitHub fires `schedule` events only for
+# workflow files present on the DEFAULT branch. The default branch is `dist`
+# (the install tree), so the watchers' real workflows - which need the dev
+# tree and its composite actions - cannot own the schedule themselves.
+# This stub dispatches them on `main`, where they live.
+#
+# Recovery/manual use: `gh workflow run scheduler.yml --ref dist` (the Actions
+# UI does not list it, because the UI lists workflows from the default branch
+# only... on `dist` the UI DOES list it: dist IS the default branch).
+
+name: scheduler
+
+on:
+  schedule:
+    - cron: "43 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch drift watchers on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in upstream-drift-watch.yml model-drift-watch.yml; do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/dispatches" -f ref=main
+            echo "dispatched ${wf} on main"
+          done
