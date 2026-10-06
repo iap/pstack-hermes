@@ -1,12 +1,12 @@
 name: Feature or improvement
-description: Suggest an improvement to the plugin, a skill, or the port
+description: Suggest an improvement to the plugin, a skill, or the port pipeline
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
         For roadmap-level suggestions, note that the port follows the
-        adaptation plan's staging (see the repo's docs). Concrete, scoped
+        adaptation ledger's staging (see the repo's docs). Concrete, scoped
         suggestions with an acceptance criterion are the most actionable.
   - type: dropdown
     id: area
@@ -14,9 +14,9 @@ body:
       label: Area
       options:
         - a skill's content or behavior
-        - model / config
+        - model / config (see docs/MODELS.md)
         - delegation / subagents
-        - porting / dual-load
+        - porting / upstream sync
         - documentation
         - other
     validations:

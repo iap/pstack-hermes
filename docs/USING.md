@@ -9,10 +9,10 @@
 
 ## What you installed
 
-A **method package**: 45 instructions-for-the-agent skills (a router, 23
-playbooks, workflow skills, and 21 principles) plus the converter/validator
-tooling that keeps them faithful to upstream. It is not a service, a daemon, or
-an autopilot — it changes how the agent works on a task you give it.
+A **method package**: 47 instructions-for-the-agent skills (24 workflow/mode +
+23 `principle-*`) plus the converter/validator tooling that keeps them faithful
+to upstream. It is not a service, a daemon, or an autopilot — it changes how
+the agent works on a task you give it.
 
 ## Invocation model
 
@@ -40,6 +40,8 @@ convenience route when you want `/poteto-mode` style commands.
    beside hermes `config.yaml`) so plugin updates do not discard your choices.
    Roles map code, prose, judgment, tooling, cross-judge, and panel roles to
    models available to you. `inherit-parent` means "use the parent chat model".
+   The upstream-name → hermes-default mapping (for now) is in
+   [MODELS.md](MODELS.md).
    Workflow skills consume those roles; a bad slug shows up later at delegation
    time — not as an upstream bug.
 3. **Give it a real task** and load `poteto-mode`. It classifies the work and

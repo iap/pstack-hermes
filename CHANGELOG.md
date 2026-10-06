@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Changed
+- Restructure round for the native-hermes install model: the README leads with the native `hermes plugins` install/update path (development tree now on `master`), the issue forms are project-only — the dual-load platform dropdown is replaced by an install-route field and the upstream-method contact link now points at this repo's user guide — and `docs/MODELS.md` documents the provisional upstream-name → hermes-default model mapping (code/judgment/reviewer roles) alongside the shipped panel.
+
 ## [0.4.4] - 2026-10-06
 
 ### Added

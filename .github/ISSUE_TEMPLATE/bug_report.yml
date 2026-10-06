@@ -5,32 +5,33 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before opening: search existing issues. This port is a **dual-load**
-        package — some surfaces differ between hermes and Cursor, so say which
-        platform you are on. Bugs caused by the port's own adaptations belong
-        here; upstream pstack bugs belong in the upstream repo.
+        Before opening: search existing issues. This repository is the native
+        hermes package for the pstack method — if the same problem reproduces
+        without this port (plain upstream pstack), it belongs upstream instead.
   - type: dropdown
-    id: platform
-    attributes:
-      label: Platform
-      options:
-        - hermes
-        - Cursor (dual-load)
-        - Both platforms
-    validations:
-      required: true
-  - type: dropdown
-    id: skill
+    id: surface
     attributes:
       label: Affected skill or surface
       options:
         - poteto-mode (router)
         - a playbook (which one?)
-        - a workflow skill (how/why/tdd/…)
+        - a workflow skill (how/why/tdd/...)
         - a principle skill
-        - setup-pstack
-        - install / loader
+        - setup-pstack (model panel)
+        - install / update (`hermes plugins`)
         - other
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is the plugin installed?
+      options:
+        - hermes plugins install iap/pstack-hermes (root, default branch)
+        - a pinned --ref install
+        - legacy subdir install
+        - a dist fork
+        - not sure
     validations:
       required: true
   - type: textarea
@@ -52,8 +53,8 @@ body:
     id: evidence
     attributes:
       label: Evidence
-      description: Log lines, error output, or a minimal reproduction. On
-        hermes, `hermes plugins doctor <package> --ci` output is the most
-        useful thing you can attach.
+      description: Log lines, error output, or a minimal reproduction. The most
+        useful things to attach are the output of `hermes plugins doctor pstack
+        --ci` and `hermes --version`.
     validations:
       required: false
