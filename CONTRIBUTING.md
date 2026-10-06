@@ -70,17 +70,11 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    directory, elsewhere it can resolve to an installed package. For branch
    verification, pass the resolved local path (`$(pwd)/pstack`); for the
    installed dist package, use the name as installed.
-4. **Publish** — on every push to `main`,
-   [publish-plugin.yml](.github/workflows/publish-plugin.yml) re-runs
-   convert → validate → scanner gate and publishes the built tree to the
-   dist repo `iap/pstack` as an **append-only commit**, tagged
-   `pstack-<date>-<sha>` (the plugin catalog admits only repos with real
-   tags). Build output: never edited by hand, history never rewritten —
-   `hermes plugins update` fast-forwards installed clones. The dist
-   repo's tree root is the package, which is what makes the root install
-   shorthand (`hermes plugins install iap/pstack`) and in-place
-   `hermes plugins update pstack` work. Requires the one-time `PLUGIN_DIST_TOKEN`
-   secret (fine-grained PAT, contents: read/write on the dist repo only).
+4. **Install payload** — CI builds and re-validates the package on every
+   push (convert → validate → scanner gate), and the validated
+   `pstack/` subtree on `main` is what users install
+   (`hermes plugins install iap/pstack-hermes/pstack`). There is no separate
+   dist repo: nothing is published to a second repository.
 
 ## Repository contract
 
@@ -108,8 +102,8 @@ one has already caught (or would have caught) a real defect here.
   **not** cover `.github/actions/*/action.yml`, so each composite action with
   its own `uses:` needs a directory-scoped entry there.
 - **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,
-  `release.yml`, `publish-plugin.yml` and `upstream-drift-watch.yml`;
-  `tools/check_pins.py` fails CI when any of the four is missing, duplicated,
+  `release.yml` and `upstream-drift-watch.yml`;
+  `tools/check_pins.py` fails CI when any of the three is missing, duplicated,
   malformed, or out of step. Follow
   [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
 - **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
@@ -157,11 +151,11 @@ one has already caught (or would have caught) a real defect here.
 
 Follow [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md)
 verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
-in **four workflows** — `ci.yml`, `release.yml`, `publish-plugin.yml`,
-`upstream-drift-watch.yml` — and all four must move in the same PR. Update maps,
+in **three workflows** — `ci.yml`, `release.yml`,
+`upstream-drift-watch.yml` — and all three must move in the same PR. Update maps,
 never the package. (The build prologue itself now lives once, in the
-`.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
-`publish-plugin.yml` pass the pin to it as an input rather than each repeating
+`.github/actions/build-package` composite action, so `ci.yml` and `release.yml`
+pass the pin to it as an input rather than each repeating
 the clone/verify/convert steps. `tools/check_pins.py` now enforces the
 lock-step rule in CI, so a missed file fails fast instead of at release time.)
 

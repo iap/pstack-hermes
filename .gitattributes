@@ -6,3 +6,7 @@
 # Mark it generated so GitHub collapses its diffs and excludes it from
 # language stats: review it as build output, not as hand-written code.
 pstack/** linguist-generated=true
+
+# Binaries stay byte-identical on checkout (assets/logo.png): pin the intent
+# so a future text rule cannot start rewriting them.
+*.png binary

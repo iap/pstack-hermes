@@ -2,9 +2,9 @@
 """Assert every UPSTREAM_PIN declaration agrees, and is well-formed.
 
 AGENTS.md and CONTRIBUTING.md both state the rule - the pin must stay in
-lock-step across ci.yml / release.yml / publish-plugin.yml /
+lock-step across ci.yml / release.yml /
 upstream-drift-watch.yml - but nothing enforced it. A bump that missed one file
-would publish a dist built from a pin that CI never validated, and only a code
+would ship a package built from a pin that CI never validated, and only a code
 review would notice. This gate makes the documented rule machine-checked and
 exists specifically to de-risk the re-pin procedure in
 docs/RUNBOOK-upstream-drift.md.
@@ -27,7 +27,6 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_DECLARERS = (
     "ci.yml",
     "release.yml",
-    "publish-plugin.yml",
     "upstream-drift-watch.yml",
 )
 

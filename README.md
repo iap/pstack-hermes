@@ -18,26 +18,26 @@ Cursor-plugin bugs that reproduce without this port belong upstream.
 ## Install
 
 ```sh
-# hermes (portable plugin path) — root install (recommended)
-hermes plugins install iap/pstack --enable
-
-# Legacy: subdir install from this dev repo (still works)
+# single-source install (this repository's built package)
 hermes plugins install iap/pstack-hermes/pstack --enable
+
+# immutable variant: pin an exact commit
+hermes plugins install iap/pstack-hermes/pstack --ref <40-character commit SHA>
 ```
 
 > [!NOTE]
-> The root form installs from the **dist repo** (`iap/pstack`), whose tree root
-> is the built package — published by CI from the pinned upstream build
-> ([publish-plugin.yml](.github/workflows/publish-plugin.yml)). The dev repo
-> itself (`iap/pstack-hermes`) cannot be installed from its root: the install
-> scanner scans the whole tree, and this repo deliberately ships its
-> development tooling (`tools/`, CI) alongside the package. The `pstack` subdir
-> is the plugin; the dist repo is the plugin.
+> Installs come straight from this repository's `pstack/` subdirectory — the
+> built package CI validates on every push. There is no separate dist repo;
+> the old root shortcut (`iap/pstack`) is retired and no longer published.
+>
+> **Updates:** subdir installs have no `.git` (hermes keeps `.git` only for
+> root installs), so `hermes plugins update` does not apply. Update with a
+> reinstall: `hermes plugins install iap/pstack-hermes/pstack --force`.
+> Coming from the old dist install? That same command migrates you.
 
 > [!NOTE]
 > The bare-name form `hermes plugins install pstack` is not available —
-> the package has no entry in the hermes plugin catalog yet. Use one of the
-> two forms above.
+> the package has no entry in the hermes plugin catalog yet. Use the form above.
 
 **Update:** a root install keeps `.git`, so it updates in-place:
 ```sh
@@ -75,7 +75,7 @@ patches/           historical hermes-fork patches (reference only; not required 
 docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
                    PATCHES.md + UPSTREAM-PR.md (historical)
 .github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
-                   publish-plugin.yml (dist-repo publisher), PR labeler, issue templates
+                   PR labeler, issue templates
 ```
 
 ## Verification
@@ -125,11 +125,11 @@ patch reference. End-user invoke and customization:
 
 | Thing | Name | Why |
 |---|---|---|
-| The package | `pstack` | upstream identity (plugin.json, v0.14.8) — preserved |
+| The package | `pstack` | upstream identity (plugin.json, v0.15.5) — preserved |
 | This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes); the development/pipeline repo |
-| Dist repo | `pstack` (`iap/pstack`) | plugin-only build output, published by [publish-plugin.yml](.github/workflows/publish-plugin.yml) (append-only commits); the root install source |
+| Dist repo (retired) | — | superseded: installs now come from this repo's `pstack/` subdir; nothing is published to a second repository |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
-| Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.14.8`) |
+| Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
 ## Cursor dual-load (incidental, unsupported)
