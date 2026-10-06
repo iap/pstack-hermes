@@ -6,7 +6,7 @@ If you use Cursor, install the original instead:
 <https://github.com/cursor/plugins/tree/main/pstack>.*
 
 *Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.14.8) ·
-Upstream pinned at `93b00b8` (MIT).*
+Upstream pinned at `c47b1284` (MIT).*
 
 **What this project is:** the Hermes integration, adjustment, and compatibility
 layer for pstack — a self-contained `agent-plugins-v1` package plus the

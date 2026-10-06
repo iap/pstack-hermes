@@ -173,7 +173,7 @@ CI scans every decodable package file (`tools/bans.py` +
 Cursor still appears in three **legitimate** roles only — preserve, do not
 "fix":
 
-1. **Upstream pin** — `cursor/plugins` @ `93b00b8` (MIT © Lauren Tan); homepage
+1. **Upstream pin** — `cursor/plugins` @ `c47b1284` (MIT © Lauren Tan); homepage
    / repo URLs; attribution lines.
 2. **Inert dual-load** — `pstack/.cursor-plugin/`, `pstack/agents/` (hermes
    probes the root manifest only).
