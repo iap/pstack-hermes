@@ -1871,7 +1871,9 @@ hermes plugins update pstack
 ```
 
 Root installs keep `.git`: this pulls the latest published build and
-autostashes uncommitted local skill edits.
+autostashes uncommitted local skill edits. A legacy subdir install
+(`iap/pstack-hermes/pstack`) strips `.git` - reinstall it with
+`hermes plugins install iap/pstack-hermes/pstack --force`.
 
 ## Customizing skills
 
@@ -1967,7 +1969,8 @@ ledger with reviewer checks lives in the dev repo
 Skills are opt-in on the portable path: load one with
 `skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
 `skills/` dir to `skills.external_dirs` in the hermes config for
-`/<name>` slash commands. Update anytime with `hermes plugins update pstack`.
+`/<name>` slash commands. Update with `hermes plugins update pstack` (root installs; a legacy subdir
+install reinstalls with `--force` instead).
 Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
