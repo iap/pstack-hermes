@@ -1,0 +1,45 @@
+# Path-based PR labels (actions/labeler v7).
+# Labels must exist in the repo before this matches — run
+# .github/workflows/labels-bootstrap.yml once after publishing to create them.
+#
+# Matches are additive: a PR gets every label whose changed-files globs match.
+# NOTE: globs match paths in THIS repo, so package content is pstack/-prefixed.
+
+pstack-core:
+  - changed-files:
+      - any-glob-to-any-file: "pstack/plugin.json"
+      - any-glob-to-any-file: "pstack/config/**"
+
+skills:
+  - changed-files:
+      - any-glob-to-any-file: "pstack/skills/**"
+
+principles:
+  - changed-files:
+      - any-glob-to-any-file: "pstack/skills/principle-*/**"
+
+cursor-dual-load:
+  - changed-files:
+      - any-glob-to-any-file: "pstack/.cursor-plugin/**"
+      - any-glob-to-any-file: "pstack/agents/**"
+      - any-glob-to-any-file: "pstack/automations/**"
+
+port:
+  - changed-files:
+      - any-glob-to-any-file: "patches/**"
+
+tooling:
+  - changed-files:
+      - any-glob-to-any-file: "tools/**"
+      - any-glob-to-any-file: ".github/workflows/**"
+      - any-glob-to-any-file: "pyproject.toml"
+      - any-glob-to-any-file: "uv.lock"
+      - any-glob-to-any-file: ".python-version"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "AGENTS.md"
+      - any-glob-to-any-file: "README.md"
+      - any-glob-to-any-file: "CONTRIBUTING.md"
+      - any-glob-to-any-file: "SECURITY.md"
+      - any-glob-to-any-file: "docs/**"
