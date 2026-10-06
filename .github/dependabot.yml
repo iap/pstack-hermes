@@ -1,0 +1,56 @@
+# Dependabot configuration.
+#
+# Why this file exists: every action and tool in this repo is pinned - actions to
+# full commit SHAs, Python tools via uv.lock. A pin never moves on its own, so
+# without automation the pins silently rot; that is the failure mode the "pin SHA
+# must stay in lock-step" rule in AGENTS.md guards against by hand. Dependabot
+# understands SHA pins: for the github-actions ecosystem it opens a PR that
+# updates BOTH the SHA and the trailing `# vN` comment, so pins stay exact and
+# current. Review those bumps like any dependency change - the CI gates
+# (build, lint, actionlint, determinism) run on the PR as usual.
+#
+# Grouped per ecosystem so an update lands as ONE reviewable PR rather than N.
+#
+# Default-branch note: dependabot reads this file from the DEFAULT branch, which
+# is `dist` (the install tree). This master copy is the source of truth; the
+# dist copy is bootstrapped once (user credential) and must stay identical. All
+# entries carry `target-branch: master` so manifest discovery and PRs stay on
+# the dev tree either way - with the config read from `dist`, `directory: "/"`
+# would otherwise look for pyproject.toml in the package.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Composite actions need their own entry. The root entry above covers
+  # .github/workflows plus a repo-root action.yml, but NOT
+  # .github/actions/*/action.yml - observed live: the setup-uv bump landed in
+  # every workflow and skipped .github/actions/build-package, leaving that pin
+  # to rot silently. Directory-scoped entries are the documented pattern
+  # (cf. actions/github-script).
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/build-package"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # pyproject.toml + uv.lock (the tooling venv: pyyaml, pytest, ruff,
+  # actionlint-py, shellcheck-py).
+  - package-ecosystem: "uv"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      uv:
+        patterns: ["*"]
