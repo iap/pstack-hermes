@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If delegate_task rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit-parent`. If delegate_task rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
 
 ## Step 1. Assess Complexity
 
@@ -37,7 +37,7 @@ Spawn one delegate subagent that explores and explains in one pass:
 - `model`: the `how explainer` line, default `claude-opus-5-5-max`
 - `readonly`: `true`
 
-Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
+Build its prompt from `references/explainer-prompt.md` without the explorer-findings section, and instruct the explainer to inspect the code itself before answering (there are no explorer findings to rely on). Go to Step 4.
 
 ## Step 3. Synthesize (complex questions only)
 

@@ -34,7 +34,7 @@ Anchors are audited: a pass whose anchor matches nothing **fails the build**
 |---|---|---|---|
 | frontmatter fix | `skills/poteto-mode/SKILL.md` frontmatter name `Poteto Mode` → `poteto-mode` | `FRONTMATTER_FIXES` | validate: every skill name == its dir, kebab-case |
 | R1 | poteto-mode principles index regenerated from the 23 `principle-*` leaves | `build_principles_index()` | validate: "principles index == leaf-generated" |
-| F16 | retired at the c47b1284 re-pin: upstream ships the slug-agnostic regex in `check-plan.mjs` and a `<swarm workers model>` placeholder; the env-override transform was removed | (retired; nothing in the converter) | validate: F16 check asserts the upstream shapes |
+| F16 | retired at the c47b1284 re-pin: upstream ships the slug-agnostic regex in `check-plan.mjs` and a `<swarm workers model>` placeholder; the env-override transform was removed. **F16b** tightens the upstream body to require a non-whitespace slug (review finding on the re-pin PR) | phase-1 transform (`F16b`); nothing else | validate: F16 check asserts the regex shape incl. the F16b non-whitespace lookahead |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD `stat`/`date` helpers); space-safe awk | phase-1 transforms | validate: F10–F12 check |
 | F-publish | 3 localhost endpoint literals in the feature-map example neutralized (install-scanner network findings). Pass is commented `T5` in the converter but **registered as `F-publish`** — match the register | phase-1 transforms | validate: banned-construct scan |
 | T8 | factual fixes from the deep review (readonly-MCP rationale, swarm params, tool names, model-panel path, principle cross-link) + source-playbook note | `T8_MAP` | validate: T8 check |
@@ -84,6 +84,12 @@ refresh, control-skill phrasing); **F16 retired** (see above); `reflect`'s 4-col
 upstream principles ported (`principle-attack-the-premise`, `principle-test-behavior-not-implementation`) — 45 → 47 skills. Triage correction: upstream deleted **no**
 `skills/orchestrate` — no such skill existed at either pin; only the `poteto-mode/playbooks/orchestrate.md` playbook is tracked and it exists at both. The shipped
 `tools/assets/model-panel.json` keeps its **vendor-qualified, verified** slugs (validator requires `vendor/model`); upstream's short defaults live in prose as fallback documentation. |
+
+Post-review fixes on the re-pin PR (Macroscope): F16b; `T8` extension batch — the `principle-fix-root-causes` guard wording, the
+`principle-test-behavior-not-implementation` five-shape list (the five assertions that DO fail on `undefined` removed), the
+`setup-pstack` fresh-config budget note + `auto`-selector cleanup, the `how` Step 2b direct-explain grounding instruction, and the
+`how critics` retired-role example dropped; `reflect` rows now carry all four table cells quoting the exact panel keys.
+
 
 ## Maintenance
 

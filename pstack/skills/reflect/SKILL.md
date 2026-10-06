@@ -22,19 +22,19 @@ The parent locates the current session via `session_search` (hermes stores sessi
 
 One message, three `delegate_task` calls (role: `leaf`), with `model` set as below, agent mode (`readonly: false`). Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript). Readonly on hermes restricts file writes only, so MCP access is unaffected.
 
-Each reviewer and the synthesizer name a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If delegate_task rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Each reviewer and the synthesizer name a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit-parent`. If delegate_task rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
 
 | Lens | Role line | Default `model` | Prompt template |
 |---|---|---|---|
-| Judgment | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/judgment-reviewer.md` |
-| Tooling | the reflect-tooling role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/tooling-reviewer.md` |
-| Divergent | the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model) | `references/divergent-reviewer.md` |
+| Judgment | `reflect judgment, divergent, synthesizer` | the line's value, else the parent chat model | `references/judgment-reviewer.md` |
+| Tooling | `reflect tooling` | the line's value, else the parent chat model | `references/tooling-reviewer.md` |
+| Divergent | `reflect judgment, divergent, synthesizer` | the line's value, else the parent chat model | `references/divergent-reviewer.md` |
 
 Pass each template verbatim, substituting the Hermes session id or digest where marked. Reviewers return findings in the `delegate_task` response body.
 
 ### 3. Synthesize
 
-One `delegate_task` call (role: `leaf`), using the reflect-judgment role model from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: parent chat model), agent mode (`readonly: false`). The synthesizer's quality check includes spot-verifying citations, which can require MCP access. Readonly on hermes restricts file writes only, so MCP access is unaffected. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
+One `delegate_task` call (role: `leaf`), using the `reflect judgment, divergent, synthesizer` line from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the parent chat model), agent mode (`readonly: false`). The synthesizer's quality check includes spot-verifying citations, which can require MCP access. Readonly on hermes restricts file writes only, so MCP access is unaffected. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
 
 ### 4. Structural enforcement check
 
