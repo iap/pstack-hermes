@@ -120,3 +120,4 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 - Scanner gate with shared banned-construct source of truth
 - CI: 2-OS matrix, SHA gates, determinism proof, unit tests, lint
 - Weekly upstream-drift watch
+<!-- ruleset probe -->
