@@ -115,9 +115,17 @@ one has already caught (or would have caught) a real defect here.
   dependency change - the usual CI gates run on the PR. The root entry does
   **not** cover `.github/actions/*/action.yml`, so each composite action with
   its own `uses:` needs a directory-scoped entry there.
+- **The repository Actions allowlist is closed.** Settings -> Actions permits
+  GitHub-owned actions plus the `astral-sh/setup-uv@*` and `oven-sh/setup-bun@*`
+  patterns only, with `sha_pinning_required` on and a read-only default
+  `GITHUB_TOKEN` (the policy lives in repository settings, not in this tree).
+  A new third-party action fails at `Set up job` with "not allowed" until its
+  `owner/repo` is added there - deliberately, so introducing an action is a
+  decision rather than an accident. Dependabot keeps already-allowed pins
+  current as usual.
 - **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,
-  `release.yml` and `upstream-drift-watch.yml`;
-  `tools/check_pins.py` fails CI when any of the three is missing, duplicated,
+  `release.yml`, `publish-dist.yml` and `upstream-drift-watch.yml`;
+  `tools/check_pins.py` fails CI when any of the four is missing, duplicated,
   malformed, or out of step. Follow
   [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
 - **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
