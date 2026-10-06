@@ -343,14 +343,14 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     cp = pkg / "skills" / "poteto-mode" / "scripts" / "check-plan.mjs"
     if cp.is_file():
         cp_text = cp.read_text(encoding="utf-8")
-        if ("const LANES = /Ten lanes on" in cp_text
-                and "at the PR head/" in cp_text
-                and "(?=[^`<>]*[^\\s`<>])" in cp_text):
-            rep.ok("F16: check-plan.mjs lane regex is slug-agnostic "
-                   "(non-whitespace enforced)")
+        lanes = ("const LANES = /Ten lanes on `(?=[^`<>]*[^\\s`<>])[^`<>]+`"
+                 " at the PR head/;")
+        if lanes in cp_text:
+            rep.ok("F16: check-plan.mjs carries the exact slug-agnostic LANES "
+                   "declaration (F16b form)")
         else:
-            rep.fail("F16: check-plan.mjs lost the slug-agnostic lane regex "
-                     "(F16b non-whitespace form)")
+            rep.fail("F16: check-plan.mjs LANES declaration is not the exact "
+                     "slug-agnostic F16b regex")
 
     # F16 companion: the template keeps its lane-shape sentence.
     mp = pkg / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md"
