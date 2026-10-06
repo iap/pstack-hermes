@@ -19,7 +19,7 @@ permissions:
   issues: write
 
 env:
-  UPSTREAM_PIN: 93b00b89ef425a9c1bac0d0b317dfc49c930ac99
+  UPSTREAM_PIN: c47b12849e43f18d5c374c7069c744cc55b0ea00
   ISSUE_TITLE: "upstream pstack drift: cursor/plugins moved past the pinned SHA"
 
 jobs:
