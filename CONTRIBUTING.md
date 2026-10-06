@@ -70,13 +70,20 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    directory, elsewhere it can resolve to an installed package. For branch
    verification, pass the resolved local path (`$(pwd)/pstack`); for the
    installed dist package, use the name as installed.
-4. **Install payload** — CI builds and re-validates the package on every
-   push (convert → validate → scanner gate), and the validated
-   `pstack/` subtree on `main` is what users install
-   (`hermes plugins install iap/pstack-hermes/pstack`). There is no separate
-   dist repo: nothing is published to a second repository.
+4. **Publish** — on every push to `main`,
+   [publish-dist.yml](.github/workflows/publish-dist.yml) re-runs
+   convert → validate → scanner gate and appends the built tree to
+   the `dist` branch of this same repository (append-only commits). `dist`
+   is the **default branch**, so `hermes plugins install iap/pstack-hermes`
+   clones it root-level and `hermes plugins update pstack` fast-forwards
+   installed clones. No second repository; build output is never edited by
+   hand.
 
 ## Repository contract
+
+- The default branch is `dist` (build output). Open PRs explicitly against
+  `main` (`gh pr create --base main`; the GitHub UI needs `base: main` set
+  manually).
 
 - `pstack/` is **generated content** — never hand-edit; change the converter
   and rebuild. Provenance (`.build-provenance.txt`) must record the pinned
@@ -151,11 +158,11 @@ one has already caught (or would have caught) a real defect here.
 
 Follow [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md)
 verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
-in **three workflows** — `ci.yml`, `release.yml`,
-`upstream-drift-watch.yml` — and all three must move in the same PR. Update maps,
+in **four workflows** — `ci.yml`, `release.yml`, `publish-dist.yml`,
+`upstream-drift-watch.yml` — and all four must move in the same PR. Update maps,
 never the package. (The build prologue itself now lives once, in the
-`.github/actions/build-package` composite action, so `ci.yml` and `release.yml`
-pass the pin to it as an input rather than each repeating
+`.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
+`publish-dist.yml` pass the pin to it as an input rather than each repeating
 the clone/verify/convert steps. `tools/check_pins.py` now enforces the
 lock-step rule in CI, so a missed file fails fast instead of at release time.)
 

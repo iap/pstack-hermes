@@ -18,22 +18,21 @@ Cursor-plugin bugs that reproduce without this port belong upstream.
 ## Install
 
 ```sh
-# single-source install (this repository's built package)
-hermes plugins install iap/pstack-hermes/pstack --enable
+# single-source install (this repository's default branch IS the built package)
+hermes plugins install iap/pstack-hermes --enable
 
 # immutable variant: pin an exact commit
-hermes plugins install iap/pstack-hermes/pstack --ref <40-character commit SHA>
+hermes plugins install iap/pstack-hermes --ref <40-character commit SHA>
 ```
 
 > [!NOTE]
-> Installs come straight from this repository's `pstack/` subdirectory — the
-> built package CI validates on every push. There is no separate dist repo;
-> the old root shortcut (`iap/pstack`) is retired and no longer published.
->
-> **Updates:** subdir installs have no `.git` (hermes keeps `.git` only for
-> root installs), so `hermes plugins update` does not apply. Update with a
-> reinstall: `hermes plugins install iap/pstack-hermes/pstack --force`.
-> Coming from the old dist install? That same command migrates you.
+> The repository's **default branch is `dist`** — the built package at the tree
+> root, produced and validated by CI from the pinned upstream build
+> ([publish-dist.yml](.github/workflows/publish-dist.yml)). That is what the
+> install clones, so the plain repo command works and updates are native:
+> `hermes plugins update pstack` fast-forwards the installed clone. The
+> development tree lives on `main`; installing `main`'s `pstack/` subdir is a
+> legacy alternative that cannot update in place.
 
 > [!NOTE]
 > The bare-name form `hermes plugins install pstack` is not available —
@@ -75,7 +74,7 @@ patches/           historical hermes-fork patches (reference only; not required 
 docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
                    PATCHES.md + UPSTREAM-PR.md (historical)
 .github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
-                   PR labeler, issue templates
+                   publish-dist.yml (dist-branch publisher), PR labeler, issue templates
 ```
 
 ## Verification
@@ -127,7 +126,7 @@ patch reference. End-user invoke and customization:
 |---|---|---|
 | The package | `pstack` | upstream identity (plugin.json, v0.15.5) — preserved |
 | This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes); the development/pipeline repo |
-| Dist repo (retired) | — | superseded: installs now come from this repo's `pstack/` subdir; nothing is published to a second repository |
+| Dist branch | `dist` (this repo) | plugin-only build output on the default branch, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
 | Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |

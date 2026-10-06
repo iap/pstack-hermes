@@ -1838,12 +1838,13 @@ package keeps the upstream identity pstack v{manifest['version']}.*
 ## Install
 
 ```sh
-hermes plugins install iap/pstack-hermes/pstack --enable
+hermes plugins install iap/pstack-hermes --enable
 ```
 
-Update: `hermes plugins install iap/pstack-hermes/pstack --force`
-(subdir installs have no `.git`, so `hermes plugins update` does not apply).
-Pin a commit with `--ref <40-character SHA>` for an immutable install.
+The repository's default branch is `dist` - the built package CI produces
+from the pinned upstream. Root installs keep `.git`, so `hermes plugins
+update pstack` fast-forwards it. Pin a commit with `--ref <40-character
+SHA>` for an immutable install.
 
 ## First run
 
@@ -1866,11 +1867,11 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 ## Update
 
 ```sh
-hermes plugins install iap/pstack-hermes/pstack --force
+hermes plugins update pstack
 ```
 
-Subdir installs strip `.git`, so updates are reinstalls; local skill edits are
-wiped on reinstall - copy them out first.
+Root installs keep `.git`: this pulls the latest published build and
+autostashes uncommitted local skill edits.
 
 ## Customizing skills
 
@@ -1966,7 +1967,7 @@ ledger with reviewer checks lives in the dev repo
 Skills are opt-in on the portable path: load one with
 `skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
 `skills/` dir to `skills.external_dirs` in the hermes config for
-`/<name>` slash commands. Update with a reinstall: `hermes plugins install iap/pstack-hermes/pstack --force`.
+`/<name>` slash commands. Update anytime with `hermes plugins update pstack`.
 Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
