@@ -48,7 +48,7 @@ in-place — to update one, uninstall and reinstall with the subdir form.
 
 ## What's inside
 
-- **45 skills** (24 workflow/mode + 21 `principle-*`) — the full method:
+- **47 skills** (24 workflow/mode + 23 `principle-*`) — the full method:
   `poteto-mode` router, verification playbooks, interrogation/reflect/recall
   loops, swarm/arena parallel workflows, and the principle library.
 - **hermesbot** fills the excluded `make-bot-ui` slot: a hermes-native
