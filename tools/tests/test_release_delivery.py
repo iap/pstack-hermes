@@ -35,8 +35,14 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     assert result.returncode == (1 if payload_changed else 0)
 
 
-@pytest.mark.parametrize('payload_changed', [False, True])
-def test_release_requires_matching_payload(tmp_path, payload_changed):
+@pytest.mark.parametrize(('payload_changed', 'provenance_change', 'expected'), [
+    (False, 'timestamp', 0),
+    (True, 'timestamp', 1),
+    (False, 'source', 1),
+    (False, 'converter', 1),
+    (False, 'missing', 1),
+])
+def test_release_requires_matching_payload(tmp_path, payload_changed, provenance_change, expected):
     remote = tmp_path / 'remote'
     remote.mkdir()
     git(remote, 'init', '-q', '-b', 'master')
@@ -44,13 +50,20 @@ def test_release_requires_matching_payload(tmp_path, payload_changed):
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
     (remote / 'pstack').mkdir()
     (remote / 'pstack/plugin.json').write_text('payload')
-    (remote / 'pstack/.build-provenance.txt').write_text('source-stamp')
+    (remote / 'pstack/.build-provenance.txt').write_text(
+        'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
+    )
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
     git(remote, 'rm', '-rf', '.')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
-    (remote / '.build-provenance.txt').write_text('different-stamp')
+    if provenance_change != 'missing':
+        source = 'def456' if provenance_change == 'source' else 'abc123'
+        converter = 'sha-b' if provenance_change == 'converter' else 'sha-a'
+        (remote / '.build-provenance.txt').write_text(
+            f'source_commit: {source}\nconverter: {converter}\nconverted_at: dist\n'
+        )
     (remote / '.gitattributes').write_text('* text=auto eol=lf')
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'package')
@@ -66,6 +79,6 @@ def test_release_requires_matching_payload(tmp_path, payload_changed):
     result = subprocess.run(['bash', '-c', script], cwd=checkout,
                             env={**os.environ, 'RUNNER_TEMP': str(runtime),
                                  'GITHUB_ENV': str(env_file)}, capture_output=True, text=True)
-    assert result.returncode == (1 if payload_changed else 0), result.stderr
-    if not payload_changed:
+    assert result.returncode == expected, result.stderr
+    if expected == 0:
         assert f'PACKAGE_SHA={git(remote, "rev-parse", "dist")}' in env_file.read_text()

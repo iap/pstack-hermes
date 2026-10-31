@@ -203,8 +203,15 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
    section for the `v0.4.x` tooling version. Package version stays upstream's.
 2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
 3. `release.yml` rebuilds and validates, checks that the package matches the
-   published `dist` commit (excluding provenance), and creates a GitHub Release
-   with ZIP, SHA-256 checksum, source SHA and immutable package install command.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
+
+   published `dist` commit, including provenance except `converted_at`, and
+   creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
+   package install command.
+
+<!-- /coderabbit-ai-generated:v1 -->
    A lagging or different dist tree fails release creation; rerun after publish.
 4. Close the milestone once all acceptance checks pass. Link issues and PRs
    in release notes. Never move an existing release tag.

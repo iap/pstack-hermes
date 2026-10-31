@@ -27,16 +27,38 @@ port belong upstream.
 ## Install
 
 Project name: **pstack**. Repository slug: **pstack-hermes**.
-`iap/pstack` addresses another repository and is not an alias for this one.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c8ad5ea2d621eebf4b7c170b4a8cf3fddc86b5f1b8ffb1228b7921cb88cc51b7 -->
+
+`iap/pstack` is not an alias for this repository.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:98a82daec2a7d8a4fc98b909af902a35857ceb0f945f32164332d0d1d7a0db0d -->
+
+Choose the command for the current default branch shown on the
+[repository page](https://github.com/iap/pstack-hermes). During the migration
+it may be `dist` or `master`.
+
+If the default branch is `dist`, install the package at the repository root:
+
+```sh
+hermes plugins install iap/pstack-hermes --enable
+```
+
+If the default branch is `master`, install the generated subdirectory:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-`master` is the development and intended default branch. Its `pstack/`
-subdirectory is the generated plugin. (Switch Settings → Default branch to
-`master` after merge for the subdirectory install to resolve.) Subdirectory
-installs update with `hermes plugins update pstack`.
+Both unpinned installs update with `hermes plugins update pstack`. Existing
+`dist` clones remain on `dist` after the default branch changes.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 For an immutable root install, copy the full **package commit SHA** from a
 [GitHub Release](https://github.com/iap/pstack-hermes/releases):
@@ -45,8 +67,18 @@ For an immutable root install, copy the full **package commit SHA** from a
 hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
 ```
 
-Pinned installs do not auto-update; reinstall with a newer release SHA.
-Existing unpinned `dist` clones continue using `hermes plugins update pstack`.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e990c9712b2761e42609a0edfb94c0387baa376730e6e796f945bdc64cf45e3a -->
+
+Pinned installs do not auto-update. To move an existing pin, explicitly
+replace the installed plugin with a newer package SHA:
+
+```sh
+hermes plugins install iap/pstack-hermes --ref <new-package-SHA> --force --enable
+```
+
+<!-- /coderabbit-ai-generated:v1 -->
 The `dist` compatibility branch remains append-only. Release ZIPs contain
 `pstack/`; use the immutable Git SHA command above for installation.
 

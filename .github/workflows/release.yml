@@ -47,8 +47,14 @@ jobs:
           published="$RUNNER_TEMP/release-dist"
           mkdir -p "$published"
           git archive "$package_sha" | tar -x -C "$published"
-          # Compare payloads only: dist also carries compatibility metadata.
+          # Ignore dist-only compatibility metadata when comparing the package.
           rm -rf "$published/.github" "$published/.gitattributes"
+          # The timestamp is volatile; all other provenance fields must match.
+          test -f "$published/.build-provenance.txt"
+          test -f pstack/.build-provenance.txt
+          sed '/^converted_at: /d' "$published/.build-provenance.txt" > "$RUNNER_TEMP/dist-provenance"
+          sed '/^converted_at: /d' pstack/.build-provenance.txt > "$RUNNER_TEMP/build-provenance"
+          diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
           rm -f "$published/.build-provenance.txt"
           cp -a pstack "$RUNNER_TEMP/release-built"
           rm -f "$RUNNER_TEMP/release-built/.build-provenance.txt"
@@ -86,8 +92,11 @@ jobs:
             echo '```sh'
             echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --enable"
             echo '```'
-            echo "Pinned installs do not auto-update. Reinstall using a newer release SHA."
-            echo "Existing unpinned dist installs: hermes plugins update pstack"
+            echo "To move an existing pinned install to this release:"
+            echo '```sh'
+            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --force --enable"
+            echo '```'
+            echo "Unpinned installs: hermes plugins update pstack"
             echo "Verify the ZIP with: sha256sum --check SHA256SUMS"
           } >> RELEASE_NOTES.md
         env:

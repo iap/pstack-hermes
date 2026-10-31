@@ -7,15 +7,28 @@ package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
+Choose the command for the current default branch shown on the
+[repository page](https://github.com/iap/pstack-hermes). During the migration
+it may be `dist` or `master`.
+
+If the default branch is `dist`, install the package at the repository root:
+
+```sh
+hermes plugins install iap/pstack-hermes --enable
+```
+
+If the default branch is `master`, install the generated subdirectory:
+
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-The development/default branch is `master`; install its generated `pstack/`
-subdirectory. Subdirectory installs require reinstalling with `--force` to update.
-GitHub Releases record full package SHAs for immutable root installs with
-`--ref <40-character SHA>`; pinned installs do not auto-update. Existing
-unpinned `dist` clones retain fast-forward updates.
+Both unpinned installs update with `hermes plugins update pstack`. Existing
+`dist` clones remain on `dist` after the default branch changes.
+
+GitHub Releases record package SHAs for immutable root installs. Pinned
+installs do not auto-update; to move an existing pin, use `hermes plugins
+install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
 
 ## First run
 
@@ -41,15 +54,15 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Existing unpinned dist root installs keep `.git` and can pull updates,
-autostashing uncommitted local skill edits. A source subdirectory install
-(`iap/pstack-hermes/pstack`) strips `.git` - reinstall it with
-`hermes plugins install iap/pstack-hermes/pstack --force`.
+Hermes updates unpinned `dist` root installs and `master` subdirectory
+installs. Root installs use Git; subdirectory installs are re-cloned from the
+recorded source. Pinned installs must be reinstalled with a new SHA and `--force`.
 
 ## Customizing skills
 
 - **Tweak a line or two** — edit the installed `SKILL.md`, restart the
-  gateway, keep the edit uncommitted (updates autostash it).
+  gateway, and save a backup outside the plugin before updating. Subdirectory
+  updates replace shipped skills; in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
   your fork's subdir (`hermes plugins install <you>/pstack-hermes/pstack --enable`).
 - **Add your own new skills alongside** — a skill tap:
