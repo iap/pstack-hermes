@@ -5,6 +5,7 @@
 # Plugin files are converter output (CONTRIBUTING.md, "Repository contract").
 # Mark them generated so GitHub collapses their diffs and excludes them from
 # language stats: review as build output, not as hand-written code.
+plugin.json linguist-generated=true
 plugin.yaml linguist-generated=true
 skills/** linguist-generated=true
 config/** linguist-generated=true

@@ -21,12 +21,12 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     git(tmp_path, 'config', 'user.name', 'Fixture')
     git(tmp_path, 'config', 'user.email', 'fixture@example.invalid')
     (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: old\n')
-    (tmp_path / 'plugin.yaml').write_text('payload')
+    (tmp_path / 'plugin.json').write_text('payload')
     git(tmp_path, 'add', '.')
     git(tmp_path, 'commit', '-qm', 'baseline')
     (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: new\n')
     if payload_changed:
-        (tmp_path / 'plugin.yaml').write_text('changed')
+        (tmp_path / 'plugin.json').write_text('changed')
     git(tmp_path, 'add', '.')
     workflow = yaml.safe_load((ROOT / '.github/workflows/publish-dist.yml').read_text())
     script = workflow['jobs']['publish']['steps'][-1]['run']
@@ -50,7 +50,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'init', '-q', '-b', 'master')
     git(remote, 'config', 'user.name', 'Fixture')
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
-    (remote / 'plugin.yaml').write_text('payload')
+    (remote / 'plugin.json').write_text('payload')
     (remote / '.build-provenance.txt').write_text(
         'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
     )
@@ -58,7 +58,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
     git(remote, 'rm', '-rf', '.')
-    (remote / 'plugin.yaml').write_text('changed' if payload_changed else 'payload')
+    (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass
     elif provenance_change == 'no-timestamp':

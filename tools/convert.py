@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import yaml
 import os
 import re
 import shutil
@@ -2033,13 +2032,13 @@ notes:
     # When output is the repo root (.), copy files in place instead of
     # renaming the entire directory (which would clobber tooling).
     if final_out == REPO_ROOT:
-        # Safer root publish: backup, replace, rollback on failure
         pkg_entries = [p.name for p in out.iterdir()]
         backup_dir = final_out.parent / (final_out.name + ".pkg-backup")
         if backup_dir.exists():
             shutil.rmtree(backup_dir)
         backup_dir.mkdir(parents=True)
         backed_up = []
+        created = []
         try:
             # Backup existing package entries
             for name in pkg_entries:
@@ -2055,6 +2054,12 @@ notes:
             for name in ["plugin.yaml", "plugin.json.bak"]:  # old manifest names
                 d = final_out / name
                 if d.exists() and name not in pkg_entries:
+                    bpath = backup_dir / name
+                    if d.is_dir():
+                        shutil.copytree(d, bpath)
+                    else:
+                        shutil.copy2(d, bpath)
+                    backed_up.append(name)
                     if d.is_dir():
                         shutil.rmtree(d)
                     else:
@@ -2075,9 +2080,17 @@ notes:
                             shutil.rmtree(d)
                         else:
                             d.unlink()
+            # Remove obsolete .cursor-plugin if present
+            cursor_plugin = final_out / ".cursor-plugin"
+            if cursor_plugin.exists() and ".cursor-plugin" not in pkg_entries:
+                bpath = backup_dir / ".cursor-plugin"
+                shutil.copytree(cursor_plugin, bpath)
+                backed_up.append(".cursor-plugin")
+                shutil.rmtree(cursor_plugin)
             # Replace entries
             for item in out.iterdir():
                 dest = final_out / item.name
+                existed = dest.exists()
                 if dest.exists():
                     if dest.is_dir():
                         shutil.rmtree(dest)
@@ -2087,11 +2100,20 @@ notes:
                     shutil.copytree(item, dest)
                 else:
                     shutil.copy2(item, dest)
+                if not existed:
+                    created.append(item.name)
             out = final_out
             shutil.rmtree(build_dir, ignore_errors=True)
             shutil.rmtree(backup_dir, ignore_errors=True)
         except Exception:
-            # Rollback
+            # Rollback: remove newly created entries first, then restore backed up
+            for name in created:
+                dest = final_out / name
+                if dest.exists():
+                    if dest.is_dir():
+                        shutil.rmtree(dest)
+                    else:
+                        dest.unlink()
             for name in backed_up:
                 dest = final_out / name
                 if dest.exists():
