@@ -64,9 +64,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
         pass
     elif provenance_change == 'no-timestamp':
         (remote / '.build-provenance.txt').write_text(
-            'source_commit: abc123
-converter: sha-a
-'
+            'source_commit: abc123\nconverter: sha-a\n'
         )
     else:
         source = 'def456' if provenance_change == 'source' else 'abc123'
