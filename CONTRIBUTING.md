@@ -200,7 +200,7 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 ### Release
 
 1. Merge the release changes to `master`, including the `CHANGELOG.md`
-   section for the `v0.4.x` tooling version. Package version stays upstream's.
+   section for the `v0.5.x` tooling version. Package version stays upstream's.
 2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
 3. `release.yml` rebuilds and validates, checks that the package matches the
 <!-- coderabbit-ai-generated:v1 -->
