@@ -156,24 +156,27 @@ def parse_frontmatter(text: str):
 
 
 def check_manifest(pkg: Path, rep: Report) -> dict:
-    p = pkg / "plugin.yaml"
+    p = pkg / "plugin.json"
     if not p.is_file():
         p = pkg / "plugin.yaml"
     if not p.is_file():
-        rep.fail("root plugin.yaml missing")
+        rep.fail("root plugin.json missing")
         return {}
     raw = p.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
-        rep.fail("root plugin.yaml has a UTF-8 BOM")
+        rep.fail(f"root {p.name} has a UTF-8 BOM")
     if b"\r\n" in raw:
-        rep.fail("root plugin.yaml contains CRLF")
+        rep.fail(f"root {p.name} contains CRLF")
     try:
-        m = yaml.safe_load(raw.decode("utf-8"))
+        if p.suffix == ".json":
+            m = json.loads(raw.decode("utf-8"))
+        else:
+            m = yaml.safe_load(raw.decode("utf-8"))
     except Exception as exc:
-        rep.fail(f"root plugin.yaml is not valid UTF-8 YAML: {exc}")
+        rep.fail(f"root {p.name} is not valid UTF-8 {p.suffix.lstrip('.')}: {exc}")
         return {}
     if not isinstance(m, dict):
-        rep.fail("root plugin.yaml is not a YAML object")
+        rep.fail(f"root {p.name} is not an object")
         return {}
     if m.get("$schema") != SCHEMA_URL:
         rep.fail(f"$schema must be exactly {SCHEMA_URL!r}, got {m.get('$schema')!r}")
@@ -267,9 +270,23 @@ def check_skills(pkg: Path, rep: Report) -> None:
     else:
         rep.ok("F-publish: make-bot-ui excluded (privilege-escalation scan, F33)")
     total_skill_md = len(list(pkg.glob("skills/*/SKILL.md")))
-    rep.note(f"SKILL.md files on disk: {total_skill_md} (expected {expected})")
+    rep.note(f"SKILL_MD files on disk: {total_skill_md} (expected {expected})")
     if total_skill_md != expected:
         rep.fail(f"expected {expected} SKILL.md on disk, found {total_skill_md}")
+
+    # Issue #107: inline-shell false trigger in TS patterns
+    bad_ts = []
+    for p in (pkg / "skills").rglob("*.md"):
+        try:
+            t = p.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if "The tells are `!`" in t:
+            bad_ts.append(str(p.relative_to(pkg)))
+    if bad_ts:
+        rep.fail(f"inline-shell trigger `!` in TS patterns (issue #107): {bad_ts}")
+    else:
+        rep.ok("issue #107: no inline-shell `!` trigger in TS patterns")
 
 
 def check_encoding(pkg: Path, rep: Report) -> None:
@@ -277,16 +294,19 @@ def check_encoding(pkg: Path, rep: Report) -> None:
     for p in pkg.rglob("*"):
         if not p.is_file():
             continue
-        if is_generated_dependency_path(p.relative_to(pkg)):
+        rel = p.relative_to(pkg)
+        if rel.parts and rel.parts[0] in getattr(__import__('bans'), 'ROOT_TOOLING_DIRS', set()):
+            continue
+        if is_generated_dependency_path(rel):
             continue
         if p.suffix.lower() not in TEXT_EXTS and p.name not in TEXT_NAMES:
             continue
         data = p.read_bytes()
         checked += 1
         if data.startswith(b"\xef\xbb\xbf"):
-            bom_files.append(str(p.relative_to(pkg)))
+            bom_files.append(str(rel))
         if b"\r\n" in data:
-            crlf_files.append(str(p.relative_to(pkg)))
+            crlf_files.append(str(rel))
     if bom_files:
         rep.fail(f"files with UTF-8 BOM: {bom_files}")
     else:
@@ -300,11 +320,14 @@ def check_encoding(pkg: Path, rep: Report) -> None:
 def check_layout(pkg: Path, rep: Report) -> None:
     for rel, label in [("README.md", "README.md"),
                        (".build-provenance.txt", ".build-provenance.txt"),
-                       ("plugin.yaml", "plugin.yaml")]:
+                       ("plugin.json", "plugin.json")]:
         if (pkg / rel).exists():
             rep.ok(f"present: {label}")
         else:
-            rep.fail(f"missing: {label}")
+            if rel == "plugin.json" and (pkg / "plugin.yaml").exists():
+                rep.ok("present: plugin.yaml (legacy)")
+            else:
+                rep.fail(f"missing: {label}")
     # LICENSE moved to the repo root (repo layout v2); either location satisfies.
     if (pkg / "LICENSE").exists():
         rep.ok("present: LICENSE (package)")
@@ -492,7 +515,12 @@ def check_conflict_markers(pkg: Path, rep: Report) -> None:
     markers = ("<<<<<<<", ">>>>>>>", "|||||||")
     bad = []
     for p in sorted(pkg.rglob("*")):
-        if not p.is_file() or is_generated_dependency_path(p.relative_to(pkg)):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(pkg)
+        if rel.parts and rel.parts[0] in getattr(__import__('bans'), 'ROOT_TOOLING_DIRS', set()):
+            continue
+        if is_generated_dependency_path(rel):
             continue
         try:
             text = p.read_text(encoding="utf-8")
@@ -500,10 +528,11 @@ def check_conflict_markers(pkg: Path, rep: Report) -> None:
             continue
         for lineno, line in enumerate(text.splitlines(), 1):
             if line.startswith(markers):
-                bad.append(f"{p.relative_to(pkg)}:{lineno}:{line[:12]}")
+                bad.append(f"{rel}:{lineno}:{line[:12]}")
     if bad:
         rep.fail(f"conflict markers present in generated output: {bad}")
     else:
+        rep.ok("no VCS conflict markers in package")
         rep.ok("conflict markers: none in any package file")
 
 

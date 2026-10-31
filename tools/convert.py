@@ -1147,6 +1147,19 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     # --- T6: delegation translation (Phase-2A) ---
     apply_delegation_translation(out, st)
 
+    # --- T-FIX: avoid inline-shell false trigger in TS patterns (issue #107) ---
+    ts_pattern_old = "The tells are `!`, `arr[0] as T`"
+    ts_pattern_new = "The tells are non-null assertions, `arr[0] as T`"
+    ts_fixed = 0
+    for p in sorted((out / "skills").rglob("*.md")):
+        t = p.read_text(encoding="utf-8")
+        if ts_pattern_old in t:
+            t = t.replace(ts_pattern_old, ts_pattern_new)
+            p.write_bytes(t.encode("utf-8"))
+            ts_fixed += 1
+    if ts_fixed:
+        st.fixes.append(f"issue #107: replaced inline-shell-triggering `!` with 'non-null assertions' in {ts_fixed} TS pattern file(s)")
+
     # --- T9/T10: hermes-native discovery + config (Stages A+B) ---
     # Stage A (T10): setup-pstack writes config/models.json (package-local)
     # instead of ~/.cursor/rules/pstack-models.mdc; poteto-mode reads it.
