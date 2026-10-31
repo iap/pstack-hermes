@@ -1,7 +1,7 @@
 [project]
-name = "pstack-hermes-plugin-tools"
+name = "pstack"
 version = "0.3.0"
-description = "Converter and validator tooling for the pstack Cursor->hermes port (the shipped package itself is content-only and needs no Python)."
+description = "pstack agent method as a native Hermes Agent plugin."
 requires-python = ">=3.11"
 dependencies = []
 
@@ -25,7 +25,7 @@ package = false
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["pstack", ".venv"]
+extend-exclude = [".venv"]
 
 [tool.ruff.lint]
 # pycodestyle errors (default classes) + pyflakes + isort + pyupgrade + bugbear.

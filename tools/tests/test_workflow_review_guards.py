@@ -21,7 +21,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github" / "workflows"
 
-WATCHERS = ("upstream-drift-watch.yml", "model-drift-watch.yml")
+WATCHERS = ("model-drift-watch.yml",)
 UPSERT_ACTION = "./.github/actions/drift-issue-upsert"
 GUARD = "steps.check.outputs.drift == 'true'"
 BODY_MARKER = '> "$RUNNER_TEMP/drift-body.md"'

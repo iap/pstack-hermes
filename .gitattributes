@@ -2,10 +2,18 @@
 # keep the working copy byte-identical to the converter output.
 * text=auto eol=lf
 
-# `pstack/` is converter output (CONTRIBUTING.md, "Repository contract").
-# Mark it generated so GitHub collapses its diffs and excludes it from
-# language stats: review it as build output, not as hand-written code.
-pstack/** linguist-generated=true
+# Plugin files are converter output (CONTRIBUTING.md, "Repository contract").
+# Mark them generated so GitHub collapses their diffs and excludes them from
+# language stats: review as build output, not as hand-written code.
+plugin.json linguist-generated=true
+skills/** linguist-generated=true
+config/** linguist-generated=true
+agents/** linguist-generated=true
+assets/** linguist-generated=true
+README.md linguist-generated=true
+after-install.md linguist-generated=true
+LICENSE linguist-generated=true
+.build-provenance.txt linguist-generated=true
 
 # Binaries stay byte-identical on checkout (assets/logo.png): pin the intent
 # so a future text rule cannot start rewriting them.

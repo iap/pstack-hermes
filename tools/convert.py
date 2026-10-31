@@ -43,7 +43,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_OUT = REPO_ROOT / "pstack"
+DEFAULT_OUT = REPO_ROOT
 
 SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 # agent_plugins.py:24-35 whitelist (extensions intentionally NOT emitted: pstack has none,
@@ -1752,8 +1752,7 @@ def main() -> int:
     # (b2) Phase-1 hygiene transforms (R1, F16, F10-F12)
     apply_phase1_transforms(out, st)
 
-    # (c) agents/ copied unchanged (inert on hermes portable path; kept for
-    #     Cursor dual-load and Phase 2).
+    # (c) agents/ dropped — Hermes-native only, no Cursor dual-load.
     # (c2) PHASE-1.5 publisher exclusions: automations/benny (8 CRITICAL
     #     persistence findings in the install scanner: copy-instructions
     #     pattern-match) and skills/make-bot-ui (2 HIGH privilege_escalation:
@@ -1761,8 +1760,7 @@ def main() -> int:
     #     a dangerous verdict and --force cannot override. Both are also the
     #     study's own "what not to port" items; benny is rebuilt as hermes
     #     cron/loop jobs in Phase 4.
-    agents_n = copy_tree(source / "agents", out / "agents", st)
-    comment_sicko = out / "agents" / "comment-sicko.md"
+    comment_sicko = source / "agents" / "comment-sicko.md"
     if comment_sicko.is_file():
         no_comments_refs = out / "skills" / "no-comments" / "references"
         no_comments_refs.mkdir(parents=True, exist_ok=True)
@@ -1772,9 +1770,7 @@ def main() -> int:
     st.fixes.append("F-publish: automations/benny excluded (scanner persistence verdict) "
                     "and skills/make-bot-ui excluded (scanner privilege verdict; F33)")
 
-    # (e) .cursor-plugin/plugin.json preserved for Cursor dual-load
-    (out / ".cursor-plugin").mkdir()
-    copy_file(src_manifest, out / ".cursor-plugin" / "plugin.json", st)
+    # (e) .cursor-plugin/ dropped — Hermes-native only, no Cursor dual-load.
 
     # (e2) assets/ copied verbatim + manifest-asset validation (fail loud on
     # dangling references: if upstream deletes/renames an asset while the Cursor
@@ -1798,7 +1794,7 @@ def main() -> int:
     if (source / "assets").is_dir():
         assets_n = copy_tree(source / "assets", out / "assets", st)
         st.fixes.append(f"assets/: {assets_n} file(s) copied verbatim "
-                        "(referenced by the Cursor manifest)")
+                        "(referenced by the manifest)")
     missing_refs = [r for r in manifest_refs if not (out / r).exists()]
     if missing_refs:
         raise ConvertError(
@@ -1837,30 +1833,15 @@ package keeps the upstream identity pstack v{manifest['version']}.*
 
 ## Install
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
-
-If the default branch is `dist`, install the package at the repository root:
+Install the plugin:
 
 ```sh
 hermes plugins install iap/pstack-hermes --enable
 ```
 
-If the default branch is `master`, install the generated subdirectory:
+Unpinned installs update with `hermes plugins update pstack`.
 
-```sh
-hermes plugins install iap/pstack-hermes/pstack --enable
-```
-
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
-
-Legacy subdirectory installs from older Hermes versions may lack source
-metadata and cannot auto-update. Upgrade Hermes to a version that records
-source metadata, back up local edits, then reinstall with `--force`:
-if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
-if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+Pinned installs must be reinstalled with a new SHA and `--force`.
 
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
@@ -1900,7 +1881,7 @@ recorded source. Pinned installs must be reinstalled with a new SHA and `--force
   gateway, and save a backup outside the plugin before updating. Subdirectory
   updates replace shipped skills; in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
-  your fork's subdir (`hermes plugins install <you>/pstack-hermes/pstack --enable`).
+  your fork (`hermes plugins install <you>/pstack-hermes --enable`).
 - **Add your own new skills alongside** — a skill tap:
   `hermes skills tap add <you>/skills-repo`, then
   `hermes skills install <you>/skills-repo/<skill>`.
@@ -1991,9 +1972,7 @@ Skills are opt-in on the portable path: load one with
 `skills/` dir to `skills.external_dirs` in the hermes config for
 `/<name>` slash commands. Update an unpinned install with
 `hermes plugins update pstack`. Pinned installs require a new SHA and `--force`.
-Legacy subdirectory installs without source metadata: upgrade Hermes, back
-up local edits, then reinstall with `--force` (`iap/pstack-hermes` for `dist`,
-`iap/pstack-hermes/pstack` for `master`). Docs: <https://github.com/iap/pstack-hermes#readme>
+Pinned installs must be reinstalled with a new SHA and `--force`. Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
     st.files_copied += 1
@@ -2037,25 +2016,37 @@ notes:
     st.files_copied += 1
 
     # ---- atomic swap: build succeeded, move into place ----
-    # F-2 hardening: never leave the install target absent — rename the old
-    # package aside first, move the new one in, then drop the old.
-    prev = final_out.with_name(final_out.name + ".prev-build")
-    if prev.exists():
-        shutil.rmtree(prev)
-    if final_out.exists():
-        final_out.rename(prev)
-    try:
-        out.rename(final_out)
-    except OSError:
-        # Never leave the install target absent: restore the previous
-        # package when one was moved aside (a fresh-target build has none),
-        # then surface the original failure instead of masking it.
+    # When output is the repo root (.), copy files in place instead of
+    # renaming the entire directory (which would clobber tooling).
+    if final_out == REPO_ROOT:
+        for item in out.iterdir():
+            dest = final_out / item.name
+            if dest.exists():
+                if dest.is_dir():
+                    shutil.rmtree(dest)
+                else:
+                    dest.unlink()
+            if item.is_dir():
+                shutil.copytree(item, dest)
+            else:
+                shutil.copy2(item, dest)
+        out = final_out
+        shutil.rmtree(build_dir, ignore_errors=True)
+    else:
+        prev = final_out.with_name(final_out.name + ".prev-build")
         if prev.exists():
-            prev.rename(final_out)
-        raise
-    out = final_out
-    if prev.exists():
-        shutil.rmtree(prev, ignore_errors=True)
+            shutil.rmtree(prev)
+        if final_out.exists():
+            final_out.rename(prev)
+        try:
+            out.rename(final_out)
+        except OSError:
+            if prev.exists():
+                prev.rename(final_out)
+            raise
+        out = final_out
+        if prev.exists():
+            shutil.rmtree(prev, ignore_errors=True)
 
     # ---- summary ----
     print("== convert.py summary ==")

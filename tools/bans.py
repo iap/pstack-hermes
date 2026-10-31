@@ -19,9 +19,8 @@ SECURITY_BANS: tuple[tuple[str, str], ...] = (
     ("http://127.0.0.1:4173", "network: hardcoded loopback endpoint literal"),
 )
 
-# Hermes-facing surface only. The Cursor dual-load surface (agents/,
-# .cursor-plugin/) and the build provenance (which documents the fixes by
-# name) are exempt.
+# Hermes-facing surface only.
+# The build provenance (which documents the fixes by name) is exempt.
 DELEGATION_VOCAB_BANS: tuple[str, ...] = (
     "subagent_type",
     "generalPurpose",
@@ -30,8 +29,15 @@ DELEGATION_VOCAB_BANS: tuple[str, ...] = (
     "run_in_background",
     'environment: "cloud"',
 )
-VOCAB_EXEMPT_PREFIXES: tuple[str, ...] = ("agents/", ".cursor-plugin/", ".build-provenance.txt")
-GENERATED_DEPENDENCY_DIRS: frozenset[str] = frozenset({"node_modules"})
+VOCAB_EXEMPT_PREFIXES: tuple[str, ...] = (".build-provenance.txt",)
+GENERATED_DEPENDENCY_DIRS: frozenset[str] = frozenset({"node_modules", "tools", "docs", ".github"})
+
+# Repo-level tooling/documentation files that are NOT part of the installed package.
+# These may legitimately reference banned constructs in explanatory context.
+EXEMPT_REPO_FILES: frozenset[str] = frozenset({
+    "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md",
+    "pyproject.toml", "LICENSE", ".gitattributes", ".coderabbit.yaml",
+})
 
 
 def is_generated_dependency_path(path: Path) -> bool:
@@ -44,7 +50,10 @@ def iter_text_files(pkg: Path) -> Iterator[tuple[str, str]]:
     for p in sorted(pkg.rglob("*")):
         if not p.is_file():
             continue
-        if is_generated_dependency_path(p.relative_to(pkg)):
+        rel = p.relative_to(pkg)
+        if is_generated_dependency_path(rel):
+            continue
+        if rel.as_posix() in EXEMPT_REPO_FILES:
             continue
         try:
             text = p.read_text(encoding="utf-8")

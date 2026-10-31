@@ -21,7 +21,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Adapted for Hermes Agent plugin compatibility from github.com/cursor/plugins pstack.
-
-Port modifications for the Hermes Agent platform (converter, validator, CI,
-fork patches, discovery and delegation rewrites):
-Copyright (c) 2026 the pstack-hermes-port contributors

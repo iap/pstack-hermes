@@ -20,7 +20,7 @@ principles:
 
 cursor-dual-load:
   - changed-files:
-      - any-glob-to-any-file: "pstack/.cursor-plugin/**"
+
       - any-glob-to-any-file: "pstack/agents/**"
       - any-glob-to-any-file: "pstack/automations/**"
 

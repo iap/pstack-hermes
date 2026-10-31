@@ -28,7 +28,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_PACKAGE = REPO_ROOT / "pstack"
+DEFAULT_PACKAGE = REPO_ROOT
 
 sys.path.insert(0, str(SCRIPT_DIR))
 from bans import DELEGATION_VOCAB_BANS, find_violations, is_generated_dependency_path  # noqa: E402
@@ -294,10 +294,9 @@ def check_encoding(pkg: Path, rep: Report) -> None:
 
 
 def check_layout(pkg: Path, rep: Report) -> None:
-    for rel, label in [("agents", "agents/ (expected-ignored by hermes portable path)"),
-                       (".cursor-plugin/plugin.json", ".cursor-plugin/plugin.json (Cursor dual-load manifest)"),
-                       ("README.md", "README.md"),
-                       (".build-provenance.txt", ".build-provenance.txt")]:
+    for rel, label in [("README.md", "README.md"),
+                       (".build-provenance.txt", ".build-provenance.txt"),
+                       ("plugin.json", "plugin.json")]:
         if (pkg / rel).exists():
             rep.ok(f"present: {label}")
         else:
@@ -311,10 +310,10 @@ def check_layout(pkg: Path, rep: Report) -> None:
         rep.fail("missing: LICENSE")
     if (pkg / "automations").exists():
         rep.fail("F-publish: automations/ present (must be excluded)")
-    agents_files = sorted(p.name for p in (pkg / "agents").glob("*")) if (pkg / "agents").is_dir() else []
-    rep.note(f"agents/ files: {agents_files}")
-    if len(agents_files) != 2:
-        rep.fail(f"expected 2 agent files, found {agents_files}")
+    if (pkg / "agents").exists():
+        rep.fail("agents/ present (must be excluded — Hermes-native only)")
+    if (pkg / ".cursor-plugin").exists():
+        rep.fail(".cursor-plugin/ present (must be excluded — Hermes-native only)")
 
 
 def check_phase1(pkg: Path, rep: Report) -> None:

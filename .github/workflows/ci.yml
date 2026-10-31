@@ -53,7 +53,7 @@ jobs:
       # install clone of the dist branch receives it (core.autocrlf=true).
       - name: Dist checkout is LF-only under autocrlf
         shell: bash
-        run: uv run --frozen tools/dist_checkout_check.py --package pstack --source-tree
+        run: uv run --frozen tools/dist_checkout_check.py --package . --source-tree
 
       # The gate the previous implementation got wrong: it hashed
       # $GITHUB_WORKSPACE/pstack *after* the build step had already replaced that
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         env:
           UPSTREAM_CLONE: ${{ steps.build.outputs.upstream-clone-path }}
-          PACKAGE_PATH: pstack
+          PACKAGE_PATH: .
         run: |
           set -euo pipefail
           # Both sides must hash the SAME path strings or they can never match:
@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dirty="$(git status --porcelain -- . ':(exclude)pstack/.build-provenance.txt')"
+          dirty="$(git status --porcelain -- . ':(exclude).build-provenance.txt')"
           if [ -n "$dirty" ]; then
             echo "::error::the build modified tracked files other than the provenance stamp"
             echo "$dirty"
@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pstack-build-${{ matrix.os }}-${{ github.run_id }}
-          path: pstack/
+          path: ./
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
           # the artifact is a debugging aid, not a release artifact.
@@ -222,15 +222,15 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
       - name: Install script dependencies
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bun install --frozen-lockfile
 
       - name: Unit tests (poteto-mode scripts)
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bun test orch watch-pr
 
       - name: Typecheck (poteto-mode scripts)
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bunx tsc --project watch-pr/tsconfig.json --noEmit --strict
 
   pr-checklist:
@@ -263,7 +263,7 @@ jobs:
           gh pr view "$PR_NUMBER" --json body --jq .body > "$RUNNER_TEMP/pr-body.md"
           rc=0
           uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" \
-            --provenance pstack/.build-provenance.txt || rc=$?
+            --provenance .build-provenance.txt || rc=$?
           echo "pr-checklist exit: $rc (0 = consistent, 1 = contradiction)"
           if [ "$rc" -ne 0 ]; then
             echo "::warning::pr-checklist found a contradiction. This job is ADVISORY - it reports, it does not block. The enforcing gate is the build job."

@@ -28,11 +28,11 @@ the contract is strict — read this once and the CI will never surprise you.
 | [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
 | [adaptation register](https://github.com/iap/pstack-hermes/issues/94) | the ledger: every conversion pass and its reviewer check |
-| [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) | re-pinning procedure when upstream moves |
+
 | [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
-One-sentence model of the repo: **`tools/convert.py` turns a pinned upstream
-clone into `pstack/`; `tools/validate.py` and CI keep that output honest;
+One-sentence model of the repo: **`tools/convert.py` generates the plugin package
+from the upstream source; `tools/validate.py` and CI keep that output honest;
 everything hand-written exists to serve that pipeline.**
 
 ## Setup
