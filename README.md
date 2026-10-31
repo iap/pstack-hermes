@@ -48,17 +48,9 @@ until that support is verified.
 
 <!-- coderabbit-ai-generated-section:v1:98a82daec2a7d8a4fc98b909af902a35857ceb0f945f32164332d0d1d7a0db0d -->
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
+The default branch is now `master`. Install the generated subdirectory:
 
-If the default branch is `dist`, install the package at the repository root:
-
-```sh
-hermes plugins install iap/pstack-hermes --enable
-```
-
-If the default branch is `master`, install the generated subdirectory:
+Install the generated subdirectory:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
@@ -76,8 +68,8 @@ For an immutable root install, copy the full **package commit SHA** from a
 hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
 ```
 
-Until the first verified release exists, pin with the source commit and the
-generated subdirectory instead:
+For a source-level pin before the next verified release, use the source commit
+and the generated subdirectory:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --ref <40-character-source-SHA> --enable
@@ -188,7 +180,7 @@ patch reference. End-user invoke and customization:
 | This repository | `pstack-hermes` | the project slug and published repo name; project name is pstack |
 | Dist branch | `dist` (this repo) | plugin-only compatibility build output, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
-| Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
+| Repo releases | `v0.5.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
 ## Heritage layout (inert on hermes)
