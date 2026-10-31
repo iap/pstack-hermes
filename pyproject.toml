@@ -9,7 +9,7 @@ dependencies = []
 dev = [
     "pyyaml>=6.0",
     "pytest>=9.0.3,<10",
-    "ruff>=0.16.4,<0.17",
+    "ruff>=0.16.4,<0.18",
     # Workflow linting (ci.yml "Lint workflows" step). actionlint-py ships the
     # actionlint binary; shellcheck-py supplies the shellcheck it auto-detects,
     # which lints every `run:` block. Versions are locked in uv.lock like every
