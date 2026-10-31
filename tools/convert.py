@@ -2033,19 +2033,65 @@ notes:
     # When output is the repo root (.), copy files in place instead of
     # renaming the entire directory (which would clobber tooling).
     if final_out == REPO_ROOT:
-        for item in out.iterdir():
-            dest = final_out / item.name
-            if dest.exists():
-                if dest.is_dir():
-                    shutil.rmtree(dest)
+        # Safer root publish: backup, replace, rollback on failure
+        pkg_entries = [p.name for p in out.iterdir()]
+        backup_dir = final_out.parent / (final_out.name + ".pkg-backup")
+        if backup_dir.exists():
+            shutil.rmtree(backup_dir)
+        backup_dir.mkdir(parents=True)
+        backed_up = []
+        try:
+            # Backup existing package entries
+            for name in pkg_entries:
+                dest = final_out / name
+                if dest.exists():
+                    bpath = backup_dir / name
+                    if dest.is_dir():
+                        shutil.copytree(dest, bpath)
+                    else:
+                        shutil.copy2(dest, bpath)
+                    backed_up.append(name)
+            # Remove obsolete package entries that might exist
+            for name in ["plugin.yaml"]:  # old manifest name
+                d = final_out / name
+                if d.exists() and name not in pkg_entries:
+                    if d.is_dir():
+                        shutil.rmtree(d)
+                    else:
+                        d.unlink()
+            # Replace entries
+            for item in out.iterdir():
+                dest = final_out / item.name
+                if dest.exists():
+                    if dest.is_dir():
+                        shutil.rmtree(dest)
+                    else:
+                        dest.unlink()
+                if item.is_dir():
+                    shutil.copytree(item, dest)
                 else:
-                    dest.unlink()
-            if item.is_dir():
-                shutil.copytree(item, dest)
-            else:
-                shutil.copy2(item, dest)
-        out = final_out
-        shutil.rmtree(build_dir, ignore_errors=True)
+                    shutil.copy2(item, dest)
+            out = final_out
+            shutil.rmtree(build_dir, ignore_errors=True)
+            shutil.rmtree(backup_dir, ignore_errors=True)
+        except Exception:
+            # Rollback
+            for name in backed_up:
+                dest = final_out / name
+                if dest.exists():
+                    if dest.is_dir():
+                        shutil.rmtree(dest)
+                    else:
+                        dest.unlink()
+                bpath = backup_dir / name
+                if bpath.exists():
+                    if bpath.is_dir():
+                        shutil.copytree(bpath, dest)
+                    else:
+                        shutil.copy2(bpath, dest)
+            shutil.rmtree(build_dir, ignore_errors=True)
+            shutil.rmtree(backup_dir, ignore_errors=True)
+            raise
     else:
         prev = final_out.with_name(final_out.name + ".prev-build")
         if prev.exists():
