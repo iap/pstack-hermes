@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def git(repo, *args):
-    return subprocess.check_output(['git', '-C', str(repo), *args], text=True).strip()
+    env = {k: v for k, v in os.environ.items() if k not in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE')}
+    return subprocess.check_output(['git', '-C', str(repo), *args], text=True, env=env).strip()
 
 
 @pytest.mark.parametrize('payload_changed', [False, True])
@@ -41,6 +42,7 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     (False, 'source', 1),
     (False, 'converter', 1),
     (False, 'missing', 1),
+    (False, 'no-timestamp', 1),
 ])
 def test_release_requires_matching_payload(tmp_path, payload_changed, provenance_change, expected):
     remote = tmp_path / 'remote'
@@ -58,7 +60,13 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'checkout', '--orphan', 'dist')
     git(remote, 'rm', '-rf', '.')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
-    if provenance_change != 'missing':
+    if provenance_change == 'missing':
+        pass
+    elif provenance_change == 'no-timestamp':
+        (remote / '.build-provenance.txt').write_text(
+            'source_commit: abc123\nconverter: sha-a\n'
+        )
+    else:
         source = 'def456' if provenance_change == 'source' else 'abc123'
         converter = 'sha-b' if provenance_change == 'converter' else 'sha-a'
         (remote / '.build-provenance.txt').write_text(
