@@ -49,7 +49,7 @@ jobs:
           # Replace the tree with the fresh build (.git kept): an append-only
           # commit on top of dist so installed clones can fast-forward.
           find "$dist" -mindepth 1 -maxdepth 1 -not -name ".git" -not -name ".github" -exec rm -rf {} +
-          cp -a plugin.json skills config assets README.md after-install.md LICENSE .build-provenance.txt "$dist/"
+          cp -a plugin.yml skills config assets README.md after-install.md LICENSE .build-provenance.txt "$dist/"
           # The dist branch is consumed by `hermes plugins install` (a git
           # clone), so it needs its own .gitattributes. The package contract is
           # LF-only (tools/validate.py fails on any CRLF), but without this a

@@ -7,7 +7,7 @@
 
 pstack-core:
   - changed-files:
-      - any-glob-to-any-file: "pstack/plugin.json"
+      - any-glob-to-any-file: "pstack/plugin.yml"
       - any-glob-to-any-file: "pstack/config/**"
 
 skills:
