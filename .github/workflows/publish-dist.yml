@@ -68,7 +68,11 @@ jobs:
             echo "::error::staged dist tree fails the consumer checkout check - refusing to publish"
             exit 1
           fi
-          if git -C "$dist" diff --cached --quiet -- . ":(exclude).build-provenance.txt"; then
+          # Skip only when the sole change is the converted_at timestamp in
+          # .build-provenance.txt. A new pin or converter revision that changes
+          # source_commit, converter hash, or any other provenance field must
+          # still publish so dist's build record stays current.
+          if git -C "$dist" diff --cached --quiet -- . ":(exclude).build-provenance.txt" && ! git -C "$dist" diff --cached -- .build-provenance.txt | grep -E '^[-+]' | grep -vE '^[-+]{3}' | grep -qv 'converted_at:'; then
             echo "no package change (provenance stamp only) - nothing to publish"
             exit 0
           fi

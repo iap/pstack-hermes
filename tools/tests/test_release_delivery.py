@@ -19,11 +19,11 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     git(tmp_path, 'init', '-q')
     git(tmp_path, 'config', 'user.name', 'Fixture')
     git(tmp_path, 'config', 'user.email', 'fixture@example.invalid')
-    (tmp_path / '.build-provenance.txt').write_text('old')
+    (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: old\n')
     (tmp_path / 'plugin.json').write_text('payload')
     git(tmp_path, 'add', '.')
     git(tmp_path, 'commit', '-qm', 'baseline')
-    (tmp_path / '.build-provenance.txt').write_text('new')
+    (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: new\n')
     if payload_changed:
         (tmp_path / 'plugin.json').write_text('changed')
     git(tmp_path, 'add', '.')

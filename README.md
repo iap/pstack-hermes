@@ -34,8 +34,9 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
 `master` is the development and intended default branch. Its `pstack/`
-subdirectory is the generated plugin. Subdirectory installs cannot update
-in place; reinstall with the same command and `--force` to update.
+subdirectory is the generated plugin. (Switch Settings → Default branch to
+`master` after merge for the subdirectory install to resolve.) Subdirectory
+installs update with `hermes plugins update pstack`.
 
 For an immutable root install, copy the full **package commit SHA** from a
 [GitHub Release](https://github.com/iap/pstack-hermes/releases):
@@ -47,7 +48,7 @@ hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enab
 Pinned installs do not auto-update; reinstall with a newer release SHA.
 Existing unpinned `dist` clones continue using `hermes plugins update pstack`.
 The `dist` compatibility branch remains append-only. Release ZIPs contain
-`pstack/`; extract and install that directory with Hermes's local-path installer.
+`pstack/`; use the immutable Git SHA command above for installation.
 
 ## Project tracking
 
