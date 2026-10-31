@@ -67,6 +67,13 @@ For an immutable root install, copy the full **package commit SHA** from a
 hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
 ```
 
+Until the first verified release exists, pin with the source commit and the
+generated subdirectory instead:
+
+```sh
+hermes plugins install iap/pstack-hermes/pstack --ref <40-character-source-SHA> --enable
+```
+
 <!-- coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated-section:v1:e990c9712b2761e42609a0edfb94c0387baa376730e6e796f945bdc64cf45e3a -->

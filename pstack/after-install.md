@@ -11,4 +11,5 @@ Skills are opt-in on the portable path: load one with
 `skills/` dir to `skills.external_dirs` in the hermes config for
 `/<name>` slash commands. Update an unpinned install with
 `hermes plugins update pstack`. Pinned installs require a new SHA and `--force`.
-Docs: <https://github.com/iap/pstack-hermes#readme>
+Legacy subdirectory installs without source metadata: back up local edits,
+then reinstall with `--force`. Docs: <https://github.com/iap/pstack-hermes#readme>

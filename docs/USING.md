@@ -91,13 +91,10 @@ Pick by what you want to change — one of three durable routes:
 | Intent | Route | Notes |
 |---|---|---|
 <!-- coderabbit-ai-generated:v1 -->
-
 <!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
-
 | Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Back up edits outside the plugin before updating. Subdirectory updates replace shipped skills; in-place edits are not durable. |
-
 <!-- /coderabbit-ai-generated:v1 -->
-| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Merge upstream when you choose. |
+| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Requires your fork default branch to contain the generated `pstack/` subdirectory (master or a branch with the build). Merge upstream when you choose. |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
 Structural changes that must survive upstream re-pins (new adaptations,

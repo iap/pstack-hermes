@@ -1856,6 +1856,10 @@ hermes plugins install iap/pstack-hermes/pstack --enable
 Both unpinned installs update with `hermes plugins update pstack`. Existing
 `dist` clones remain on `dist` after the default branch changes.
 
+Legacy subdirectory installs from older Hermes versions may lack source
+metadata and cannot auto-update. Back up local edits, then reinstall with
+`--force`: `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
 install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
@@ -1985,7 +1989,8 @@ Skills are opt-in on the portable path: load one with
 `skills/` dir to `skills.external_dirs` in the hermes config for
 `/<name>` slash commands. Update an unpinned install with
 `hermes plugins update pstack`. Pinned installs require a new SHA and `--force`.
-Docs: <https://github.com/iap/pstack-hermes#readme>
+Legacy subdirectory installs without source metadata: back up local edits,
+then reinstall with `--force`. Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
     st.files_copied += 1

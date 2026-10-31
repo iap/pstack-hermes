@@ -83,7 +83,7 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    verification, pass the resolved local path (`$(pwd)/pstack`); for the
    installed dist package, use the name as installed.
 4. **Publish** — pushes to `master` build and validate the append-only
-   `dist` compatibility channel. Provenance-only changes do not publish.
+   `dist` compatibility channel. Only converted_at-only changes are skipped; changes to source_commit or the converter hash still publish.
    Existing unpinned installs can continue fast-forward updates.
    `master` is the intended default branch; drift schedules, labeler and
    Dependabot run directly there. No default-branch scheduler shim is needed.
@@ -204,13 +204,10 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
 3. `release.yml` rebuilds and validates, checks that the package matches the
 <!-- coderabbit-ai-generated:v1 -->
-
 <!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
-
    published `dist` commit, including provenance except `converted_at`, and
    creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
    package install command.
-
 <!-- /coderabbit-ai-generated:v1 -->
    A lagging or different dist tree fails release creation; rerun after publish.
 4. Close the milestone once all acceptance checks pass. Link issues and PRs
