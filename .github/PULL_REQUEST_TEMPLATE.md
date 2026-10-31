@@ -1,3 +1,7 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:628a9302ae5d9b5e92cca910990b71e4b30616a906a046e6b4a0bd328e7e23d3 -->
+
 <!--
 Keep this short: a template nobody finishes is worse than none.
 Every checkbox below is something CI or tools/pr_checklist.py can actually
@@ -11,6 +15,11 @@ The ```yaml provenance``` block is machine-read by tools/pr_checklist.py.
 
 ## What changed
 <!-- one or two lines: the change, not a narrative -->
+
+## Tracking
+
+<!-- Link the issue, parent/sub-issue and milestone. Converter changes require
+     an adaptation issue with scope and reviewer checks. -->
 
 ## Affected surface
 - [ ] tooling (`tools/`, CI, docs)
@@ -48,3 +57,6 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 ## Notes for reviewers
 <!-- Anything a reviewer should weigh: trade-offs, skipped boxes and why,
      screenshots, follow-ups. Optional. -->
+
+
+<!-- /coderabbit-ai-generated:v1 -->

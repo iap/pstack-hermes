@@ -8,13 +8,14 @@ package keeps the upstream identity pstack v0.15.5.*
 ## Install
 
 ```sh
-hermes plugins install iap/pstack-hermes --enable
+hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-The repository's default branch is `dist` - the built package CI produces
-from the pinned upstream. Root installs keep `.git`, so `hermes plugins
-update pstack` fast-forwards it. Pin a commit with `--ref <40-character
-SHA>` for an immutable install.
+The development/default branch is `master`; install its generated `pstack/`
+subdirectory. Subdirectory installs require reinstalling with `--force` to update.
+GitHub Releases record full package SHAs for immutable root installs with
+`--ref <40-character SHA>`; pinned installs do not auto-update. Existing
+unpinned `dist` clones retain fast-forward updates.
 
 ## First run
 
@@ -40,8 +41,8 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Root installs keep `.git`: this pulls the latest published build and
-autostashes uncommitted local skill edits. A legacy subdir install
+Existing unpinned dist root installs keep `.git` and can pull updates,
+autostashing uncommitted local skill edits. A source subdirectory install
 (`iap/pstack-hermes/pstack`) strips `.git` - reinstall it with
 `hermes plugins install iap/pstack-hermes/pstack --force`.
 
@@ -101,7 +102,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 Text is otherwise unchanged; the machine-generated fix register in
 `.build-provenance.txt` is the authoritative per-build record, and the full
 ledger with reviewer checks lives in the dev repo
-(`iap/pstack-hermes`, `docs/ADAPTATIONS.md`).
+(https://github.com/iap/pstack-hermes/issues/94).
 
 ## Known limitations (documented, not drift)
 

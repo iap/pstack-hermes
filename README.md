@@ -1,4 +1,12 @@
-# Pstack Hermes
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:b2eea8f645abfccabfe4ae3e7cda81459321f7fb0792cb57400dda0b8fea4cd4 -->
+
+<!-- coderabbit-ai-generated-section:v1:9fb4e5defbb115d04501de70d9817104330be2ee94ce15585eede94a81dc0bff -->
+
+<!-- coderabbit-ai-generated-section:v1:d94993548a48265942779aa3b7ed36972c0efe779eac4698d96dec3e7e91be3d -->
+
+# pstack
 
 *The pstack agent method as a **native Hermes Agent plugin installation** —
 an unofficial community port of Lauren Tan's
@@ -18,34 +26,36 @@ port belong upstream.
 
 ## Install
 
-```sh
-# single-source install (this repository's default branch IS the built package)
-hermes plugins install iap/pstack-hermes --enable
+Project name: **pstack**. Repository slug: **pstack-hermes**.
+`iap/pstack` addresses another repository and is not an alias for this one.
 
-# immutable variant: pin an exact commit
-hermes plugins install iap/pstack-hermes --ref <40-character commit SHA>
+```sh
+hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-> [!NOTE]
-> The repository's **default branch is `dist`** — the built package at the tree
-> root, produced and validated by CI from the pinned upstream build
-> ([publish-dist.yml](.github/workflows/publish-dist.yml)). That is what the
-> install clones, so the plain repo command works and updates are native:
-> `hermes plugins update pstack` fast-forwards the installed clone. The
-> development tree lives on `master`; installing `master`'s `pstack/` subdir is
-> a legacy alternative that cannot update in place.
+`master` is the development and intended default branch. Its `pstack/`
+subdirectory is the generated plugin. Subdirectory installs cannot update
+in place; reinstall with the same command and `--force` to update.
 
-> [!NOTE]
-> The bare-name form `hermes plugins install pstack` is not available —
-> the package has no entry in the hermes plugin catalog yet. Use the form above.
+For an immutable root install, copy the full **package commit SHA** from a
+[GitHub Release](https://github.com/iap/pstack-hermes/releases):
 
-**Update:** a root install keeps `.git`, so it updates in-place:
 ```sh
-hermes plugins update pstack
+hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
 ```
 
-Subdir installs strip the `.git` directory on install and cannot update
-in-place — to update one, uninstall and reinstall with the subdir form.
+Pinned installs do not auto-update; reinstall with a newer release SHA.
+Existing unpinned `dist` clones continue using `hermes plugins update pstack`.
+The `dist` compatibility branch remains append-only. Release ZIPs contain
+`pstack/`; extract and install that directory with Hermes's local-path installer.
+
+## Project tracking
+
+Use [issues](https://github.com/iap/pstack-hermes/issues) for proposals,
+adaptations, decisions, acceptance criteria and verification; use native
+sub-issues for bounded implementation work and milestones for delivery goals.
+The preserved [adaptation register](https://github.com/iap/pstack-hermes/issues/94)
+records existing port contracts. Documentation holds maintained instructions.
 
 ## What's inside
 
@@ -73,8 +83,7 @@ tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform 
 tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
                    → gold manifest → gold load
 patches/           historical hermes-fork patches (reference only; not required to install)
-docs/              ADAPTATIONS.md (the ledger), RUNBOOK-upstream-drift.md, USING.md,
-                   PATCHES.md + UPSTREAM-PR.md (historical)
+docs/              operational, usage and development instructions (see docs/AGENTS.md)
 .github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
                    publish-dist.yml (dist-branch publisher), PR labeler, issue templates
 ```
@@ -127,8 +136,8 @@ patch reference. End-user invoke and customization:
 | Thing | Name | Why |
 |---|---|---|
 | The package | `pstack` | upstream identity (plugin.json, v0.15.5) — preserved |
-| This repository | `pstack-hermes` | the project slug and published repo name (docs title: Pstack Hermes); the development/pipeline repo |
-| Dist branch | `dist` (this repo) | plugin-only build output on the default branch, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
+| This repository | `pstack-hermes` | the project slug and published repo name; project name is pstack |
+| Dist branch | `dist` (this repo) | plugin-only compatibility build output, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
 | Repo releases | `v0.4.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
@@ -163,3 +172,6 @@ upstream pstack instead.
 
 MIT — upstream © 2026 Lauren Tan; port modifications © 2026 the
 pstack-hermes-port contributors. See [LICENSE](LICENSE).
+
+
+<!-- /coderabbit-ai-generated:v1 -->
