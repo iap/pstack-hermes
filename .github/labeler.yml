@@ -6,6 +6,7 @@
 
 pstack-core:
   - changed-files:
+      - any-glob-to-any-file: "plugin.json"
       - any-glob-to-any-file: "plugin.yaml"
       - any-glob-to-any-file: "config/**"
       - any-glob-to-any-file: "assets/**"
