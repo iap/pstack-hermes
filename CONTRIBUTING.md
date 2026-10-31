@@ -28,11 +28,11 @@ the contract is strict — read this once and the CI will never surprise you.
 | [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
 | [adaptation register](https://github.com/iap/pstack-hermes/issues/94) | the ledger: every conversion pass and its reviewer check |
-| [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) | re-pinning procedure when upstream moves |
+
 | [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
-One-sentence model of the repo: **`tools/convert.py` turns a pinned upstream
-clone into `pstack/`; `tools/validate.py` and CI keep that output honest;
+One-sentence model of the repo: **`tools/convert.py` generates the plugin package
+from the upstream source; `tools/validate.py` and CI keep that output honest;
 everything hand-written exists to serve that pipeline.**
 
 ## Setup
@@ -174,7 +174,7 @@ one has already caught (or would have caught) a real defect here.
 Follow [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md)
 verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
 in **four workflows** — `ci.yml`, `release.yml`, `publish-dist.yml`,
-`upstream-drift-watch.yml` — and all four must move in the same PR. Update maps,
+`upstream-drift-watch.yml` — and all three must move in the same PR. Update maps,
 never the package. (The build prologue itself now lives once, in the
 `.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
 `publish-dist.yml` pass the pin to it as an input rather than each repeating

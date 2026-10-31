@@ -88,7 +88,7 @@ Default home for work is **this repo**. Escalate only when the table says so.
 | Personal skill improvement or new procedures | Local skills, skill tap, or fork of this repo ([docs/USING.md](docs/USING.md)) | `skill_manage` against stock plugin skills; durable edits under the install tree |
 | Package validates / doctor is clean, but stock install misbehaves on hermes | File/fix in `NousResearch/hermes-agent`; `patches/` is **historical reference only** ([docs/PATCHES.md](docs/PATCHES.md)) | Paper over harness gaps with skill prose that claims nonexistent tools |
 | Bug reproduces on upstream Cursor pstack *without* this port | Route to `cursor/plugins` ([SECURITY.md](SECURITY.md)) | "Fix" it in the converter as if it were a port bug |
-| Touch `.cursor-plugin/`, `pstack/agents/`, attribution, excluded `benny` / `make-bot-ui` | Leave as-is (dual-load / scanner contract) | "Clean up", re-add, or modernize |
+| Touch `agents/`, attribution, excluded `benny` / `make-bot-ui` | Leave as-is (scanner contract) | "Clean up", re-add, or modernize |
 | GitLab / `glab` stack support | Leave halted; no implementation | Add provider code or active milestone work |
 
 ## Default work loop
@@ -132,7 +132,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Path | Nature | Rules |
 |---|---|---|
 | `pstack/` | **generated** (`linguist-generated`) | never hand-edit; review as build output |
-| `pstack/.cursor-plugin/`, `pstack/agents/` | generated; inert on hermes | dual-load surface; leave as-is |
+| `agents/` | generated; inert on hermes | agent personas; leave as-is |
 | `tools/` | hand-written converter, validator, bans, scanner gate, tests | source of package truth |
 | `tools/assets/` | inputs the converter copies in (`model-panel.json`, `hermesbot/SKILL.md`) | edit here, then rebuild |
 | `docs/` | maintained instructions: usage, development, operations | plans and adaptations belong in GitHub issues |
@@ -180,34 +180,12 @@ CI scans every decodable package file (`tools/bans.py` +
 | hermes `skill_manage` (local / tap skills — not stock plugin mutation) | Cursor `create-skill` |
 | `config/models.json` ← `tools/assets/model-panel.json` | hand-tuned shipped panel only |
 
-Cursor still appears in three **legitimate** roles only — preserve, do not
-"fix":
-
-1. **Upstream pin** — `cursor/plugins` @ `c47b1284` (MIT © Lauren Tan); homepage
-   / repo URLs; attribution lines.
-2. **Inert dual-load** — `pstack/.cursor-plugin/`, `pstack/agents/` (hermes
-   probes the root manifest only).
-3. **Bug routing** — upstream-only bugs → `cursor/plugins`; hermes defects →
-   `NousResearch/hermes-agent`; port issues → this repo.
-
 ## Hard rules (CI enforces)
 
-- **Pin lock-step.** `UPSTREAM_PIN`
-  (`c47b12849e43f18d5c374c7069c744cc55b0ea00`) is declared in `ci.yml`,
-  `release.yml`, `publish-dist.yml`, and `upstream-drift-watch.yml` — all four
-  move together. The build steps that consume it are shared via
-  `.github/actions/build-package`.
-  Procedure: [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
-- **Anchors audited.** A converter transform whose anchor matches nothing in
-  the upstream build fails loudly. Re-anchor or prune; never silence the audit.
-- **Two version lines.** Package keeps upstream identity `0.15.5`; repo
-  releases are `v0.4.x` in `CHANGELOG.md`. Never mix them.
 - **Encoding.** LF-only, no BOM, UTF-8 (`.gitattributes` + `validate.py`).
-- **Converter changes are tracked in issues.** New pass/map → adaptation issue with
-  reviewer check + rebuilt `pstack/` in the same PR.
-- **Excluded upstreams stay excluded.** `automations/benny` and
-  `skills/make-bot-ui` omitted (slot filled by repo-owned `hermesbot`).
-- **`master` is the intended default development branch.** Restore it after
+- **`master` is the intended default development branch.**
+- **Repo releases** are `v0.5.x` in `CHANGELOG.md`. Package keeps upstream
+  identity `0.15.5`.
   this migration merges. `dist` remains CI-owned append-only compatibility
   output. Never rewrite or delete it while installed clones depend on it.
 - **GitHub owns planning.** Proposals, adaptation records, reviewer checks and

@@ -34,7 +34,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent  # tools/
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_PANEL = SCRIPT_DIR / "assets" / "model-panel.json"
-DEFAULT_CONFIG = REPO_ROOT / "pstack" / "config" / "models.json"
+DEFAULT_CONFIG = REPO_ROOT / "config" / "models.json"
+DEFAULT_SKILLS_DIR = REPO_ROOT / "skills"
 DEFAULT_CATALOG_URL = "https://openrouter.ai/api/v1/models"
 USER_AGENT = "pstack-hermes-model-drift-watch"
 SELECTOR = "inherit-parent"  # always valid; not a provider slug
@@ -188,7 +189,7 @@ def main() -> int:
         prose_findings: list[str] = []
         prose_checked = 0
         if args.prose:
-            prose_findings, prose_checked = scan_prose(REPO_ROOT / "pstack" / "skills", ids)
+            prose_findings, prose_checked = scan_prose(DEFAULT_SKILLS_DIR, ids)
     except Exception as exc:
         print(f"slug drift: tool error: {exc}", file=sys.stderr)
         return 2

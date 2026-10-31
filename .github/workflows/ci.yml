@@ -53,7 +53,7 @@ jobs:
       # install clone of the dist branch receives it (core.autocrlf=true).
       - name: Dist checkout is LF-only under autocrlf
         shell: bash
-        run: uv run --frozen tools/dist_checkout_check.py --package pstack --source-tree
+        run: uv run --frozen tools/dist_checkout_check.py --package . --source-tree
 
       # The gate the previous implementation got wrong: it hashed
       # $GITHUB_WORKSPACE/pstack *after* the build step had already replaced that
@@ -65,33 +65,61 @@ jobs:
         shell: bash
         env:
           UPSTREAM_CLONE: ${{ steps.build.outputs.upstream-clone-path }}
-          PACKAGE_PATH: pstack
+          PACKAGE_PATH: .
         run: |
           set -euo pipefail
-          # Both sides must hash the SAME path strings or they can never match:
-          # git reports "pstack/...", a cd+find reports "./...". Normalise both to
-          # the package-relative form before hashing.
+          # Package files only (repo root may also contain build tooling)
+          PACKAGE_FILES=(
+            "plugin.json"
+            "plugin.yaml"
+            "README.md"
+            "LICENSE"
+            "after-install.md"
+            ".build-provenance.txt"
+          )
           hash_git_tree() {
-            local prefix="$1/"
-            git ls-tree -r --name-only HEAD -- "$1" \
-              | grep -v '\.build-provenance\.txt$' \
-              | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "${f#"$prefix"}"
-                done \
-              | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
+            local root="$1"
+            {
+              for f in "${PACKAGE_FILES[@]}"; do
+                if git -C "$root" ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                fi
+              done
+              if git -C "$root" ls-files --error-unmatch skills >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- skills | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+              if git -C "$root" ls-files --error-unmatch config >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- config | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+              if git -C "$root" ls-files --error-unmatch assets >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- assets | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+            } | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
           hash_dir_tree() {
             local root="$1"
-            # GNU-only flags (sed -z) are deliberately avoided: this job also runs
-            # on windows-latest, where the shell is Git-bash but BSD/GNU userland
-            # differences have bitten this repo before.
-            ( cd "$root" && find . -type f ! -name ".build-provenance.txt" \
-                | sed 's|^\./||' \
-                | LC_ALL=C sort \
-                | while IFS= read -r f; do
+            (
+              cd "$root" && {
+                for f in plugin.json plugin.yaml README.md LICENSE after-install.md; do
+                  if [ -f "$f" ]; then
                     printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
-                  done \
-                | sha256sum | cut -d' ' -f1 )
+                  fi
+                done
+                for d in skills config assets; do
+                  if [ -d "$d" ]; then
+                    find "$d" -type f -print | sed 's|^\./||' | while IFS= read -r f; do
+                      printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
+                    done
+                  fi
+                done
+              }
+            ) | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
           committed="$(hash_git_tree "$PACKAGE_PATH")"
           rebuilt_dir="$RUNNER_TEMP/pstack-rebuilt"
@@ -116,7 +144,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dirty="$(git status --porcelain -- . ':(exclude)pstack/.build-provenance.txt')"
+          dirty="$(git status --porcelain -- . ':(exclude).build-provenance.txt')"
           if [ -n "$dirty" ]; then
             echo "::error::the build modified tracked files other than the provenance stamp"
             echo "$dirty"
@@ -128,7 +156,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pstack-build-${{ matrix.os }}-${{ github.run_id }}
-          path: pstack/
+          path: ./
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
           # the artifact is a debugging aid, not a release artifact.
@@ -222,15 +250,15 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
       - name: Install script dependencies
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bun install --frozen-lockfile
 
       - name: Unit tests (poteto-mode scripts)
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bun test orch watch-pr
 
       - name: Typecheck (poteto-mode scripts)
-        working-directory: pstack/skills/poteto-mode/scripts
+        working-directory: skills/poteto-mode/scripts
         run: bunx tsc --project watch-pr/tsconfig.json --noEmit --strict
 
   pr-checklist:
@@ -263,7 +291,7 @@ jobs:
           gh pr view "$PR_NUMBER" --json body --jq .body > "$RUNNER_TEMP/pr-body.md"
           rc=0
           uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" \
-            --provenance pstack/.build-provenance.txt || rc=$?
+            --provenance .build-provenance.txt || rc=$?
           echo "pr-checklist exit: $rc (0 = consistent, 1 = contradiction)"
           if [ "$rc" -ne 0 ]; then
             echo "::warning::pr-checklist found a contradiction. This job is ADVISORY - it reports, it does not block. The enforcing gate is the build job."

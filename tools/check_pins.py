@@ -28,7 +28,6 @@ REQUIRED_DECLARERS = (
     "ci.yml",
     "release.yml",
     "publish-dist.yml",
-    "upstream-drift-watch.yml",
 )
 
 # `UPSTREAM_PIN: <value>` at the start of a YAML mapping entry. References like

@@ -31,7 +31,7 @@ inputs:
   package-path:
     description: Package directory to build, relative to the workspace.
     required: false
-    default: pstack
+    default: .
   upstream-url:
     description: Upstream git remote to clone.
     required: false

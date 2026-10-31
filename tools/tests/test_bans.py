@@ -14,10 +14,7 @@ def test_security_bans_match_any_decodable_extension(tmp_path):
 
 
 def test_vocab_bans_apply_only_to_the_hermes_facing_surface(tmp_path):
-    for rel in ("agents/p.md", ".cursor-plugin/plugin.json"):
-        p = tmp_path / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text("uses subagent_type", encoding="utf-8")
+    # Only .build-provenance.txt is exempt from vocab bans.
     (tmp_path / ".build-provenance.txt").write_text("fixed subagent_type", encoding="utf-8")
     skills = tmp_path / "skills"
     skills.mkdir()

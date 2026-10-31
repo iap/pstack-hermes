@@ -1,218 +1,125 @@
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:b2eea8f645abfccabfe4ae3e7cda81459321f7fb0792cb57400dda0b8fea4cd4 -->
-
-<!-- coderabbit-ai-generated-section:v1:9fb4e5defbb115d04501de70d9817104330be2ee94ce15585eede94a81dc0bff -->
-
-<!-- coderabbit-ai-generated-section:v1:d94993548a48265942779aa3b7ed36972c0efe779eac4698d96dec3e7e91be3d -->
-
 # pstack
 
-*The pstack agent method as a **native Hermes Agent plugin installation** —
-an unofficial community port of Lauren Tan's
-[pstack](https://github.com/cursor/plugins/tree/main/pstack). Not affiliated
-with Cursor or Lauren Tan; if you use Cursor, install the original instead.*
-
-*Project slug: `pstack-hermes` · Package: `pstack` (upstream identity, v0.15.5) ·
-Upstream pinned at `c47b1284` (MIT).*
-
-**What this project is:** a native hermes plugin — a self-contained
-`agent-plugins-v1` package published on the `dist` branch and installed and
-updated through `hermes plugins`, plus the converter/validator tooling that
-keeps it faithful to upstream. **What it is not:** a Cursor plugin, a fork of
-the Cursor plugins repo, or the place to report upstream Cursor issues. Port
-problems belong here (Issues); original issues that reproduce without this
-port belong upstream.
+*The pstack agent method — go fast by going deep first — packaged for the
+Hermes Agent portable plugin path. Unofficial port of
+<https://github.com/cursor/plugins/tree/main/pstack> (MIT, © Lauren Tan);
+package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
-Project name: **pstack**. Repository slug: **pstack-hermes**.
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:c8ad5ea2d621eebf4b7c170b4a8cf3fddc86b5f1b8ffb1228b7921cb88cc51b7 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:164819aa62ebb934b950598ed113643425bec5ee5a0cffe44f8ceb1534c80916 -->
-
-The desired command is `hermes plugins install iap/pstack --enable` for
-this repository. Hermes does not currently resolve it here; [issue #100](https://github.com/iap/pstack-hermes/issues/100)
-tracks support without creating another repository. Use a working command below
-until that support is verified.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:98a82daec2a7d8a4fc98b909af902a35857ceb0f945f32164332d0d1d7a0db0d -->
-
-The default branch is now `master`. Install the generated subdirectory:
-
-Install the generated subdirectory:
+Install the plugin:
 
 ```sh
-hermes plugins install iap/pstack-hermes/pstack --enable
+hermes plugins install iap/pstack-hermes --enable
 ```
 
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
+Unpinned installs update with `hermes plugins update pstack`.
 
-<!-- /coderabbit-ai-generated:v1 -->
+Pinned installs must be reinstalled with a new SHA and `--force`.
 
-For an immutable root install, copy the full **package commit SHA** from a
-[GitHub Release](https://github.com/iap/pstack-hermes/releases):
+GitHub Releases record package SHAs for immutable root installs. Pinned
+installs do not auto-update; to move an existing pin, use `hermes plugins
+install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
+
+## First run
+
+1. `hermes plugins doctor pstack --ci` — manifest parses, all skills discover.
+   Pick the target explicitly: `pstack` is ambiguous (repo root = local
+   directory; elsewhere = installed package). Use the name as installed for
+   the dist package, or a resolved local path for a branch tree.
+2. Load the `setup-pstack` skill once - it writes `pstack-models.json` beside hermes' `config.yaml`, outside this package, so plugin updates do not discard it
+   (the 18-role model panel the workflow skills read).
+3. Load `poteto-mode` and give it a real task — it classifies the work and
+   routes to the right playbook. You do not pick playbooks yourself.
+
+Skills are opt-in on the portable path: load one with
+`skill_view` id `agent-plugin-pstack-<digest>:<skill-name>` (digest = first
+8 hex of the sha256 of the plugin key, stable while the install dir is named
+`pstack`). For `/<name>` slash commands instead, add this package's `skills`
+dir to `skills.external_dirs` in the hermes `config.yaml` — trade-off: skills
+enter the prompt index with 60-char descriptions and lose the namespace.
+
+## Update
 
 ```sh
-hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
+hermes plugins update pstack
 ```
 
-For a source-level pin before the next verified release, use the source commit
-and the generated subdirectory:
+Hermes updates unpinned installs from the repository root. Pinned installs must be reinstalled with a new SHA and `--force`.
 
-```sh
-hermes plugins install iap/pstack-hermes/pstack --ref <40-character-source-SHA> --enable
-```
+## Customizing skills
 
-<!-- coderabbit-ai-generated:v1 -->
+- **Tweak a line or two** — edit the installed `SKILL.md`, restart the
+  gateway, and save a backup outside the plugin before updating. Subdirectory
+  updates replace shipped skills; in-place edits are temporary.
+- **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
+  your fork (`hermes plugins install <you>/pstack-hermes --enable`).
+- **Add your own new skills alongside** — a skill tap:
+  `hermes skills tap add <you>/skills-repo`, then
+  `hermes skills install <you>/skills-repo/<skill>`.
+- Keep the hermes vocabulary when editing (`delegate_task`, `clarify`,
+  `session_search`, `hermes cron`); Cursor primitives will mislead the agent.
 
-<!-- coderabbit-ai-generated-section:v1:e990c9712b2761e42609a0edfb94c0387baa376730e6e796f945bdc64cf45e3a -->
+Problems: port behaviour → <https://github.com/iap/pstack-hermes/issues>;
+a hermes defect that reproduces with the plugin disabled →
+`NousResearch/hermes-agent`; an upstream pstack bug → `cursor/plugins`.
 
-Pinned installs do not auto-update. To move an existing pin, explicitly
-replace the installed plugin with a newer package SHA:
+## What hermes loads
 
-```sh
-hermes plugins install iap/pstack-hermes --ref <new-package-SHA> --force --enable
-```
+- **47 skills** (24 workflow/mode +
+  23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
+  discovered via the root `plugin.yaml` (agent-plugins-v1 manifest,
+  9 whitelisted fields).
+- `skills/hermesbot/` — hermes-native control-surface skill on the gateway
+  webhook (`X-Webhook-Signature-V2` HMAC) plus `hermes send` / `hermes peer`;
+  fills the excluded `make-bot-ui` slot.
+- Skill scripts (e.g. `skills/poteto-mode/scripts/`) ship verbatim; the loader
+  never executes them, but skills instruct the agent to run them (`bun`, `gh`).
 
-<!-- /coderabbit-ai-generated:v1 -->
-The `dist` compatibility branch remains append-only. Release ZIPs contain
-`pstack/`; use the immutable Git SHA command above for installation.
+Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner
+verdicts — persistence / privilege escalation; `--force` cannot override) and
+upstream's `docs/guide/` (read it upstream for the guided tour).
 
-## Project tracking
+## Differences from upstream
 
-Use [issues](https://github.com/iap/pstack-hermes/issues) for proposals,
-adaptations, decisions, acceptance criteria and verification; use native
-sub-issues for bounded implementation work and milestones for delivery goals.
-The preserved [adaptation register](https://github.com/iap/pstack-hermes/issues/94)
-records existing port contracts. Documentation holds maintained instructions.
+| Pass | What changed |
+|---|---|
+| manifest | root `plugin.yaml` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
+| frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
+| R1 | poteto-mode principles index regenerated from the 23 leaves |
+| F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
+| F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
+| F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |
+| T8/T9/T10 | `setup-pstack` writes the model panel beside hermes' `config.yaml` (outside the package, so updates do not discard it); discovery via `session_search`; hermes tool names |
+| Phase-2A | delegation vocabulary → `delegate_task` / `clarify` package-wide |
+| T11 | hardcoded Cursor paths → hermes equivalents |
+| T12 | `/loop` → `hermes cron` wake; `/goal` → `goal.md` in the agent store |
+| T13 | residual vendor coupling reworded (`cursor-team-kit`, cloud fleet, `gt`) |
+| T14 | stacker-role / topology re-pointed (issue #33) |
+| T15 | `orch frontier set` provider selection: `auto` / `graphite` / `github` |
+| G1 | delegation escape hatch: in-thread surgical edits with mandatory delegate review |
 
-## What's inside
+Text is otherwise unchanged; the machine-generated fix register in
+`.build-provenance.txt` is the authoritative per-build record, and the full
+ledger with reviewer checks lives in the dev repo
+(https://github.com/iap/pstack-hermes/issues/94).
 
-- **47 skills** (24 workflow/mode + 23 `principle-*`) — the full method:
-  `poteto-mode` router, verification playbooks, interrogation/reflect/recall
-  loops, swarm/arena parallel workflows, and the principle library.
-- **hermesbot** fills the excluded `make-bot-ui` slot: a hermes-native
-  control-surface skill (webhook-waked UI) on the hermes gateway's own
-  webhook (`X-Webhook-Signature-V2` HMAC), `hermes send`, and `hermes peer`
-  stack — no Tailscale, no third-party bot runtime.
-- **Hermes-native rewrites**: delegation translated to hermes `delegate_task`
-  (all Cursor `Task`/`subagent_type`/`run_in_background` vocabulary removed),
-  discovery rewritten to hermes-native `session_search`/`session` tools,
-  config shipped as hermes `config/models.json`.
-- **setup-pstack onboarding flow** adapted for hermes profiles and external
-  model-panel storage (survives plugin updates). The upstream-name →
-  hermes-default model mapping is documented in [docs/MODELS.md](docs/MODELS.md).
+## Known limitations (documented, not drift)
 
-## Repository layout
+- `deslop`, `control-ui`, `control-cli` are named by playbooks but ship
+  outside this package; a verdict without its demanded live lane is
+  incomplete, not clean. (`no-comments`, `unslop`, `technical-writing` ship.)
+- `orch frontier set` providers: `auto` (Graphite first, then GitHub-native
+  PR base/head topology), `graphite`, `github`. GitLab reserved, not
+  implemented.
+- Stack topology needs Graphite (`gt`): restacks, stack surgery, and the
+  stack-aware merge queue have no hermes equivalent. GitHub-native stacked
+  PRs (`gh stack`) cover some stack operations; ordinary base changes go
+  through the forge and need no stacker.
+- No `mcp.json` shipped: research skills use whichever MCP servers the
+  session configures; unreachable sources are recorded as null findings,
+  never invented.
 
-```
-AGENTS.md          instructions for coding agents (triage, write surface, vocabulary)
-pstack/            the built package (converter output; provenance in .build-provenance.txt)
-tools/convert.py   Cursor pstack → hermes converter (anchor-audited transform passes, atomic builds)
-tools/validate.py  verification ladder: static (incl. bans + hermes adaptation contract) → repo YAML
-                   → gold manifest → gold load
-patches/           historical hermes-fork patches (reference only; not required to install)
-docs/              operational, usage and development instructions (see docs/AGENTS.md)
-.github/           CI (ci.yml: 2-OS matrix, SHA gates, determinism, poteto-mode Bun suite),
-                   publish-dist.yml (dist-branch publisher), PR labeler, issue templates
-```
+---
 
-## Verification
-
-`tools/validate.py` runs a four-stage ladder and exits non-zero on any hard
-failure:
-
-1. **Static** — manifest schema, skill structure, encoding (LF-only, no BOM),
-   publisher contract (excluded upstreams absent), banned-construct scan.
-2. **Repo YAML** — every `.github` YAML file parses (when pyyaml is available,
-   e.g. `uv sync`).
-3. **Gold manifest** — the real hermes loader parses the manifest, zero
-   diagnostics.
-4. **Gold load** — the real loader discovers all skills, zero component
-   diagnostics.
-
-CI additionally enforces: the **pinned upstream SHA** (re-checked after clone),
-**provenance consistency** (`source_commit` == pinned SHA), the scanner-clean
-invariant set (`tools/bans.py`, scanned across every UTF-8-decodable file),
-byte-reproducible builds (`SOURCE_DATE_EPOCH`), and unit tests + lint
-(`pytest` + `ruff`) for the tooling itself. A weekly
-[upstream-drift-watch](.github/workflows/upstream-drift-watch.yml) workflow
-opens a tracking issue when upstream `pstack/` changes past the pin, and a
-weekly [model-drift-watch](.github/workflows/model-drift-watch.yml) workflow
-re-verifies every configured model slug against the provider catalog.
-
-## Development
-
-```sh
-uv sync          # pinned CPython 3.11 + dev group (pyyaml, pytest, ruff)
-uv run --frozen tools/convert.py  --source <pstack-clone> --out pstack
-uv run --frozen tools/validate.py
-uv run --frozen pytest -q             # tooling unit tests
-uv run --frozen ruff check tools      # lint
-```
-
-The poteto-mode checker scripts additionally run a Bun suite (CI runs the
-same): `cd pstack/skills/poteto-mode/scripts && bun run test && bun run typecheck`.
-
-Coding agents start with [AGENTS.md](AGENTS.md) (triage + write surface +
-hermes verify loop); humans continue in [CONTRIBUTING.md](CONTRIBUTING.md) for
-procedures, and [docs/PATCHES.md](docs/PATCHES.md) for historical hermes-fork
-patch reference. End-user invoke and customization:
-[docs/USING.md](docs/USING.md).
-
-## Naming
-
-| Thing | Name | Why |
-|---|---|---|
-| The package | `pstack` | upstream identity (plugin.json, v0.15.5) — preserved |
-| This repository | `pstack-hermes` | the project slug and published repo name; project name is pstack |
-| Dist branch | `dist` (this repo) | plugin-only compatibility build output, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
-| Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
-| Repo releases | `v0.5.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
-| Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
-
-## Heritage layout (inert on hermes)
-
-A `.cursor-plugin/plugin.json` is preserved for provenance from the upstream
-tree; the `.cursor-plugin/` and `agents/` surfaces are inert here — the package
-is a hermes plugin, the skills' content is hermes-adapted, and Cursor-side
-behavior is neither tested nor supported. For Cursor-side work, install
-upstream pstack instead.
-
-## Known limitations
-
-- **Stack forge** — **Graphite (`gt`) is the default** when available; **GitHub
-  (`gh`)** is the fallback (PR base/head topology). **GitLab (`glab`) is not
-  implemented** (halted). Missing Graphite is not a hard failure when GitHub
-  can complete the task; some restack/stack-surgery paths still need `gt`.
-- **Cloud restacks** — full Graphite cloud restack behavior is not mirrored;
-  hermes runs lanes locally via `git rebase` + `git push --force-with-lease`
-  where applicable.
-- **Cursor control surfaces** — `control-ui`, `control-cli`, and `deslop`
-  are Cursor-only skills with no hermes equivalent. Live UI/CLI
-  verification is not available on hermes.
-- **Origin forge** — `origin pr ...` commands are Cursor's Origin CLI;
-  hermes falls back to `gh` when Origin is not installed.
-- **Stock skills vs learning** — Hermes self-improvement must not target stock
-  plugin skills as durable source of truth; use a skill tap, a dist fork, or
-  local skills ([docs/USING.md](docs/USING.md)).
-
-## License
-
-MIT — upstream © 2026 Lauren Tan; port modifications © 2026 the
-pstack-hermes-port contributors. See [LICENSE](LICENSE).
-
-
-<!-- /coderabbit-ai-generated:v1 -->
+Adapted for Hermes Agent plugin compatibility from github.com/cursor/plugins pstack.

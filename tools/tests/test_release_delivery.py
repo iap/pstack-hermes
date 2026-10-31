@@ -32,7 +32,7 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     script = workflow['jobs']['publish']['steps'][-1]['run']
     condition = next(line.strip()[3:-6] for line in script.splitlines()
                      if line.strip().startswith('if git -C "$dist" diff'))
-    result = subprocess.run(['bash', '-c', condition], env={**os.environ, 'dist': str(tmp_path)})
+    result = subprocess.run(['bash', '-c', condition], env={**os.environ, 'dist': str(tmp_path), 'MSYS_NO_PATHCONV': '1'})
     assert result.returncode == (1 if payload_changed else 0)
 
 
@@ -50,9 +50,8 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'init', '-q', '-b', 'master')
     git(remote, 'config', 'user.name', 'Fixture')
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
-    (remote / 'pstack').mkdir()
-    (remote / 'pstack/plugin.json').write_text('payload')
-    (remote / 'pstack/.build-provenance.txt').write_text(
+    (remote / 'plugin.json').write_text('payload')
+    (remote / '.build-provenance.txt').write_text(
         'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
     )
     git(remote, 'add', '.')
