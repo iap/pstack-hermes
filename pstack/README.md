@@ -27,8 +27,10 @@ Both unpinned installs update with `hermes plugins update pstack`. Existing
 `dist` clones remain on `dist` after the default branch changes.
 
 Legacy subdirectory installs from older Hermes versions may lack source
-metadata and cannot auto-update. Back up local edits, then reinstall with
-`--force`: `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+metadata and cannot auto-update. Upgrade Hermes to a version that records
+source metadata, back up local edits, then reinstall with `--force`:
+if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
+if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
 
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
