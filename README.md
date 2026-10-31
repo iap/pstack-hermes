@@ -45,9 +45,7 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Hermes updates unpinned `dist` root installs and `master` subdirectory
-installs. Root installs use Git; subdirectory installs are re-cloned from the
-recorded source. Pinned installs must be reinstalled with a new SHA and `--force`.
+Hermes updates unpinned installs from the repository root. Pinned installs must be reinstalled with a new SHA and `--force`.
 
 ## Customizing skills
 
@@ -80,9 +78,7 @@ a hermes defect that reproduces with the plugin disabled →
 
 Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner
 verdicts — persistence / privilege escalation; `--force` cannot override) and
-upstream's `docs/guide/` (read it upstream for the guided tour). `agents/` and
-`.cursor-plugin/` are inert on hermes — kept so the tree still dual-loads as a
-Cursor plugin structurally; for real Cursor-side work install upstream pstack.
+upstream's `docs/guide/` (read it upstream for the guided tour).
 
 ## Differences from upstream
 
