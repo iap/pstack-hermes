@@ -31,7 +31,16 @@ Project name: **pstack**. Repository slug: **pstack-hermes**.
 
 <!-- coderabbit-ai-generated-section:v1:c8ad5ea2d621eebf4b7c170b4a8cf3fddc86b5f1b8ffb1228b7921cb88cc51b7 -->
 
-`iap/pstack` is not an alias for this repository.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:164819aa62ebb934b950598ed113643425bec5ee5a0cffe44f8ceb1534c80916 -->
+
+The desired command is `hermes plugins install iap/pstack --enable` for
+this repository. Hermes does not currently resolve it here; [issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks support without creating another repository. Use a working command below
+until that support is verified.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 

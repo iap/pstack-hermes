@@ -214,7 +214,45 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   delivery plans live in issues, native sub-issues and milestones. `docs/`
   contains maintained instructions, not parallel task state.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:20bac8af517d82fdb234c1320f75a1dba0278db5aa0318bf9a41ccdb7a3e6aec -->
+
+## Identity and installation goal
+
+The project and plugin are named `pstack`. The canonical GitHub repository
+and project slug are `iap/pstack-hermes` and `pstack-hermes`, respectively.
+Keep the current GitHub URL; do not create or rename a repository to provide an
+install alias.
+
+The desired command is `hermes plugins install iap/pstack --enable` from this
+repository. Current Hermes interprets it as GitHub repo `iap/pstack`; it is
+not a catalog alias for this project. [Issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks making the exact command work without a second repository. Keep the
+verified current-repository install paths documented until that is proven on
+a released Hermes version. Check the current default branch before choosing a
+root or `pstack/` subdirectory install; pin and update behavior differ.
+
+## Bot review findings
+
+- Inspect each finding against the pre-change contract, current code, callers,
+  tests and the current review thread. Check whether it is already fixed,
+  duplicated, outdated, incorrect or blocked before changing behavior.
+- For a valid finding, implement the compatible fix and run the relevant
+  checks. If it conflicts with the contract or needs a decision, explain the
+  conflict and seek the necessary clarification; do not weaken a contract to
+  satisfy a bot.
+- Reply in the same bot review thread with what changed and why, the commit or
+  code reference and verification results, including blocked checks. For a
+  false positive, duplicate or already-fixed finding, reply with evidence and
+  explain why no further change is needed. Report any unresolved blocker.
+- Do not mark bot review threads resolved with the resolver. A maintainer can
+  decide the thread status after reading the reply. If a reply cannot be sent,
+  report that limitation rather than claiming it was posted.
+
 ## Common traps
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 - Editing `pstack/skills/hermesbot/SKILL.md` — edit
   `tools/assets/hermesbot/SKILL.md` and rebuild.
@@ -222,9 +260,16 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   `tools/assets/model-panel.json` and rebuild; `validate.py` checks they match.
 - "Fixing" Cursor mentions that are attribution or dual-load — correct as-is.
 - Rewriting hermes primitives back into Cursor vocabulary — bans catch this.
-- Install-update mechanics: root installs of `dist` keep `.git` and update
-  natively (`hermes plugins update pstack`); subdir installs of `master`'s
-  `pstack/` strip `.git` — reinstall only. Docs keep the routes distinct.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e369cdcbba20d961295a45ff0b75f01d9fd59605c87bb236b0f8637dba1acad1 -->
+
+- Install-update mechanics: unpinned `dist` root installs update through Git;
+  current Hermes re-clones tracked unpinned `master` subdirectory installs.
+  Both use `hermes plugins update pstack`. Older installs without recorded
+  source need recovery; pinned installs need an explicit new SHA and `--force`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 - Using Cursor IDE dual-load habits as the implementation or review path for
   hermes delivery — verify with convert → validate → doctor / hermes invoke.
 - Pointing hermes `skill_manage` / learning / self-evolution at **stock**
