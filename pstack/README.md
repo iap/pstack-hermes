@@ -7,17 +7,7 @@ package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
-
-If the default branch is `dist`, install the package at the repository root:
-
-```sh
-hermes plugins install iap/pstack-hermes --enable
-```
-
-If the default branch is `master`, install the generated subdirectory:
+The default branch is now `master`. Install the generated subdirectory:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
