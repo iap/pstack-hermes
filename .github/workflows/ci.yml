@@ -231,7 +231,7 @@ jobs:
 
       - name: Typecheck (poteto-mode scripts)
         working-directory: pstack/skills/poteto-mode/scripts
-        run: tsc --project watch-pr/tsconfig.json --noEmit --strict
+        run: bunx tsc --project watch-pr/tsconfig.json --noEmit --strict
 
   pr-checklist:
     # Advisory: reports whether the PR's machine-checkable claims hold. It never
