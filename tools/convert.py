@@ -2052,13 +2052,29 @@ notes:
                         shutil.copy2(dest, bpath)
                     backed_up.append(name)
             # Remove obsolete package entries that might exist
-            for name in ["plugin.yaml"]:  # old manifest name
+            for name in ["plugin.yaml", "plugin.json.bak"]:  # old manifest names
                 d = final_out / name
                 if d.exists() and name not in pkg_entries:
                     if d.is_dir():
                         shutil.rmtree(d)
                     else:
                         d.unlink()
+            # Also clean up known package dirs if missing from new build
+            for name in ["skills", "config", "assets"]:
+                if name not in pkg_entries:
+                    d = final_out / name
+                    if d.exists():
+                        # backup if exists
+                        bpath = backup_dir / name
+                        if d.is_dir():
+                            shutil.copytree(d, bpath)
+                        else:
+                            shutil.copy2(d, bpath)
+                        backed_up.append(name)
+                        if d.is_dir():
+                            shutil.rmtree(d)
+                        else:
+                            d.unlink()
             # Replace entries
             for item in out.iterdir():
                 dest = final_out / item.name
