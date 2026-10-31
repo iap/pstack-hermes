@@ -52,6 +52,8 @@ jobs:
           # The timestamp is volatile; all other provenance fields must match.
           test -f "$published/.build-provenance.txt"
           test -f pstack/.build-provenance.txt
+          grep -q '^converted_at: ' "$published/.build-provenance.txt"
+          grep -q '^converted_at: ' pstack/.build-provenance.txt
           sed '/^converted_at: /d' "$published/.build-provenance.txt" > "$RUNNER_TEMP/dist-provenance"
           sed '/^converted_at: /d' pstack/.build-provenance.txt > "$RUNNER_TEMP/build-provenance"
           diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
