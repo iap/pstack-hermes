@@ -156,24 +156,24 @@ def parse_frontmatter(text: str):
 
 
 def check_manifest(pkg: Path, rep: Report) -> dict:
-    p = pkg / "plugin.yml"
+    p = pkg / "plugin.yaml"
     if not p.is_file():
         p = pkg / "plugin.yaml"
     if not p.is_file():
-        rep.fail("root plugin.yml missing")
+        rep.fail("root plugin.yaml missing")
         return {}
     raw = p.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
-        rep.fail("root plugin.yml has a UTF-8 BOM")
+        rep.fail("root plugin.yaml has a UTF-8 BOM")
     if b"\r\n" in raw:
-        rep.fail("root plugin.yml contains CRLF")
+        rep.fail("root plugin.yaml contains CRLF")
     try:
         m = yaml.safe_load(raw.decode("utf-8"))
     except Exception as exc:
-        rep.fail(f"root plugin.yml is not valid UTF-8 YAML: {exc}")
+        rep.fail(f"root plugin.yaml is not valid UTF-8 YAML: {exc}")
         return {}
     if not isinstance(m, dict):
-        rep.fail("root plugin.yml is not a YAML object")
+        rep.fail("root plugin.yaml is not a YAML object")
         return {}
     if m.get("$schema") != SCHEMA_URL:
         rep.fail(f"$schema must be exactly {SCHEMA_URL!r}, got {m.get('$schema')!r}")
@@ -300,7 +300,7 @@ def check_encoding(pkg: Path, rep: Report) -> None:
 def check_layout(pkg: Path, rep: Report) -> None:
     for rel, label in [("README.md", "README.md"),
                        (".build-provenance.txt", ".build-provenance.txt"),
-                       ("plugin.yml", "plugin.yml")]:
+                       ("plugin.yaml", "plugin.yaml")]:
         if (pkg / rel).exists():
             rep.ok(f"present: {label}")
         else:
