@@ -68,30 +68,58 @@ jobs:
           PACKAGE_PATH: .
         run: |
           set -euo pipefail
-          # Both sides must hash the SAME path strings or they can never match:
-          # git reports "pstack/...", a cd+find reports "./...". Normalise both to
-          # the package-relative form before hashing.
+          # Package files only (repo root may also contain build tooling)
+          PACKAGE_FILES=(
+            "plugin.json"
+            "plugin.yaml"
+            "README.md"
+            "LICENSE"
+            "after-install.md"
+            ".build-provenance.txt"
+          )
           hash_git_tree() {
-            local prefix="$1/"
-            git ls-tree -r --name-only HEAD -- "$1" \
-              | grep -v '\.build-provenance\.txt$' \
-              | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "${f#"$prefix"}"
-                done \
-              | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
+            local root="$1"
+            {
+              for f in "${PACKAGE_FILES[@]}"; do
+                if git -C "$root" ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                fi
+              done
+              if git -C "$root" ls-files --error-unmatch skills >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- skills | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+              if git -C "$root" ls-files --error-unmatch config >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- config | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+              if git -C "$root" ls-files --error-unmatch assets >/dev/null 2>&1; then
+                git -C "$root" ls-tree -r --name-only HEAD -- assets | grep -v '/$' | while IFS= read -r f; do
+                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
+                done
+              fi
+            } | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
           hash_dir_tree() {
             local root="$1"
-            # GNU-only flags (sed -z) are deliberately avoided: this job also runs
-            # on windows-latest, where the shell is Git-bash but BSD/GNU userland
-            # differences have bitten this repo before.
-            ( cd "$root" && find . -type f ! -name ".build-provenance.txt" \
-                | sed 's|^\./||' \
-                | LC_ALL=C sort \
-                | while IFS= read -r f; do
+            (
+              cd "$root" && {
+                for f in plugin.json plugin.yaml README.md LICENSE after-install.md; do
+                  if [ -f "$f" ]; then
                     printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
-                  done \
-                | sha256sum | cut -d' ' -f1 )
+                  fi
+                done
+                for d in skills config assets; do
+                  if [ -d "$d" ]; then
+                    find "$d" -type f -print | sed 's|^\./||' | while IFS= read -r f; do
+                      printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
+                    done
+                  fi
+                done
+              }
+            ) | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
           }
           committed="$(hash_git_tree "$PACKAGE_PATH")"
           rebuilt_dir="$RUNNER_TEMP/pstack-rebuilt"

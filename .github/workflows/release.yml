@@ -58,6 +58,7 @@ jobs:
           sed '/^converted_at: /d' .build-provenance.txt > "$RUNNER_TEMP/build-provenance"
           diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
           rm -f "$published/.build-provenance.txt"
+          mkdir -p "$RUNNER_TEMP/release-built"
           cp -a plugin.yaml skills config assets README.md after-install.md LICENSE .build-provenance.txt "$RUNNER_TEMP/release-built"
           rm -f "$RUNNER_TEMP/release-built/.build-provenance.txt"
           diff -qr "$RUNNER_TEMP/release-built" "$published"
