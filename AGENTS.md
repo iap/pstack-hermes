@@ -1,3 +1,13 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:5a9bb58123eed2229ab514f3ae50284af772275f506e0c1efa0ff6cc825a33df -->
+
+<!-- coderabbit-ai-generated-section:v1:8f2748e92563f87c7ee659be543052bba4f28235ed4f49943c12c3a57b13902a -->
+
+<!-- coderabbit-ai-generated-section:v1:1f1ca519bebada9545e7979d5b65d9f357c0116b183de942d6bb1de830becd56 -->
+
+<!-- coderabbit-ai-generated-section:v1:102e84b05f8d8d4a44ae4ee9afe2278bd719d3e5d51f2ca6cb79940eafd85b8c -->
+
 # AGENTS.md
 
 > [!IMPORTANT]
@@ -14,7 +24,7 @@ Instructions for AI coding agents (and humans in a hurry) working **on this
 repository** to ship pstack onto hermes. End-user invoke/config:
 [docs/USING.md](docs/USING.md). PR/release/re-pin procedures:
 [CONTRIBUTING.md](CONTRIBUTING.md). Converter change ledger:
-[docs/ADAPTATIONS.md](docs/ADAPTATIONS.md).
+[adaptation register](https://github.com/iap/pstack-hermes/issues/94).
 
 ## The one rule that outranks everything else
 
@@ -74,7 +84,7 @@ Default home for work is **this repo**. Escalate only when the table says so.
 
 | If you need to… | Do this | Not this |
 |---|---|---|
-| Change skill prose, delegation wording, model panel, hermesbot, bans, docs, converter maps | Edit `tools/` / `tools/assets/` → rebuild → validate → (ledger row if converter changed) | Hand-edit `pstack/`; rewrite in Cursor vocabulary |
+| Change skill prose, delegation wording, model panel, hermesbot, bans, docs, converter maps | Edit `tools/` / `tools/assets/` → rebuild → validate → (adaptation issue if converter changed) | Hand-edit `pstack/`; rewrite in Cursor vocabulary |
 | Personal skill improvement or new procedures | Local skills, skill tap, or fork of this repo ([docs/USING.md](docs/USING.md)) | `skill_manage` against stock plugin skills; durable edits under the install tree |
 | Package validates / doctor is clean, but stock install misbehaves on hermes | File/fix in `NousResearch/hermes-agent`; `patches/` is **historical reference only** ([docs/PATCHES.md](docs/PATCHES.md)) | Paper over harness gaps with skill prose that claims nonexistent tools |
 | Bug reproduces on upstream Cursor pstack *without* this port | Route to `cursor/plugins` ([SECURITY.md](SECURITY.md)) | "Fix" it in the converter as if it were a port bug |
@@ -96,8 +106,8 @@ uv run --frozen ruff check tools
 
 Then:
 
-1. If the converter/maps/assets that shape the package changed → add a row to
-   [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) with a **reviewer check**, and
+1. If the converter/maps/assets that shape the package changed → create an adaptation issue linked to the
+   [preserved register](https://github.com/iap/pstack-hermes/issues/94) with a **reviewer check**, and
    include rebuilt `pstack/` in the same PR (`rebuilt from pin <sha>` in the body).
 2. If the change is **install-relevant** (manifest, skill discovery, package
    layout) → `hermes plugins doctor` against the **installed dist package**
@@ -125,7 +135,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | `pstack/.cursor-plugin/`, `pstack/agents/` | generated; inert on hermes | dual-load surface; leave as-is |
 | `tools/` | hand-written converter, validator, bans, scanner gate, tests | source of package truth |
 | `tools/assets/` | inputs the converter copies in (`model-panel.json`, `hermesbot/SKILL.md`) | edit here, then rebuild |
-| `docs/` | ADAPTATIONS ledger, USING, RUNBOOK, PATCHES | converter pass → new ADAPTATIONS row |
+| `docs/` | maintained instructions: usage, development, operations | plans and adaptations belong in GitHub issues |
 | `patches/` | historical hermes-fork patch reference | not required to load/install; see PATCHES.md |
 | `.github/` | CI, labeler, issue templates | pin SHA must stay in lock-step across workflows (enforced: `tools/check_pins.py`); workflow edits must pass actionlint, `tools/check_action_shell.py` and `tools/check_action_inputs.py`; action pins are bumped by dependabot (workflows and each composite action have their own entry), not by hand |
 | `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | hand-written | repo-level contract |
@@ -157,7 +167,7 @@ default / GitHub fallback), not a substitute for convert → validate → doctor
 When writing or editing converter output, docs, or tooling, speak **hermes**.
 CI scans every decodable package file (`tools/bans.py` +
 `HERMES_ADAPTATION_BANS` in `tools/validate.py`). Rationale:
-[docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) §2.
+[adaptation register](https://github.com/iap/pstack-hermes/issues/94) §2.
 
 | Use on hermes | Banned / upstream alias (do not ship) |
 |---|---|
@@ -193,17 +203,56 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 - **Two version lines.** Package keeps upstream identity `0.15.5`; repo
   releases are `v0.4.x` in `CHANGELOG.md`. Never mix them.
 - **Encoding.** LF-only, no BOM, UTF-8 (`.gitattributes` + `validate.py`).
-- **Converter changes are documented.** New pass/map → ADAPTATIONS row with
+- **Converter changes are tracked in issues.** New pass/map → adaptation issue with
   reviewer check + rebuilt `pstack/` in the same PR.
 - **Excluded upstreams stay excluded.** `automations/benny` and
   `skills/make-bot-ui` omitted (slot filled by repo-owned `hermesbot`).
-- **The `dist` branch is build output (and the default branch).** It is
-  written only by CI (`publish-dist.yml`), append-only. Never hand-edit or
-  hand-push `dist`; never publish to any other repository. Root installs of
-  `dist` are the supported route; a root install of the `master` dev tree is
-  impossible (the install scanner flags `tools/`).
+- **`master` is the intended default development branch.** Restore it after
+  this migration merges. `dist` remains CI-owned append-only compatibility
+  output. Never rewrite or delete it while installed clones depend on it.
+- **GitHub owns planning.** Proposals, adaptation records, reviewer checks and
+  delivery plans live in issues, native sub-issues and milestones. `docs/`
+  contains maintained instructions, not parallel task state.
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:20bac8af517d82fdb234c1320f75a1dba0278db5aa0318bf9a41ccdb7a3e6aec -->
+
+## Identity and installation goal
+
+The project and plugin are named `pstack`. The canonical GitHub repository
+and project slug are `iap/pstack-hermes` and `pstack-hermes`, respectively.
+Keep the current GitHub URL; do not create or rename a repository to provide an
+install alias.
+
+The desired command is `hermes plugins install iap/pstack --enable` from this
+repository. Current Hermes interprets it as GitHub repo `iap/pstack`; it is
+not a catalog alias for this project. [Issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks making the exact command work without a second repository. Keep the
+verified current-repository install paths documented until that is proven on
+a released Hermes version. Check the current default branch before choosing a
+root or `pstack/` subdirectory install; pin and update behavior differ.
+
+## Bot review findings
+
+- Inspect each finding against the pre-change contract, current code, callers,
+  tests and the current review thread. Check whether it is already fixed,
+  duplicated, outdated, incorrect or blocked before changing behavior.
+- For a valid finding, implement the compatible fix and run the relevant
+  checks. If it conflicts with the contract or needs a decision, explain the
+  conflict and seek the necessary clarification; do not weaken a contract to
+  satisfy a bot.
+- Reply in the same bot review thread with what changed and why, the commit or
+  code reference and verification results, including blocked checks. For a
+  false positive, duplicate or already-fixed finding, reply with evidence and
+  explain why no further change is needed. Report any unresolved blocker.
+- Do not mark bot review threads resolved with the resolver. A maintainer can
+  decide the thread status after reading the reply. If a reply cannot be sent,
+  report that limitation rather than claiming it was posted.
 
 ## Common traps
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 - Editing `pstack/skills/hermesbot/SKILL.md` — edit
   `tools/assets/hermesbot/SKILL.md` and rebuild.
@@ -211,9 +260,16 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   `tools/assets/model-panel.json` and rebuild; `validate.py` checks they match.
 - "Fixing" Cursor mentions that are attribution or dual-load — correct as-is.
 - Rewriting hermes primitives back into Cursor vocabulary — bans catch this.
-- Install-update mechanics: root installs of `dist` keep `.git` and update
-  natively (`hermes plugins update pstack`); subdir installs of `master`'s
-  `pstack/` strip `.git` — reinstall only. Docs keep the routes distinct.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e369cdcbba20d961295a45ff0b75f01d9fd59605c87bb236b0f8637dba1acad1 -->
+
+- Install-update mechanics: unpinned `dist` root installs update through Git;
+  current Hermes re-clones tracked unpinned `master` subdirectory installs.
+  Both use `hermes plugins update pstack`. Older installs without recorded
+  source need recovery; pinned installs need an explicit new SHA and `--force`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 - Using Cursor IDE dual-load habits as the implementation or review path for
   hermes delivery — verify with convert → validate → doctor / hermes invoke.
 - Pointing hermes `skill_manage` / learning / self-evolution at **stock**
@@ -221,3 +277,6 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
   or a dist fork; durable package changes go through the converter
   (see [docs/USING.md](docs/USING.md)).
 - Implementing GitLab (`glab`) or treating it as an active milestone — halted.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

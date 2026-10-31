@@ -36,10 +36,38 @@ jobs:
         with:
           upstream-pin: ${{ env.UPSTREAM_PIN }}
 
+      - name: Verify release source and published package
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin master dist
+          source_sha="$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$source_sha" origin/master
+          package_sha="$(git rev-parse origin/dist)"
+          published="$RUNNER_TEMP/release-dist"
+          mkdir -p "$published"
+          git archive "$package_sha" | tar -x -C "$published"
+          # Ignore dist-only compatibility metadata when comparing the package.
+          rm -rf "$published/.github" "$published/.gitattributes"
+          # The timestamp is volatile; all other provenance fields must match.
+          test -f "$published/.build-provenance.txt"
+          test -f pstack/.build-provenance.txt
+          grep -q '^converted_at: ' "$published/.build-provenance.txt"
+          grep -q '^converted_at: ' pstack/.build-provenance.txt
+          sed '/^converted_at: /d' "$published/.build-provenance.txt" > "$RUNNER_TEMP/dist-provenance"
+          sed '/^converted_at: /d' pstack/.build-provenance.txt > "$RUNNER_TEMP/build-provenance"
+          diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
+          rm -f "$published/.build-provenance.txt"
+          cp -a pstack "$RUNNER_TEMP/release-built"
+          rm -f "$RUNNER_TEMP/release-built/.build-provenance.txt"
+          diff -qr "$RUNNER_TEMP/release-built" "$published"
+          echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+
       - name: Package plugin
         run: |
           zip -r pstack-"${TAG_NAME}".zip pstack/
-          echo "packaged: $(ls -lh pstack-"${TAG_NAME}".zip)"
+          sha256sum pstack-"${TAG_NAME}".zip > SHA256SUMS
         env:
           TAG_NAME: ${{ github.ref_name }}
 
@@ -58,7 +86,21 @@ jobs:
             echo "" >> RELEASE_NOTES.md
             echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> RELEASE_NOTES.md
           fi
-          cat RELEASE_NOTES.md
+          {
+            echo ""
+            echo "## Verified package"
+            echo "Source commit: $SOURCE_SHA"
+            echo "Package commit: $PACKAGE_SHA"
+            echo '```sh'
+            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --enable"
+            echo '```'
+            echo "To move an existing pinned install to this release:"
+            echo '```sh'
+            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --force --enable"
+            echo '```'
+            echo "Unpinned installs: hermes plugins update pstack"
+            echo "Verify the ZIP with: sha256sum --check SHA256SUMS"
+          } >> RELEASE_NOTES.md
         env:
           TAG_NAME: ${{ github.ref_name }}
 
@@ -68,7 +110,7 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           gh release create "$TAG_NAME" \
-            pstack-"$TAG_NAME".zip \
-            --title "pstack-hermes $TAG_NAME" \
+            pstack-"$TAG_NAME".zip SHA256SUMS \
+            --title "pstack $TAG_NAME" \
             --notes-file RELEASE_NOTES.md \
             --verify-tag

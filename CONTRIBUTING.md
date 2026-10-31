@@ -1,3 +1,15 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:42b6141d38bacc37685835b7e9b858945dfa08a0743f5c7fe61c096a1dd30784 -->
+
+<!-- coderabbit-ai-generated-section:v1:ebc283da134d7475cca68f35bb3583ad31c7e109d1b7de7f8bf52001bc95c7a6 -->
+
+<!-- coderabbit-ai-generated-section:v1:f07db69766104967cc27b575968211c722f833bde62f42f3048e74bdde0d0575 -->
+
+<!-- coderabbit-ai-generated-section:v1:e35bc2f6b95555feb97dcf319b0170b52dcd6e40c6e8aa7b01ff69a5e847b288 -->
+
+<!-- coderabbit-ai-generated-section:v1:4d11144e6dca943b2c50a4192621fb844dce6ac8084b9f6b30a976eb3574d2a9 -->
+
 # Contributing
 
 Thanks for helping port and maintain pstack on hermes. The repo is small and
@@ -15,7 +27,7 @@ the contract is strict — read this once and the CI will never surprise you.
 |---|---|
 | [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
-| [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) | the ledger: every conversion pass and its reviewer check |
+| [adaptation register](https://github.com/iap/pstack-hermes/issues/94) | the ledger: every conversion pass and its reviewer check |
 | [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) | re-pinning procedure when upstream moves |
 | [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
@@ -70,34 +82,16 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    directory, elsewhere it can resolve to an installed package. For branch
    verification, pass the resolved local path (`$(pwd)/pstack`); for the
    installed dist package, use the name as installed.
-4. **Publish** — on every push to `master`,
-   [publish-dist.yml](.github/workflows/publish-dist.yml) re-runs
-   convert → validate → scanner gate and appends the built tree to
-   the `dist` branch of this same repository (append-only commits). `dist`
-   is the **default branch**, so `hermes plugins install iap/pstack-hermes`
-   clones it root-level and `hermes plugins update pstack` fast-forwards
-   installed clones. No second repository; build output is never edited by
-   hand. The branch also carries the default-branch shims that cannot live
-   on a non-default branch: `scheduler.yml` (GitHub fires `schedule` only for
-   files on the default branch; it dispatches the weekly drift watchers on
-   `master`), `labeler.yml` (the same rule for `pull_request_target`), and
-   `.github/dependabot.yml` (dependabot reads its configuration from the
-   default branch; its `target-branch: master` keeps scans and PRs on the dev
-   tree). All three are bootstrapped once with a user credential (bot tokens
-   cannot push workflow files) and the publisher never touches `.github/` on
-   `dist`. Re-bootstrap sources: `tools/assets/dist-scheduler.yml`,
-   `.github/workflows/labeler.yml` **and the label config `.github/labeler.yml`**
-   (the labeler resolves its config via the API at the default-branch ref -
-   verified live: without the config copy on `dist` its first run 404'd), and
-   `.github/dependabot.yml`.
-   Recovery for dispatch-only workflows (not shown in the Actions UI because
-   it lists the default branch): `gh workflow run <file> --ref master`.
+4. **Publish** — pushes to `master` build and validate the append-only
+   `dist` compatibility channel. Only converted_at-only changes are skipped; changes to source_commit or the converter hash still publish.
+   Existing unpinned installs can continue fast-forward updates.
+   `master` is the intended default branch; drift schedules, labeler and
+   Dependabot run directly there. No default-branch scheduler shim is needed.
 
 ## Repository contract
 
-- The default branch is `dist` (build output). Open PRs explicitly against
-  `master` (`gh pr create --base master`; the GitHub UI needs `base: master` set
-  manually).
+- Target `master` for development PRs. Restore it as the default after this
+  migration merges; keep `dist` append-only for installed clones.
 
 - `pstack/` is **generated content** — never hand-edit; change the converter
   and rebuild. Provenance (`.build-provenance.txt`) must record the pinned
@@ -109,7 +103,7 @@ bun run typecheck                         # deps + tsc --noEmit --strict
   work is © the pstack-hermes-port contributors.
 - Fork patches live in `patches/` with documentation in
   [docs/PATCHES.md](docs/PATCHES.md); the drafted upstream PR text is
-  [docs/UPSTREAM-PR.md](docs/UPSTREAM-PR.md).
+  [historical proposal](https://github.com/iap/pstack-hermes/issues/95).
 
 ## GitHub Actions & workflow policy
 
@@ -168,9 +162,8 @@ one has already caught (or would have caught) a real defect here.
    `DELEGATION_MAP`; passes register in `st.fixes`).
 2. Rebuild: `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack`
    — a dead anchor fails here on purpose.
-3. Add a row to [docs/ADAPTATIONS.md](docs/ADAPTATIONS.md) (pass, what it
-   changes, source of truth, **reviewer check**). A row without a reviewer
-   check is a claim, not documentation.
+3. Create an adaptation issue linked to the [preserved register](https://github.com/iap/pstack-hermes/issues/94),
+   recording the pass, scope, source of truth and **reviewer check**.
 4. If the pass has a checkable scope, add a unit test
    (`tools/tests/test_t11_scope.py` is the pattern).
 5. `uv run --frozen tools/validate.py` and the full local suite, then PR with
@@ -206,14 +199,28 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 
 ### Release
 
-1. Add the `CHANGELOG.md` section for the new `v0.4.x` version (the repo
-   release line; the package itself keeps the upstream `0.15.5` and is never
-   renumbered).
-2. Tag `v*`; [release.yml](.github/workflows/release.yml) rebuilds from the
-   pin, validates, runs the scanner gate, zips `pstack-<version>.zip`, and
-   writes the release body from the CHANGELOG section.
-3. Nothing is built locally for a release — the workflow is the only
-   publisher.
+1. Merge the release changes to `master`, including the `CHANGELOG.md`
+   section for the `v0.4.x` tooling version. Package version stays upstream's.
+2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
+3. `release.yml` rebuilds and validates, checks that the package matches the
+<!-- coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
+   published `dist` commit, including provenance except `converted_at`, and
+   creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
+   package install command.
+<!-- /coderabbit-ai-generated:v1 -->
+   A lagging or different dist tree fails release creation; rerun after publish.
+4. Close the milestone once all acceptance checks pass. Link issues and PRs
+   in release notes. Never move an existing release tag.
+
+### Plan and adaptation tracking
+
+Create issues for proposals, implementation plans and adaptation decisions.
+Each includes motivation, scope, acceptance criteria and reviewer checks.
+Split independent work into native sub-issues and use milestones for outcomes.
+A converter PR links its adaptation issue and includes the generated package;
+retain the [existing contracts](https://github.com/iap/pstack-hermes/issues/94).
+Do not keep parallel plans or adaptation ledgers in `docs/`.
 
 ## Pull requests
 
@@ -276,3 +283,6 @@ template, issue bodies). They carry more weight than a plain `> Note.` block.
   callout convention there as a hand-edit rule — it would be wiped on the next
   build. If alerts belong in package prose, that's a converter change (and an
   upstream-drift consideration), not a CONTRIBUTING note.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

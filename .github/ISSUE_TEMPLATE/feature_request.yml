@@ -5,8 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        For roadmap-level suggestions, note that the port follows the
-        adaptation ledger's staging (see the repo's docs). Concrete, scoped
+        For roadmap-level suggestions, use GitHub issues and milestones. Concrete, scoped
         suggestions with an acceptance criterion are the most actionable.
   - type: dropdown
     id: area

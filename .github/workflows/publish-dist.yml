@@ -1,29 +1,4 @@
-# Publish: append the built package to the `dist` branch of THIS repository.
-#
-# `dist` is the install source and is set as the repository's DEFAULT branch,
-# so `hermes plugins install iap/pstack-hermes` clones exactly this tree
-# (plugin.json at root) and `hermes plugins update pstack` is a fast-forward
-# `git pull` on the installed clone. There is no second repository.
-#
-# Publishes are APPEND-ONLY commits on top of `dist` - never a history rewrite
-# (update = git pull --ff-only on every install, so a rewritten remote would
-# break every user's in-place update).
-#
-# The dev tree (tools/, .github, docs) stays on `master`; only the validated
-# `pstack/` output is synced onto `dist`. This publisher NEVER touches
-# `dist/.github/`: bot tokens cannot push workflow files, so the
-# default-branch shims that cannot live on a non-default branch were
-# bootstrapped once with a user credential and are left alone - the scheduler
-# stub (.github/workflows/scheduler.yml - it dispatches the weekly drift
-# watchers on `master`, because GitHub fires `schedule` only from the default
-# branch), the labeler workflow, and the dependabot config. Re-bootstrap
-# sources are listed in CONTRIBUTING.
-#
-# Manual recovery: the Actions UI lists workflows from the default branch
-# only, so this file's 'Run workflow' button is not shown there - trigger it
-# against `master` from the CLI instead (verified working):
-#   gh workflow run publish-dist.yml --ref master
-
+# Append-only compatibility output for existing dist installs.
 name: publish-dist
 
 on:
@@ -93,8 +68,12 @@ jobs:
             echo "::error::staged dist tree fails the consumer checkout check - refusing to publish"
             exit 1
           fi
-          if git -C "$dist" diff --cached --quiet; then
-            echo "dist tree unchanged - nothing to publish"
+          # Skip only when the sole change is the converted_at timestamp in
+          # .build-provenance.txt. A new pin or converter revision that changes
+          # source_commit, converter hash, or any other provenance field must
+          # still publish so dist's build record stays current.
+          if git -C "$dist" diff --cached --quiet -- . ":(exclude).build-provenance.txt" && ! git -C "$dist" diff --cached -- .build-provenance.txt | grep -E '^[-+]' | grep -vE '^[-+]{3}' | grep -qv 'converted_at:'; then
+            echo "no package change (provenance stamp only) - nothing to publish"
             exit 0
           fi
 

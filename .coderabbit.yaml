@@ -1,0 +1,7 @@
+# CodeRabbit configuration
+# Disable the "Review skipped" status message since auto-reviews
+# are managed via the CodeRabbit UI, not auto-triggered on PRs.
+reviews:
+  review_status: false
+  auto_review:
+    enabled: false

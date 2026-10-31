@@ -16,7 +16,7 @@ body:
       options:
         - README
         - CONTRIBUTING.md
-        - docs/ADAPTATIONS.md, docs/RUNBOOK-upstream-drift.md, docs/USING.md
+        - docs/RUNBOOK-upstream-drift.md, docs/USING.md
         - skill prose (shipped in pstack/)
         - other
     validations:

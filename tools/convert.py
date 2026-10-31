@@ -1837,14 +1837,34 @@ package keeps the upstream identity pstack v{manifest['version']}.*
 
 ## Install
 
+Choose the command for the current default branch shown on the
+[repository page](https://github.com/iap/pstack-hermes). During the migration
+it may be `dist` or `master`.
+
+If the default branch is `dist`, install the package at the repository root:
+
 ```sh
 hermes plugins install iap/pstack-hermes --enable
 ```
 
-The repository's default branch is `dist` - the built package CI produces
-from the pinned upstream. Root installs keep `.git`, so `hermes plugins
-update pstack` fast-forwards it. Pin a commit with `--ref <40-character
-SHA>` for an immutable install.
+If the default branch is `master`, install the generated subdirectory:
+
+```sh
+hermes plugins install iap/pstack-hermes/pstack --enable
+```
+
+Both unpinned installs update with `hermes plugins update pstack`. Existing
+`dist` clones remain on `dist` after the default branch changes.
+
+Legacy subdirectory installs from older Hermes versions may lack source
+metadata and cannot auto-update. Upgrade Hermes to a version that records
+source metadata, back up local edits, then reinstall with `--force`:
+if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
+if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+
+GitHub Releases record package SHAs for immutable root installs. Pinned
+installs do not auto-update; to move an existing pin, use `hermes plugins
+install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
 
 ## First run
 
@@ -1870,15 +1890,15 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Root installs keep `.git`: this pulls the latest published build and
-autostashes uncommitted local skill edits. A legacy subdir install
-(`iap/pstack-hermes/pstack`) strips `.git` - reinstall it with
-`hermes plugins install iap/pstack-hermes/pstack --force`.
+Hermes updates unpinned `dist` root installs and `master` subdirectory
+installs. Root installs use Git; subdirectory installs are re-cloned from the
+recorded source. Pinned installs must be reinstalled with a new SHA and `--force`.
 
 ## Customizing skills
 
 - **Tweak a line or two** — edit the installed `SKILL.md`, restart the
-  gateway, keep the edit uncommitted (updates autostash it).
+  gateway, and save a backup outside the plugin before updating. Subdirectory
+  updates replace shipped skills; in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
   your fork's subdir (`hermes plugins install <you>/pstack-hermes/pstack --enable`).
 - **Add your own new skills alongside** — a skill tap:
@@ -1931,7 +1951,7 @@ Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 Text is otherwise unchanged; the machine-generated fix register in
 `.build-provenance.txt` is the authoritative per-build record, and the full
 ledger with reviewer checks lives in the dev repo
-(`iap/pstack-hermes`, `docs/ADAPTATIONS.md`).
+(https://github.com/iap/pstack-hermes/issues/94).
 
 ## Known limitations (documented, not drift)
 
@@ -1969,9 +1989,11 @@ ledger with reviewer checks lives in the dev repo
 Skills are opt-in on the portable path: load one with
 `skill_view agent-plugin-pstack-<digest>:<skill>`, or add this package's
 `skills/` dir to `skills.external_dirs` in the hermes config for
-`/<name>` slash commands. Update with `hermes plugins update pstack` (root installs; a legacy subdir
-install reinstalls with `--force` instead).
-Docs: <https://github.com/iap/pstack-hermes#readme>
+`/<name>` slash commands. Update an unpinned install with
+`hermes plugins update pstack`. Pinned installs require a new SHA and `--force`.
+Legacy subdirectory installs without source metadata: upgrade Hermes, back
+up local edits, then reinstall with `--force` (`iap/pstack-hermes` for `dist`,
+`iap/pstack-hermes/pstack` for `master`). Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
     st.files_copied += 1

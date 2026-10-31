@@ -1,3 +1,9 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ecd31f90ae3b095a6fc30d12b7919a6ea7c76eaf1ddf65fb6fdf28ec15b3394a -->
+
+<!-- coderabbit-ai-generated-section:v1:4589d1edd22a56a6c706b747698a9dd17a7da3b950efbcf2b21dcd395fe17f67 -->
+
 # Using pstack on hermes
 
 > [!NOTE]
@@ -68,7 +74,7 @@ incomplete when `gt` is unavailable rather than inventing a substitute.
 - **External prerequisites stay external.** Some playbooks name tooling this
   package does not ship (a deslop pass, live control-surface drivers) and some
   capabilities are approximated for hermes (see the package README's Known
-  limitations and [ADAPTATIONS.md](ADAPTATIONS.md)). When a demanded live lane
+  limitations and [adaptation register](https://github.com/iap/pstack-hermes/issues/94)). When a demanded live lane
   is unavailable, a verdict is *incomplete*, not clean.
 - **MCP-dependent skills adapt.** Research skills draw on whichever MCP servers
   your session has configured; unreachable sources are recorded as null
@@ -84,8 +90,11 @@ Pick by what you want to change — one of three durable routes:
 
 | Intent | Route | Notes |
 |---|---|---|
-| Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Keep edits **uncommitted** so `hermes plugins update` can autostash/reapply; `dist` publishes overwrite the installed tree otherwise. Not a durable learning path. |
-| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes --enable`. Merge upstream when you choose. |
+<!-- coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
+| Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Back up edits outside the plugin before updating. Subdirectory updates replace shipped skills; in-place edits are not durable. |
+<!-- /coderabbit-ai-generated:v1 -->
+| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Requires your fork default branch to contain the generated `pstack/` subdirectory (master or a branch with the build). Merge upstream when you choose. |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
 Structural changes that must survive upstream re-pins (new adaptations,
@@ -115,7 +124,10 @@ that reproduces without this port → `cursor/plugins`.
 
 ## See also
 
-- [ADAPTATIONS.md](ADAPTATIONS.md) — what changed from upstream and why
+- [adaptation register](https://github.com/iap/pstack-hermes/issues/94) — what changed from upstream and why
 - [RUNBOOK-upstream-drift.md](RUNBOOK-upstream-drift.md) — re-pinning procedure
 - [PATCHES.md](PATCHES.md) — hermes-fork patches (historical)
 - [AGENTS.md](../AGENTS.md) — agent rules for working on this repository
+
+
+<!-- /coderabbit-ai-generated:v1 -->
