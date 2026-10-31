@@ -1,5 +1,9 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:9e1d3a4795ece5fa546594a83d3008b5c173775d3506d748a7d5c314123f7076 -->
+
+<!-- coderabbit-ai-generated-section:v1:858ad048287b1fb6296871e1a352247179e98f4f41156756141cb8433dcd01bd -->
+
 <!-- coderabbit-ai-generated-section:v1:42b6141d38bacc37685835b7e9b858945dfa08a0743f5c7fe61c096a1dd30784 -->
 
 <!-- coderabbit-ai-generated-section:v1:ebc283da134d7475cca68f35bb3583ad31c7e109d1b7de7f8bf52001bc95c7a6 -->
@@ -9,6 +13,32 @@
 <!-- coderabbit-ai-generated-section:v1:e35bc2f6b95555feb97dcf319b0170b52dcd6e40c6e8aa7b01ff69a5e847b288 -->
 
 <!-- coderabbit-ai-generated-section:v1:4d11144e6dca943b2c50a4192621fb844dce6ac8084b9f6b30a976eb3574d2a9 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:2d5abf97c485b14941c6ae49a68bca71fe2a94aa89ed29961d89c33297d34a8a -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:60bd12a6b894b51c496056be7712234a2f30bb75beb508c4d6b035ab0e92fafa -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:95babb3f5bd08ee58c37bb0f5ee6a70ee2f80d9904f8a9686ed569703f80fb37 -->
+
+<!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 # Contributing
 
@@ -69,7 +99,7 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    repo YAML → gold manifest → gold load). The static stage includes the
    **hermes adaptation contract** (no inert `persona:` blocks, no stale
    runtime claims, no Cursor tool names, no transcript paths, no cloud-worker
-   wording, no Cursor-style auto selectors in shipped skills), the
+   wording, no Cursor-style auto selectors or implicit inline-shell execution in shipped skills), the
    banned-construct scan, and the model-panel checks (panel == shipped
    `config/models.json`, provider-qualified slugs, per-role value shapes,
    no duplicate concrete slugs inside an array role). The expected skill
@@ -85,13 +115,13 @@ bun run typecheck                         # deps + tsc --noEmit --strict
 4. **Publish** — pushes to `master` build and validate the append-only
    `dist` compatibility channel. Only converted_at-only changes are skipped; changes to source_commit or the converter hash still publish.
    Existing unpinned installs can continue fast-forward updates.
-   `master` is the intended default branch; drift schedules, labeler and
+   `master` is the default branch; drift schedules, labeler and
    Dependabot run directly there. No default-branch scheduler shim is needed.
 
 ## Repository contract
 
-- Target `master` for development PRs. Restore it as the default after this
-  migration merges; keep `dist` append-only for installed clones.
+- Target the default `master` branch for development PRs; keep `dist`
+  append-only for installed clones.
 
 - `pstack/` is **generated content** — never hand-edit; change the converter
   and rebuild. Provenance (`.build-provenance.txt`) must record the pinned
@@ -199,19 +229,21 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 
 ### Release
 
-1. Merge the release changes to `master`, including the `CHANGELOG.md`
-   section for the `v0.4.x` tooling version. Package version stays upstream's.
-2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
-3. `release.yml` rebuilds and validates, checks that the package matches the
-<!-- coderabbit-ai-generated:v1 -->
-<!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
-   published `dist` commit, including provenance except `converted_at`, and
-   creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
-   package install command.
-<!-- /coderabbit-ai-generated:v1 -->
-   A lagging or different dist tree fails release creation; rerun after publish.
-4. Close the milestone once all acceptance checks pass. Link issues and PRs
-   in release notes. Never move an existing release tag.
+1. Merge release changes to `master`, including a nonempty `CHANGELOG.md`
+   section matching the intended `v<semver>` tag. Package version stays upstream's.
+2. Wait for CI and `publish-dist` to succeed for that source commit. Create the
+   version tag on that commit; never move an existing release tag.
+3. `release.yml` rebuilds and validates, checks that the source belongs to
+   `master` and that payload and provenance (except `converted_at`) match the
+   published `dist` commit, then creates a GitHub Release with ZIP, SHA-256
+   checksum, source SHA and immutable package install command. Missing changelog
+   notes or a lagging/different dist tree fail release creation; fix the cause
+   before rerunning. The release tag points to source; install using the recorded
+   **Package commit** SHA.
+4. Download both release assets and run `sha256sum --check SHA256SUMS`.
+   Verify the recorded package SHA and installed-plugin doctor before closing
+   delivery issues. Link issues and PRs in release notes. Close a milestone only
+   when every acceptance criterion is verified; an external dependency remains open.
 
 ### Plan and adaptation tracking
 

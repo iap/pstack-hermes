@@ -91,7 +91,7 @@ Don't strengthen everything. Keep `T[]` when every operation on it is total:
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0); // [] is 0, fine
 ```
 
-Strengthen when the loose type forces a lie at a use site. The tells are `!`, `arr[0] as T`, and a "should never happen" throw:
+Strengthen when the loose type forces a lie at a use site. The tells are non-null assertions, `arr[0] as T`, and a "should never happen" throw:
 
 ```ts
 // Don't: partiality smuggled past the compiler

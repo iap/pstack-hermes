@@ -1,16 +1,49 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:bc52460835cd522d99ddd4a504209a2d8ae6e688666d08e32da4bd6c8fa4e52a -->
+
+<!-- coderabbit-ai-generated-section:v1:de7c22e12df268706580a8f7dcf3d304ec3521aefe90a34caae18025b2ff1a4b -->
+
+<!-- coderabbit-ai-generated-section:v1:e1fb364e71a23654dd438d694ed89dc5f51b650c14ec645200734d11cc32d59d -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ca124a1e0c13e377a9113b401c2803d01cbb893a4900e0e3eea4fda04c24d772 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:695839387d2abc2c65bed3f6115897c21ef5573422d5ba181cd54e42cbb8330c -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
 # Changelog
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Prevent TypeScript non-null assertion prose from opening Hermes inline-shell expansion on skill view. Adapt the exact phrase through the converter and reject executable snippets in content-only skills (#107); keep scanner consent enabled.
+- Complete the master-default documentation transition in repository instructions and converter-generated install guidance; distinguish project name `pstack` from repository slug `pstack-hermes`. Restore Markdown table/list rendering and retain historical adaptation references in GitHub issues.
+- Isolate every release-test subprocess from inherited Git repository variables and cover provenance-only publisher changes. Require versioned changelog notes before publishing a release.
+
+## [0.5.0] - 2026-10-31
+
 ### Changed
-- Restructure round for the native-hermes install model: the README leads with the native `hermes plugins` install/update path (development tree now on `master`), the issue forms are project-only — the dual-load platform dropdown is replaced by an install-route field and the upstream-method contact link now points at this repo's user guide — and `docs/MODELS.md` documents the provisional upstream-name → hermes-default model mapping (code/judgment/reviewer roles) alongside the shipped panel.
-- The `master` rename is wired end to end: CI and publish triggers filter on `master`, the drift-watcher scheduler stub dispatches `ref=master` (source asset and dist copy), and the CONTRIBUTING/AGENTS install-route references are updated. The dist default-branch shims are now documented as a set — scheduler, labeler, dependabot — with their re-bootstrap sources.
+- Restore `master` as the default development branch. New installs use the generated `pstack/` subdirectory; existing `dist` clones retain append-only updates. Default-branch drift schedules, labeler and Dependabot now run on `master`; historical metadata on `dist` is retained for compatibility.
+- Move adaptation and proposal records to issues #94/#95 and planning to native sub-issues and milestones (#96). Documentation contains maintained usage, development and operations instructions.
+- GitHub Releases provide the package ZIP, SHA256SUMS and immutable source/package SHAs. Release delivery rebuilds from the upstream pin and checks payload and provenance against `dist`; only timestamp-only changes skip dist publishing (#89/#97).
+- Preserve project/plugin name `pstack` and repository slug `pstack-hermes`. The requested `iap/pstack` shorthand remains tracked in #100; no second repository or rename is used.
+- Project issue forms identify the installation route; `docs/MODELS.md` documents the provisional upstream-name to Hermes-default model mapping.
 
 ### Fixed
-- Labeler restored after the default-branch flip: `pull_request_target` fires only from the default branch, so it had silently stopped labeling PRs. `dist` now carries the labeler workflow **and** its config (the action resolves `configuration-path` via the API at the default-branch ref - the first shim run 404'd without it) plus the dependabot config (`target-branch: master`). Verified live: a probe PR received its labels again, and the drift-watcher stub dispatches `ref=master`.
-- `labels-bootstrap` could never succeed: the job has no checkout, so its `gh label` calls failed with "not a git repository" (both recorded runs failed the same way). It now passes `GH_REPO` explicitly, so the ensure-labels recovery path works.
+- `labels-bootstrap` supplies `GH_REPO` explicitly when no checkout is available. Workflow pins and composite-action checks remain enforced.
 
 ## [0.4.4] - 2026-10-06
 
@@ -25,7 +58,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ### Changed
 - Repository Actions policy tightened (settings, not files): allowed actions are now an allowlist - GitHub-owned actions plus `astral-sh/setup-uv@*` and `oven-sh/setup-bun@*` - with `sha_pinning_required` still on, and the default `GITHUB_TOKEN` can no longer create or approve pull requests. Introducing any other action now requires a deliberate settings change. CONTRIBUTING documents the policy and the "add to the allowlist first" rule; its `UPSTREAM_PIN` lock-step bullet is corrected from three files to four (`publish-dist.yml` was missing after the publisher rename).
 - **Single-source installs.** The package now installs from this one repository: the built tree is published to its `dist` branch, which is the repository's default branch, so `hermes plugins install iap/pstack-hermes` works root-level and `hermes plugins update pstack` updates natively. The separate dist repo is retired; no second repository is ever published. (A `main`-subdir install of `pstack/` remains as a legacy pinned-style alternative.) `dist` also carries a scheduler stub so the weekly drift watchers keep firing despite the default-branch flip; manual recovery for dispatch-only workflows is `gh workflow run <file> --ref main`.
-- **Re-pin to upstream `c47b1284` (pstack v0.15.5); `pstack/` rebuilt.** Every converter anchor was re-anchored or pruned against the new upstream text (36 dead anchors at the new pin -> 0; `T8`-`T14` + delegation), **F16 retired** (upstream now ships the slug-agnostic lane check itself), `reflect`'s 4-column reviewer table adopted with the upstream `budget` key in the setup-written panel shape, and the two new upstream principles ported (`principle-attack-the-premise`, `principle-test-behavior-not-implementation`) - 45 -> 47 skills. Prose model defaults refreshed (`grok-4.7-xhigh-fast`, `claude-opus-5-5-max`); the shipped panel keeps its vendor-qualified verified slugs. `UPSTREAM_PIN` bumped in all four workflows (lock-step enforced by `tools/check_pins.py`); details and the triage correction (no `skills/orchestrate` ever existed) tracked in issue #94.
+- **Re-pin to upstream `c47b1284` (pstack v0.15.5); `pstack/` rebuilt.** Every converter anchor was re-anchored or pruned against the new upstream text (36 dead anchors at the new pin -> 0; `T8`-`T14` + delegation), **F16 retired** (upstream now ships the slug-agnostic lane check itself), `reflect`'s 4-column reviewer table adopted with the upstream `budget` key in the setup-written panel shape, and the two new upstream principles ported (`principle-attack-the-premise`, `principle-test-behavior-not-implementation`) - 45 -> 47 skills. Prose model defaults refreshed (`grok-4.7-xhigh-fast`, `claude-opus-5-5-max`); the shipped panel keeps its vendor-qualified verified slugs. `UPSTREAM_PIN` bumped in all four workflows (lock-step enforced by `tools/check_pins.py`); details and the triage correction (no `skills/orchestrate` ever existed) preserved in the [adaptation register](https://github.com/iap/pstack-hermes/issues/94), section 4.
 - Docs / agent policy (Phase A, no package rebuild): `AGENTS.md` and `docs/USING.md` codify the stock-skills write surface — Hermes self-improvement (`skill_manage` / learning) targets local skills, skill taps, or a dist fork, not stock plugin skills. Stack forge freeze: **Graphite (`gt`) default**, **GitHub (`gh`) fallback**, **GitLab (`glab`) halted**. README Known limitations aligned (was incorrectly describing Graphite as optional-only).
 
 ### Fixed
@@ -71,7 +104,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [0.4.2] - 2026-09-13
 
 ### Added
-- Docs: `docs/RUNBOOK-upstream-drift.md` (re-pin procedure), `docs/USING.md` (invocation model, first run, expectations). Adaptation decisions tracked in issues #94/#95. Review round: the upstream closure date corrected to 2026-09-10 (closed unmerged; the API attests no closer), and the panel-consumer claim now quotes the actual role-line phrases.
+- Docs: `docs/RUNBOOK-upstream-drift.md` (re-pin procedure), `docs/USING.md` (invocation model, first run, expectations). The original adaptation ledger is now preserved in the [adaptation register](https://github.com/iap/pstack-hermes/issues/94). Review round: the upstream closure date corrected to 2026-09-10 (closed unmerged; the API attests no closer), and the panel-consumer claim now quotes the actual role-line phrases.
 - `slug_drift.py --prose`: scans skill markdown for backtick-quoted model-slug defaults (including vendor/model forms) once the provider catalog loads; `model-drift-watch.yml` passes `--prose` and reports prose-only findings as informational (exit 0) — a catalog tool error (exit 2) skips the scan, since the panel slugs are verified against the loaded catalog first (#25/#29)
 - CONTRIBUTING: document the GitHub alert-callout style for docs — and where it does not apply (#30)
 
@@ -132,3 +165,6 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 - Scanner gate with shared banned-construct source of truth
 - CI: 2-OS matrix, SHA gates, determinism proof, unit tests, lint
 - Weekly upstream-drift watch
+
+
+<!-- /coderabbit-ai-generated:v1 -->

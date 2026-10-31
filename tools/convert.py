@@ -1324,11 +1324,22 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
     st.fixes.append(f"T14: stacker-role / topology rewording (option b, "
                     f"issue #33) applied across {t14_files} skill file(s) "
                     "(stacker clone, one-stacker serialization, retarget)")
+    # A closing backtick after a bare TypeScript non-null operator opens
+    # Hermes's inline-shell DSL, even in explanatory prose. Preserve the
+    # advice without a token sequence that executes when inline_shell is on.
+    inline_shell_map = [
+        ('The tells are `!`, `arr[0] as T`,',
+         'The tells are non-null assertions, `arr[0] as T`,'),
+    ]
+    apply_map([out / "skills/typescript-best-practices/references/patterns.md"],
+              inline_shell_map, map_name="INLINE_SHELL_MAP", st=st)
+    st.fixes.append("F-inline-shell: TypeScript non-null assertion prose no longer "
+                    "opens Hermes inline-shell expansion")
     audit_anchor_hits(
         {"T8_MAP": T8_MAP, "T9_MAP": T9_MAP, "T10_MAP": T10_MAP,
          "T11_MAP": T11_MAP, "DELEGATION_MAP": DELEGATION_MAP,
          "T12_MAP": T12_MAP, "T12_SCRIPT_MAP": T12_SCRIPT_MAP,
-         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP},
+         "T13_MAP": T13_MAP, "T14_MAP": T14_MAP, "INLINE_SHELL_MAP": inline_shell_map},
         st,
     )
 
@@ -1837,34 +1848,30 @@ package keeps the upstream identity pstack v{manifest['version']}.*
 
 ## Install
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
-
-If the default branch is `dist`, install the package at the repository root:
-
-```sh
-hermes plugins install iap/pstack-hermes --enable
-```
-
-If the default branch is `master`, install the generated subdirectory:
+The project and plugin are named **pstack**; the repository slug is
+**pstack-hermes**. Development uses the default `master` branch. Install its
+generated package:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
+Update an unpinned install with `hermes plugins update pstack`. Existing
+`dist` root installs remain supported and keep updating from `dist`.
 
 Legacy subdirectory installs from older Hermes versions may lack source
 metadata and cannot auto-update. Upgrade Hermes to a version that records
-source metadata, back up local edits, then reinstall with `--force`:
-if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
-if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+source metadata, back up local edits, then reinstall with
+`hermes plugins install iap/pstack-hermes/pstack --force --enable`.
 
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
 install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
+Use the full package SHA recorded in the release notes, not the source tag's SHA.
+
+The requested `hermes plugins install iap/pstack --enable` shorthand does
+not resolve to this repository in current Hermes. [Issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks that goal without creating or renaming a repository.
 
 ## First run
 
@@ -1992,8 +1999,9 @@ Skills are opt-in on the portable path: load one with
 `/<name>` slash commands. Update an unpinned install with
 `hermes plugins update pstack`. Pinned installs require a new SHA and `--force`.
 Legacy subdirectory installs without source metadata: upgrade Hermes, back
-up local edits, then reinstall with `--force` (`iap/pstack-hermes` for `dist`,
-`iap/pstack-hermes/pstack` for `master`). Docs: <https://github.com/iap/pstack-hermes#readme>
+up local edits, then run
+`hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+Docs: <https://github.com/iap/pstack-hermes#readme>
 """
     (out / "after-install.md").write_bytes(after_install.encode("utf-8"))
     st.files_copied += 1

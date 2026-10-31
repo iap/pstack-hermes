@@ -1,8 +1,22 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:c60fa839002a54b79605a28e4c3091e5bfcaa3e3125c3e90ee52ac9b6c259dbd -->
+
 <!-- coderabbit-ai-generated-section:v1:ecd31f90ae3b095a6fc30d12b7919a6ea7c76eaf1ddf65fb6fdf28ec15b3394a -->
 
 <!-- coderabbit-ai-generated-section:v1:4589d1edd22a56a6c706b747698a9dd17a7da3b950efbcf2b21dcd395fe17f67 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9b1505339d5760e51db1c466aa37b3114c2d7849f6d74be05b5d1f38d704d204 -->
+
+<!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 # Using pstack on hermes
 
@@ -90,10 +104,7 @@ Pick by what you want to change — one of three durable routes:
 
 | Intent | Route | Notes |
 |---|---|---|
-<!-- coderabbit-ai-generated:v1 -->
-<!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
 | Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Back up edits outside the plugin before updating. Subdirectory updates replace shipped skills; in-place edits are not durable. |
-<!-- /coderabbit-ai-generated:v1 -->
 | Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Requires your fork default branch to contain the generated `pstack/` subdirectory (master or a branch with the build). Merge upstream when you choose. |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 

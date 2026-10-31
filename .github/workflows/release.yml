@@ -80,11 +80,9 @@ jobs:
             /^## / { if (seen) exit; if (index($0, ver)) seen=1; next }
             seen { print }
           ' CHANGELOG.md > RELEASE_NOTES.md
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "No CHANGELOG section found for $VERSION" >&2
-            echo "## $VERSION" > RELEASE_NOTES.md
-            echo "" >> RELEASE_NOTES.md
-            echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> RELEASE_NOTES.md
+          if ! grep -q '[^[:space:]]' RELEASE_NOTES.md; then
+            echo "::error::Add a nonempty CHANGELOG section for $VERSION before tagging" >&2
+            exit 1
           fi
           {
             echo ""

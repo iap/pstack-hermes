@@ -508,15 +508,23 @@ def check_hermes_adaptation_contract(pkg: Path, rep: Report) -> None:
     """Hermes-specific instruction contract checks for generated skills."""
     bad = []
     for p in (pkg / "skills").rglob("*.md"):
+        if is_generated_dependency_path(p.relative_to(pkg)):
+            continue
         t = p.read_text(encoding="utf-8", errors="replace")
         for tok, label in HERMES_ADAPTATION_BANS.items():
             if tok in t:
                 bad.append(f"{p.relative_to(pkg)}:{tok} ({label})")
+        # Match the real Hermes preprocessor, including prose and code blocks:
+        # this content-only package must never run shell commands on skill view.
+        for match in re.finditer(r"!`([^`\n]+)`", t):
+            line = t.count("\n", 0, match.start()) + 1
+            bad.append(f"{p.relative_to(pkg)}:{line}: inline-shell expansion")
     if bad:
         rep.fail(f"Hermes adaptation contract: unresolved constructs: {bad}")
     else:
         rep.ok("Hermes adaptation contract: no inert personas, stale runtime claims, "
-               "Cursor tool names, transcript paths, cloud-worker wording, or auto aliases")
+               "Cursor tool names, transcript paths, cloud-worker wording, auto aliases, "
+               "or inline-shell expansion")
 
 
 def check_model_panel(pkg: Path, rep: Report, asset: Path | None = None) -> None:

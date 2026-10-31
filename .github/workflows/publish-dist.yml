@@ -59,8 +59,8 @@ jobs:
           # config/models.json. The rule lives in tools/assets/dist.gitattributes
           # so this publisher and tools/dist_checkout_check.py cannot drift.
           cp -a tools/assets/dist.gitattributes "$dist/.gitattributes"
-          # dist/.github/ is preserved untouched (see the header): the stub
-          # is bootstrapped once; bots cannot push workflow files.
+          # Retain historical dist/.github/ metadata for existing clones.
+          # master now owns default-branch schedules and PR automation.
           git -C "$dist" add -A
 
           # Gate on the tree we are about to publish, as a consumer receives it.

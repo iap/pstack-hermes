@@ -7,34 +7,30 @@ package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
-
-If the default branch is `dist`, install the package at the repository root:
-
-```sh
-hermes plugins install iap/pstack-hermes --enable
-```
-
-If the default branch is `master`, install the generated subdirectory:
+The project and plugin are named **pstack**; the repository slug is
+**pstack-hermes**. Development uses the default `master` branch. Install its
+generated package:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
 ```
 
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
+Update an unpinned install with `hermes plugins update pstack`. Existing
+`dist` root installs remain supported and keep updating from `dist`.
 
 Legacy subdirectory installs from older Hermes versions may lack source
 metadata and cannot auto-update. Upgrade Hermes to a version that records
-source metadata, back up local edits, then reinstall with `--force`:
-if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
-if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+source metadata, back up local edits, then reinstall with
+`hermes plugins install iap/pstack-hermes/pstack --force --enable`.
 
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
 install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
+Use the full package SHA recorded in the release notes, not the source tag's SHA.
+
+The requested `hermes plugins install iap/pstack --enable` shorthand does
+not resolve to this repository in current Hermes. [Issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks that goal without creating or renaming a repository.
 
 ## First run
 

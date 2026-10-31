@@ -2,6 +2,7 @@
 
 import json
 
+import pytest
 import validate
 
 
@@ -10,6 +11,28 @@ def _skill(pkg, rel, text):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
+
+
+@pytest.mark.parametrize(('text', 'blocked'), [
+    ('The tells are `!`, `arr[0] as T`, and a throw.', True),
+    ('Run !`printf hello` on view.', True),
+    ('```ts\nreturn sessions.at(0)!;\n```', False),
+    ('The non-null operator is `!`.\nUse a total type.', False),
+])
+def test_skill_view_cannot_expand_inline_shell(tmp_path, text, blocked):
+    _skill(tmp_path, 'typescript-best-practices/references/patterns.md', text)
+    rep = validate.Report()
+    validate.check_hermes_adaptation_contract(tmp_path, rep)
+    assert bool(rep.failed) is blocked
+    if blocked:
+        assert 'inline-shell expansion' in '\n'.join(rep.failed)
+
+
+def test_adaptation_checks_exclude_installed_dependencies(tmp_path):
+    _skill(tmp_path, 'poteto-mode/scripts/node_modules/dependency/README.md', '!`printf hello`')
+    rep = validate.Report()
+    validate.check_hermes_adaptation_contract(tmp_path, rep)
+    assert not rep.failed
 
 
 def test_adaptation_contract_catches_inert_personas_and_stale_runtime_claims(tmp_path):

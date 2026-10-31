@@ -1,5 +1,9 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:aad146c71681905495a362e2768eef4aadabd5a15a33391fea93d931962a83ff -->
+
+<!-- coderabbit-ai-generated-section:v1:c89b49a211d52b3d8b3aa6af4c31480f291090af50c86a9868e6d5d30c358219 -->
+
 <!-- coderabbit-ai-generated-section:v1:5a9bb58123eed2229ab514f3ae50284af772275f506e0c1efa0ff6cc825a33df -->
 
 <!-- coderabbit-ai-generated-section:v1:8f2748e92563f87c7ee659be543052bba4f28235ed4f49943c12c3a57b13902a -->
@@ -7,6 +11,40 @@
 <!-- coderabbit-ai-generated-section:v1:1f1ca519bebada9545e7979d5b65d9f357c0116b183de942d6bb1de830becd56 -->
 
 <!-- coderabbit-ai-generated-section:v1:102e84b05f8d8d4a44ae4ee9afe2278bd719d3e5d51f2ca6cb79940eafd85b8c -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c73a25d2a1ae54681bbd88a2cc3ef652cd94773e2480d1924f87bdcbdc622a6e -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ea4a6715832b4c41499ad7b46de79d4ba2bf8abc6c00cb09b2b486e03800dadd -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:20bac8af517d82fdb234c1320f75a1dba0278db5aa0318bf9a41ccdb7a3e6aec -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:510609a1b2638e731cfca572ac0fe12f18d336bb781c003d661ab8fee85eb65f -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e369cdcbba20d961295a45ff0b75f01d9fd59605c87bb236b0f8637dba1acad1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 # AGENTS.md
 
@@ -201,22 +239,21 @@ Cursor still appears in three **legitimate** roles only — preserve, do not
 - **Anchors audited.** A converter transform whose anchor matches nothing in
   the upstream build fails loudly. Re-anchor or prune; never silence the audit.
 - **Two version lines.** Package keeps upstream identity `0.15.5`; repo
-  releases are `v0.4.x` in `CHANGELOG.md`. Never mix them.
+  releases use `v<semver>` tags and matching `CHANGELOG.md` sections. Never mix them.
 - **Encoding.** LF-only, no BOM, UTF-8 (`.gitattributes` + `validate.py`).
 - **Converter changes are tracked in issues.** New pass/map → adaptation issue with
   reviewer check + rebuilt `pstack/` in the same PR.
 - **Excluded upstreams stay excluded.** `automations/benny` and
   `skills/make-bot-ui` omitted (slot filled by repo-owned `hermesbot`).
-- **`master` is the intended default development branch.** Restore it after
-  this migration merges. `dist` remains CI-owned append-only compatibility
+- **`master` is the default development branch.** `dist` remains
+  CI-owned append-only compatibility
   output. Never rewrite or delete it while installed clones depend on it.
+- **Skills are content-only.** Viewing a skill must not run implicit shell
+  commands. The validator rejects Hermes inline-shell snippets, including
+  accidental prose syntax; see [adaptation #107](https://github.com/iap/pstack-hermes/issues/107).
 - **GitHub owns planning.** Proposals, adaptation records, reviewer checks and
   delivery plans live in issues, native sub-issues and milestones. `docs/`
   contains maintained instructions, not parallel task state.
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:20bac8af517d82fdb234c1320f75a1dba0278db5aa0318bf9a41ccdb7a3e6aec -->
 
 ## Identity and installation goal
 
@@ -252,24 +289,18 @@ root or `pstack/` subdirectory install; pin and update behavior differ.
 
 ## Common traps
 
-<!-- /coderabbit-ai-generated:v1 -->
-
 - Editing `pstack/skills/hermesbot/SKILL.md` — edit
   `tools/assets/hermesbot/SKILL.md` and rebuild.
 - Hand-tuning `pstack/config/models.json` — edit
   `tools/assets/model-panel.json` and rebuild; `validate.py` checks they match.
 - "Fixing" Cursor mentions that are attribution or dual-load — correct as-is.
 - Rewriting hermes primitives back into Cursor vocabulary — bans catch this.
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:e369cdcbba20d961295a45ff0b75f01d9fd59605c87bb236b0f8637dba1acad1 -->
 
 - Install-update mechanics: unpinned `dist` root installs update through Git;
   current Hermes re-clones tracked unpinned `master` subdirectory installs.
   Both use `hermes plugins update pstack`. Older installs without recorded
   source need recovery; pinned installs need an explicit new SHA and `--force`.
 
-<!-- /coderabbit-ai-generated:v1 -->
 - Using Cursor IDE dual-load habits as the implementation or review path for
   hermes delivery — verify with convert → validate → doctor / hermes invoke.
 - Pointing hermes `skill_manage` / learning / self-evolution at **stock**

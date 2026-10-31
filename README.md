@@ -1,10 +1,54 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:c0799d941575a6cb135a431e77b46ef4ec5a32c97bff6dbc58cdf6c14cae2576 -->
+
 <!-- coderabbit-ai-generated-section:v1:b2eea8f645abfccabfe4ae3e7cda81459321f7fb0792cb57400dda0b8fea4cd4 -->
 
 <!-- coderabbit-ai-generated-section:v1:9fb4e5defbb115d04501de70d9817104330be2ee94ce15585eede94a81dc0bff -->
 
 <!-- coderabbit-ai-generated-section:v1:d94993548a48265942779aa3b7ed36972c0efe779eac4698d96dec3e7e91be3d -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f2f2c3e9744de867c7ada068f25c448d2cb6a664ffcf17ce255a05770f39aaa6 -->
+
+<!-- coderabbit-ai-generated-section:v1:c8ad5ea2d621eebf4b7c170b4a8cf3fddc86b5f1b8ffb1228b7921cb88cc51b7 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:164819aa62ebb934b950598ed113643425bec5ee5a0cffe44f8ceb1534c80916 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:98a82daec2a7d8a4fc98b909af902a35857ceb0f945f32164332d0d1d7a0db0d -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e990c9712b2761e42609a0edfb94c0387baa376730e6e796f945bdc64cf45e3a -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:180689ec1d90e3c42ac868d434b9dd1b8b18735342560baedce1ce9b830fc99d -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8f9ec08c3c1991a34d9667a1fa6352179fff6fc285677c209a2409aa90fa59e1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 # pstack
 
@@ -26,69 +70,43 @@ port belong upstream.
 
 ## Install
 
-Project name: **pstack**. Repository slug: **pstack-hermes**.
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:c8ad5ea2d621eebf4b7c170b4a8cf3fddc86b5f1b8ffb1228b7921cb88cc51b7 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:164819aa62ebb934b950598ed113643425bec5ee5a0cffe44f8ceb1534c80916 -->
-
-The desired command is `hermes plugins install iap/pstack --enable` for
-this repository. Hermes does not currently resolve it here; [issue #100](https://github.com/iap/pstack-hermes/issues/100)
-tracks support without creating another repository. Use a working command below
-until that support is verified.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:98a82daec2a7d8a4fc98b909af902a35857ceb0f945f32164332d0d1d7a0db0d -->
-
-The default branch is now `master`. Install the generated subdirectory:
-
-Install the generated subdirectory:
+Project and plugin name: **pstack**. Repository slug: **pstack-hermes**.
+The default development branch is `master`; install its generated package:
 
 ```sh
 hermes plugins install iap/pstack-hermes/pstack --enable
+hermes plugins update pstack
 ```
 
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-For an immutable root install, copy the full **package commit SHA** from a
-[GitHub Release](https://github.com/iap/pstack-hermes/releases):
+Existing unpinned `dist` root installs remain supported and update from `dist`.
+For an immutable install, copy the full **Package commit** SHA from
+[GitHub Releases](https://github.com/iap/pstack-hermes/releases) (v0.5.0 onward):
 
 ```sh
 hermes plugins install iap/pstack-hermes --ref <40-character-package-SHA> --enable
 ```
 
-For a source-level pin before the next verified release, use the source commit
-and the generated subdirectory:
-
-```sh
-hermes plugins install iap/pstack-hermes/pstack --ref <40-character-source-SHA> --enable
-```
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:e990c9712b2761e42609a0edfb94c0387baa376730e6e796f945bdc64cf45e3a -->
-
-Pinned installs do not auto-update. To move an existing pin, explicitly
-replace the installed plugin with a newer package SHA:
+The release tag identifies source code; its SHA is different from the package
+SHA. To pin development source instead, use
+`iap/pstack-hermes/pstack --ref <40-character-source-SHA>`.
+Pinned installs do not auto-update. To replace an existing pin:
 
 ```sh
 hermes plugins install iap/pstack-hermes --ref <new-package-SHA> --force --enable
 ```
 
-<!-- /coderabbit-ai-generated:v1 -->
+Legacy subdirectory installs without source metadata cannot auto-update.
+Upgrade Hermes, back up local edits outside the plugin, then recover with
+`hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+Use normal updates afterward; `--force` is for explicit replacement/recovery.
+
+The desired `hermes plugins install iap/pstack --enable` command does not
+currently resolve to this repository. [Issue #100](https://github.com/iap/pstack-hermes/issues/100)
+tracks support while keeping the current repository URL. Use the verified
+current-repository commands above until that goal is met.
+
 The `dist` compatibility branch remains append-only. Release ZIPs contain
-`pstack/`; use the immutable Git SHA command above for installation.
+`pstack/` and include SHA256SUMS; use the Git SHA command above for installation.
 
 ## Project tracking
 
@@ -178,9 +196,9 @@ patch reference. End-user invoke and customization:
 |---|---|---|
 | The package | `pstack` | upstream identity (plugin.json, v0.15.5) — preserved |
 | This repository | `pstack-hermes` | the project slug and published repo name; project name is pstack |
-| Dist branch | `dist` (this repo) | plugin-only compatibility build output, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only); the install source — no second repository |
+| Dist branch | `dist` (this repo) | plugin-only compatibility build output and release package SHAs, published by [publish-dist.yml](.github/workflows/publish-dist.yml) (append-only) |
 | Tooling project | `pstack-hermes-plugin-tools` | uv project scoping the converter/validator only |
-| Repo releases | `v0.5.x` | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
+| Repo releases | `v<semver>` (v0.5.0 onward) | tooling/CHANGELOG version line — a release never renumbers the package, which keeps the upstream pstack version (`0.15.5`) |
 | Plugin namespace | `agent-plugin-pstack-7171b73f:<skill>` | hermes portable-path id (derived from the manifest) |
 
 ## Heritage layout (inert on hermes)
