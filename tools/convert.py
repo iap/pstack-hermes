@@ -2007,7 +2007,7 @@ fixes:
 counts:
   skills_loaded: {len(discovered)} ({len(workflow)} workflow/mode + {len(principles)} principle)
   skill_md_on_disk: {len(discovered)} (skills/ only; automations/benny + make-bot-ui excluded for the install scanner)
-  agents_files: {agents_n}
+  agents_files: 0
 notes:
   - agents/ is inert on the hermes portable path (kept for Cursor dual-load / Phase 2)
   - automations/benny + make-bot-ui excluded (install-scanner verdict); rebuild via Phase 4 / stay Cursor-side

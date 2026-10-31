@@ -45,7 +45,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pstack"
+name = "pstack-hermes-plugin-tools"
 version = "0.3.0"
 source = { virtual = "." }
 

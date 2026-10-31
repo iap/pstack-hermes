@@ -36,7 +36,7 @@ GENERATED_DEPENDENCY_DIRS: frozenset[str] = frozenset({"node_modules", "tools", 
 # These may legitimately reference banned constructs in explanatory context.
 EXEMPT_REPO_FILES: frozenset[str] = frozenset({
     "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md",
-    "pyproject.toml", "LICENSE", ".gitattributes", ".coderabbit.yaml",
+    "pyproject.toml", ".gitattributes", ".coderabbit.yaml",
 })
 
 
