@@ -101,7 +101,7 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
             continue
         target = dest / item.name
         if item.is_dir():
-            shutil.copytree(item, target)
+            shutil.copytree(item, target, ignore=shutil.ignore_patterns("__pycache__"))
         else:
             shutil.copy2(item, target)
     # Do NOT install ATTRS_SOURCE here. The package under test is supposed to
