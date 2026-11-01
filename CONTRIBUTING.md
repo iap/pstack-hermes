@@ -225,7 +225,8 @@ Do not keep parallel plans or adaptation ledgers in `docs/`.
 ## Pull requests
 
 > [!TIP]
-> **Draft content first:** Write draft messages/content in a separate location (local file, branch, or draft PR) before publishing or pushing to the public git provider. Keep it technical, short, and essential — only on-scope context relations. Cross-check and verify the content to ensure no false positive/negative on the post messages (good or bad for public and human/bot reviewer). If posting as an open/draft PR, add a note for the reviewer so they can read it clearly.
+> **Draft content first.**
+> Write draft messages/content in a separate location (local file, branch, or draft PR) before publishing or pushing to the public git provider. Keep it technical, short, and essential — only on-scope context relations. Cross-check and verify the content to ensure no false positive/negative on the post messages (good or bad for public and human/bot reviewer). If posting as an open/draft PR, add a note for the reviewer so they can read it clearly.
 
 The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, validate
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, the
