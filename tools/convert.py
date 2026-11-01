@@ -2150,7 +2150,7 @@ def main() -> int:
     if comment_sicko.is_file():
         no_comments_refs = out / "skills" / "no-comments" / "references"
         no_comments_refs.mkdir(parents=True, exist_ok=True)
-        (no_comments_refs / "comment-sicko.md").write_bytes(comment_sicko.read_bytes())
+        copy_file(comment_sicko, no_comments_refs / "comment-sicko.md", st)
         st.fixes.append(
             "Phase-2A: Comment Sicko persona copied into no-comments "
             "references for hermes prompt inlining"
