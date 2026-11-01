@@ -68,6 +68,12 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
     git(remote, 'rm', '-rf', '.')
+    # Restore package files from source when payload unchanged
+    if not payload_changed:
+        for f in ['README.md', 'LICENSE', 'config/models.json']:
+            (remote / f).write_text((remote / f).read_text())
+        import shutil
+        shutil.copytree(remote / 'skills', remote / 'skills')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass
