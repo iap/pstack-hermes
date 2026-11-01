@@ -5,7 +5,7 @@ description: Configure which models pstack uses per role and at what reasoning b
 
 # Setup pstack
 
-Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.config/hermes/` on Linux, `%LOCALAPPDATA%\hermes\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls.
+Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.hermes/` on Linux, `%LOCALAPPDATA%\hermes\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls.
 
 ## Steps
 

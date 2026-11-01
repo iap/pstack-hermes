@@ -68,7 +68,7 @@ a hermes defect that reproduces with the plugin disabled →
 
 - **47 skills** (24 workflow/mode +
   23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
-  discovered via the root `plugin.yaml` (agent-plugins-v1 manifest,
+  discovered via the root `plugin.json` (agent-plugins-v1 manifest,
   9 whitelisted fields).
 - `skills/hermesbot/` — hermes-native control-surface skill on the gateway
   webhook (`X-Webhook-Signature-V2` HMAC) plus `hermes send` / `hermes peer`;
@@ -84,7 +84,7 @@ upstream's `docs/guide/` (read it upstream for the guided tour).
 
 | Pass | What changed |
 |---|---|
-| manifest | root `plugin.yaml` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
+| manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
 | R1 | poteto-mode principles index regenerated from the 23 leaves |
 | F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |

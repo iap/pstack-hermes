@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--provenance",
         type=Path,
-        default=Path("pstack/.build-provenance.txt"),
+        default=Path(".build-provenance.txt"),
         help="provenance file from the tree this PR proposes (default: %(default)s)",
     )
     args = ap.parse_args(argv)
