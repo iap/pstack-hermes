@@ -97,7 +97,7 @@ def is_text_file(staged: Path, rel: str) -> bool:
 def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
     for item in package.iterdir():
-        if item.name == ".git":
+        if item.name in {".git", ".venv", "__pycache__"}:
             continue
         target = dest / item.name
         if item.is_dir():
