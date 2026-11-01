@@ -68,35 +68,22 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
-    git(remote, "checkout", "--orphan", "dist")
-    git(remote, "rm", "-rf", ".")
-    # Save package files from source before deleting on orphan dist branch
+
+    # Save package files from master before deleting on orphan dist branch
+    saved_skills = None
     if not payload_changed:
-        for f in ["README.md", "LICENSE", "config/models.json", "plugin.json"]:
-            # Read file content from master branch before it was deleted
-            content = git(remote, "show", "master:" + f)
+        for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
+            content = git(remote, 'show', 'master:' + f)
             target = remote / f
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
-        # Save skills directory before deletion
-        skills_src = remote / "skills"
+        skills_src = remote / 'skills'
         if skills_src.exists():
-            saved_skills = tmp_path / "saved-skills"
+            saved_skills = tmp_path / 'saved-skills'
             shutil.copytree(skills_src, saved_skills)
-    git(remote, "rm", "-rf", ".")
-    # Restore saved files after deletion
-    if not payload_changed:
-        for f in ["README.md", "LICENSE", "config/models.json", "plugin.json"]:
-            content = git(remote, "show", "master:" + f)
-            target = remote / f
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
-        saved_skills = tmp_path / "saved-skills"
-        if saved_skills.exists():
-            shutil.copytree(saved_skills, remote / "skills")
-        if skills_src.exists():
-            shutil.copytree(skills_src, tmp_path / 'saved-skills')
+
     git(remote, 'rm', '-rf', '.')
+
     # Restore saved files after deletion
     if not payload_changed:
         for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
@@ -104,8 +91,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
             target = remote / f
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
-        saved_skills = tmp_path / 'saved-skills'
-        if saved_skills.exists():
+        if saved_skills and saved_skills.exists():
             shutil.copytree(saved_skills, remote / 'skills')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
