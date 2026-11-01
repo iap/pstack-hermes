@@ -593,7 +593,7 @@ describe("Store", () => {
     await withFakeGt({
       directory,
       output: "◯ main\nthis line is not Graphite output\n",
-      operation: async () => {
+      operation: async (outputPath: string) => {
         await expect(
           store.frontier.set({ repo: stack.repo })
         ).rejects.toThrow(
