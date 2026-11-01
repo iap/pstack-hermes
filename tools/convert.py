@@ -1284,7 +1284,7 @@ def apply_phase1_transforms(out: Path, st: Stats) -> None:
         ),
         (
             "Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack's model per role.",
-            "Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.config/hermes/` on Linux, `%LOCALAPPDATA%\\hermes\\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls.",
+            "Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.hermes/` on Linux, `%LOCALAPPDATA%\\hermes\\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls.",
         ),
         (
             "Enumerate the model slugs you can pass to a `delegate_task` subagent in this session. That is the dependable source. If Cursor also exposes a models API or CLI that lists the user's entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.",
@@ -2420,32 +2420,33 @@ notes:
                     if d.exists():
                         # backup if exists
                         bpath = backup_dir / name
-                        if d.is_dir():
+                        if d.is_symlink():
+                            bpath.symlink_to(os.readlink(d))
+                        elif d.is_dir():
                             shutil.copytree(d, bpath)
                         else:
                             shutil.copy2(d, bpath)
                         backed_up.append(name)
-                        if d.is_dir():
+                        if d.is_symlink():
+                            d.unlink()
+                        elif d.is_dir():
                             shutil.rmtree(d)
                         else:
                             d.unlink()
-            # Remove obsolete .cursor-plugin if present
-            cursor_plugin = final_out / ".cursor-plugin"
-            if cursor_plugin.exists() and ".cursor-plugin" not in pkg_entries:
-                bpath = backup_dir / ".cursor-plugin"
-                shutil.copytree(cursor_plugin, bpath)
-                backed_up.append(".cursor-plugin")
-                shutil.rmtree(cursor_plugin)
             # Replace entries
             for item in out.iterdir():
                 dest = final_out / item.name
                 existed = dest.exists()
-                if dest.exists():
-                    if dest.is_dir():
+                if dest.exists() or dest.is_symlink():
+                    if dest.is_symlink():
+                        dest.unlink()
+                    elif dest.is_dir():
                         shutil.rmtree(dest)
                     else:
                         dest.unlink()
-                if item.is_dir():
+                if item.is_symlink():
+                    dest.symlink_to(os.readlink(item))
+                elif item.is_dir():
                     shutil.copytree(item, dest)
                 else:
                     shutil.copy2(item, dest)
