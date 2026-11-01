@@ -119,14 +119,16 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     # (that is its published name), and a name-based exemption let that case
     # through with no rule at all.
     tree_attrs = package / ATTRS_NAME
+    if source_tree:
+        # The source tree ships its .gitattributes at the repository root, not
+        # inside the package directory. When --package points at the repo root
+        # itself, tree_attrs is that file; when it points at pstack/, the file
+        # is one level up. Either way, the published dist rule is irrelevant:
+        # the publisher adds dist.gitattributes when staging the dist repo, and
+        # this gate must not compare a source tree's rules against the dist rule.
+        shutil.copy2(SCRIPT_DIR.parent / ATTRS_NAME, dest / ATTRS_NAME)
+        return
     if not tree_attrs.is_file():
-        if source_tree:
-            # The source pstack/ tree ships no .gitattributes of its own; the
-            # repository root's rules govern what an install clone receives.
-            # Stage a throwaway copy with those rules so the line-ending
-            # question can still be asked.
-            shutil.copy2(SCRIPT_DIR.parent / ATTRS_NAME, dest / ATTRS_NAME)
-            return
         raise RuntimeError(
             f"package has no {ATTRS_NAME}: a published tree must carry the rule, "
             "and the gate must not install its own copy (that would blind it to "
