@@ -50,6 +50,11 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'init', '-q', '-b', 'master')
     git(remote, 'config', 'user.name', 'Fixture')
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
+    # Create files that will be read from master branch later
+    (remote / 'README.md').write_text('# pstack-hermes\n\nThe pstack plugin for Hermes Agent.\n')
+    (remote / 'LICENSE').write_text('MIT License\n\nCopyright (c) 2026 Iko\n\nPermission is hereby granted...')
+    (remote / 'config').mkdir()
+    (remote / 'config' / 'models.json').write_text('{}')
     (remote / 'plugin.yaml').write_text('payload')
     (remote / '.build-provenance.txt').write_text(
         'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
@@ -72,6 +77,13 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
             f'source_commit: {source}\nconverter: {converter}\nconverted_at: dist\n'
         )
     (remote / '.gitattributes').write_text('* text=auto eol=lf')
+    # Restore package files from source when payload unchanged
+    if not payload_changed:
+        for f in ['README.md', 'LICENSE', 'config/models.json']:
+            content = git(remote, 'show', f'master:{f}')
+            dest = remote / f
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(content)
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'package')
     git(remote, 'checkout', 'master')
