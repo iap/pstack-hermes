@@ -162,6 +162,7 @@ jobs:
             skills/
             config/
             assets/
+          include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
           # the artifact is a debugging aid, not a release artifact.
           retention-days: 14

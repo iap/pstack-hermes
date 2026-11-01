@@ -28,7 +28,7 @@ weakening the port contract.
    that limitation rather than claiming it was posted.
 
 5. **Comment style.** Prefer replying as a comment linked to the bot's comment
-   rather than a standalone normal post (e.g. `Fix on: #<post-number> What: <short what> Why: <short why>`). If the fix needs follow-up on another PR, leave a short `{"what": ..., "why": ...}` comment pointing to that PR instead. Leave the resolve button to trigger automatically by the bot; fallback to manual resolution only when needed.
+   rather than a standalone normal post (e.g. `Fix on: #<post-number> What: <short what> Why: <short why>`). If the fix needs follow-up on another PR, leave a short `{"what": ..., "why": ...}` comment pointing to that PR instead. **Leave thread status unchanged; the maintainer will resolve threads after review.** Do not set the resolve button from a comment — the bot or a maintainer may resolve threads as appropriate.
 
 ## Common false pressures on this repo
 
