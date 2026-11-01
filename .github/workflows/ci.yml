@@ -71,7 +71,6 @@ jobs:
           # Package files only (repo root may also contain build tooling)
           PACKAGE_FILES=(
             "plugin.json"
-            "plugin.yaml"
             "README.md"
             "LICENSE"
             ".build-provenance.txt"
@@ -105,7 +104,7 @@ jobs:
             local root="$1"
             (
               cd "$root" && {
-                for f in plugin.json plugin.yaml README.md LICENSE; do
+                for f in plugin.json README.md LICENSE; do
                   if [ -f "$f" ]; then
                     printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
                   fi
