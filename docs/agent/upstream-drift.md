@@ -33,7 +33,7 @@ Any of these means upstream moved past the pin (or the pin is inconsistent):
 
 1. **Fetch and diff.** Update the local upstream clone, then diff the new SHA
    against the pin — focus on skills, agents, and the upstream manifest:
-   `git -C <pstack-clone> log --oneline <pin>..HEAD -- pstack/`
+   `git -C <pstack-clone> log --oneline <pin>..HEAD -- .`
 2. **Decide the new pin.** Read the upstream commits. If they touch text any
    map anchors on, they are in scope; unrelated files may be ignored.
 3. **Update the maps, not the package.** For each dead anchor:
@@ -62,9 +62,10 @@ Any of these means upstream moved past the pin (or the pin is inconsistent):
 ## If upstream disappears
 
 `iap/plugins` is a fork of `cursor/plugins` kept as pin insurance. If upstream
-is deleted or moves, point the build action's `upstream-pin` input in the
-workflows that declare `UPSTREAM_PIN` at the fork — the port then continues
-from the frozen pin. Users are never affected: installs and updates come from
+is deleted or moves, point the build action's `upstream-url` input (in addition
+to keeping `upstream-pin` at the fork's commit SHA) in every workflow that
+declares `UPSTREAM_PIN` at the fork — the port then continues from the frozen
+pin. Users are never affected: installs and updates come from
 this repository (and its `dist` compatibility channel), not upstream.
 
 ## Do not
@@ -80,7 +81,9 @@ this repository (and its `dist` compatibility channel), not upstream.
 
 ## Rollback
 
-A bad rebuild only affects the branch: the build is atomic (temp sibling, with
-in-place publish when `--out` is the repo root), and a failed build does not
-replace a good tree. To revert a landed pin bump, revert the PR — the package
+A bad rebuild only affects the branch: the build uses a temp sibling, but
+publishing with `--out` set to the repo root is **not atomic** — entries are
+removed and copied individually, so readers may observe a partial tree and an
+interrupted publish is not guaranteed to restore the prior tree. A failed build
+does not replace a good tree, but an interrupted in-place publish may leave one. To revert a landed pin bump, revert the PR — the package
 is regenerated from the previous pin.

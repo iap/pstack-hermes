@@ -54,6 +54,13 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'config', 'user.name', 'Fixture')
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
     (remote / 'plugin.json').write_text('payload')
+    (remote / 'README.md').write_text('readme')
+    (remote / 'LICENSE').write_text('license')
+    (remote / 'skills').mkdir()
+    (remote / 'skills' / 'demo').mkdir()
+    (remote / 'skills' / 'demo' / 'SKILL.md').write_text('skill')
+    (remote / 'config').mkdir()
+    (remote / 'config' / 'models.json').write_text('{}')
     (remote / '.build-provenance.txt').write_text(
         'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
     )
