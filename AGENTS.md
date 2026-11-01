@@ -97,7 +97,7 @@ Default home for work is **this repo**. Escalate only when the table says so.
 uv sync
 # 1. Edit the hand-written source of truth (tools/, tools/assets/, docs/, …)
 # 2. Rebuild from a clone at the pinned upstream SHA:
-uv run --frozen tools/convert.py --source <pstack-clone> --out pstack
+uv run --frozen tools/convert.py --source <pstack-clone>
 # 3. Must exit 0:
 uv run --frozen tools/validate.py
 uv run --frozen pytest -q
@@ -116,7 +116,7 @@ Then:
    (`hermes plugins doctor "$PWD/pstack" --ci`, run from the repo root —
    explicit path so it does not silently hit the installed dist).
 3. Re-pin upstream only via
-   [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md) — never by
+   [docs/agent/upstream-drift.md](docs/agent/upstream-drift.md) — never by
    hand-tuning `pstack/`.
 
 Poteto-mode checker scripts (CI runs these):

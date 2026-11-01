@@ -1,5 +1,5 @@
 [project]
-name = "pstack-hermes-plugin-tools"
+name = "pstack-hermes"
 version = "0.3.0"
 description = "Converter and validator tooling for the pstack Cursor->hermes port (the shipped package itself is content-only and needs no Python)."
 requires-python = ">=3.11"

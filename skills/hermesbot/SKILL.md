@@ -19,7 +19,7 @@ chat, or in this skill.
 Check `hermes webhook subscribe --help` first; the flag set is versioned.
 
 ```
-hermes webhook subscribe \
+hermes webhook subscribe <route-name> \
   --description "Accept control-page button clicks" \
   --skills <skill-one,skill-two> \
   --deliver telegram --deliver-chat-id <chat-id>

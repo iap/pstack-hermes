@@ -11,7 +11,7 @@ enforcing gate is the CI `build` job. Exit codes:
   2  the input could not be read/parsed at all
 
 Usage:
-  pr_checklist.py <pr-body-file> [--provenance pstack/.build-provenance.txt]
+  pr_checklist.py <pr-body-file> [--provenance .build-provenance.txt]
   pr_checklist.py --help
 
 The pstack/ package is generated output. The single most important thing a
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--provenance",
         type=Path,
-        default=Path("pstack/.build-provenance.txt"),
+        default=Path(".build-provenance.txt"),
         help="provenance file from the tree this PR proposes (default: %(default)s)",
     )
     args = ap.parse_args(argv)

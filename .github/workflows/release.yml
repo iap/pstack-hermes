@@ -59,7 +59,8 @@ jobs:
           diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
           rm -f "$published/.build-provenance.txt"
           mkdir -p "$RUNNER_TEMP/release-built"
-          cp -a plugin.json skills config assets README.md after-install.md LICENSE .build-provenance.txt "$RUNNER_TEMP/release-built"
+          cp -a plugin.json skills config README.md LICENSE .build-provenance.txt "$RUNNER_TEMP/release-built"
+          if [ -d assets ]; then cp -a assets "$RUNNER_TEMP/release-built/"; fi
           rm -f "$RUNNER_TEMP/release-built/.build-provenance.txt"
           diff -qr "$RUNNER_TEMP/release-built" "$published"
           echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
@@ -67,7 +68,7 @@ jobs:
 
       - name: Package plugin
         run: |
-          zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md after-install.md LICENSE .build-provenance.txt
+          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE .build-provenance.txt; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE .build-provenance.txt; fi
           sha256sum pstack-"${TAG_NAME}".zip > SHA256SUMS
         env:
           TAG_NAME: ${{ github.ref_name }}

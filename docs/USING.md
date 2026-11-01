@@ -94,7 +94,7 @@ Pick by what you want to change — one of three durable routes:
 <!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
 | Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Back up edits outside the plugin before updating. Subdirectory updates replace shipped skills; in-place edits are not durable. |
 <!-- /coderabbit-ai-generated:v1 -->
-| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes/pstack --enable`. Requires your fork default branch to contain the generated `pstack/` subdirectory (master or a branch with the build). Merge upstream when you choose. |
+| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes --enable`. Root layout: the generated package lives at the repository root (not a `pstack/` subdirectory). Merge upstream when you choose. |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
 Structural changes that must survive upstream re-pins (new adaptations,
@@ -124,10 +124,10 @@ that reproduces without this port → `cursor/plugins`.
 
 ## See also
 
-- [adaptation register](https://github.com/iap/pstack-hermes/issues/94) — what changed from upstream and why
-- [RUNBOOK-upstream-drift.md](RUNBOOK-upstream-drift.md) — re-pinning procedure
-- [PATCHES.md](PATCHES.md) — hermes-fork patches (historical)
-- [AGENTS.md](../AGENTS.md) — agent rules for working on this repository
+- [adaptation register](https://github.com/iap/pstack-hermes/issues/94) — port ledger
+- [agent/README.md](agent/README.md) — agent deep ops (includes re-pin)
+- [PATCHES.md](PATCHES.md) — historical hermes-fork patches
+- [AGENTS.md](../AGENTS.md) — always-on repo contract for contributors
 
 
 <!-- /coderabbit-ai-generated:v1 -->
