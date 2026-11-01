@@ -17,12 +17,12 @@ chat, or in this skill.
 ## Create the webhook subscription
 
 Check `hermes webhook subscribe --help` first; the flag set is versioned.
+Check `hermes webhook subscribe --help` first; the flag set is versioned.
+
 
 ```
-hermes webhook subscribe \
-  --description "Accept control-page button clicks" \
-  --skills <skill-one,skill-two> \
-  --deliver telegram --deliver-chat-id <chat-id>
+hermes webhook subscribe \n  <route-name> \n  --description "Accept control-page button clicks" \n  --skills <skill-one,skill-two> \n  --deliver telegram --deliver-chat-id <chat-id>
+```
 ```
 
 The declarative alternative lives in the gateway config under

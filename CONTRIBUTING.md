@@ -128,7 +128,7 @@ one has already caught (or would have caught) a real defect here.
   `release.yml`, `publish-dist.yml` and `upstream-drift-watch.yml`;
   `tools/check_pins.py` fails CI when any of the four is missing, duplicated,
   malformed, or out of step. Follow
-  [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md).
+  [docs/agent/upstream-drift.md](docs/agent/upstream-drift.md).
 - **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
   workflows` CI step, runnable locally as `uv run --frozen actionlint`.
 - **Action inputs must be declared by the action they target.** `tools/`
@@ -160,7 +160,7 @@ one has already caught (or would have caught) a real defect here.
 
 1. Edit the map or pass in `tools/convert.py` (maps like `T8_MAP`,
    `DELEGATION_MAP`; passes register in `st.fixes`).
-2. Rebuild: `uv run --frozen tools/convert.py --source <pstack-clone> --out pstack`
+2. Rebuild: uv run --frozen tools/convert.py --source <pstack-clone>
    — a dead anchor fails here on purpose.
 3. Create an adaptation issue linked to the [preserved register](https://github.com/iap/pstack-hermes/issues/94),
    recording the pass, scope, source of truth and **reviewer check**.
@@ -171,7 +171,7 @@ one has already caught (or would have caught) a real defect here.
 
 ### Re-pin upstream
 
-Follow [docs/RUNBOOK-upstream-drift.md](docs/RUNBOOK-upstream-drift.md)
+Follow [docs/agent/upstream-drift.md](docs/agent/upstream-drift.md)
 verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
 in **four workflows** — `ci.yml`, `release.yml`, `publish-dist.yml`,
 `upstream-drift-watch.yml` — and all three must move in the same PR. Update maps,
@@ -223,6 +223,9 @@ retain the [existing contracts](https://github.com/iap/pstack-hermes/issues/94).
 Do not keep parallel plans or adaptation ledgers in `docs/`.
 
 ## Pull requests
+
+> [!TIP]
+> **Draft content first:** Write draft messages/content in a separate location (local file, branch, or draft PR) before publishing or pushing to the public git provider. Keep it technical, short, and essential — only on-scope context relations. Cross-check and verify the content to ensure no false positive/negative on the post messages (good or bad for public and human/bot reviewer). If posting as an open/draft PR, add a note for the reviewer so they can read it clearly.
 
 The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, validate
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, the
