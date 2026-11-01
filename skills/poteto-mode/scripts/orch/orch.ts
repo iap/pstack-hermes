@@ -498,7 +498,7 @@ function createProgram(io: Io): Command {
     )
     .option(
       "--provider <provider>",
-      "stack provider: auto, graphite, github, or gitlab",
+      "stack provider: auto, graphite, github, gitlab, or local",
       stackProvider,
       "auto"
     )
