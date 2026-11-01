@@ -70,7 +70,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     # The orphan checkout keeps the source tree in the index and working tree, so
     # the package files are already present. Drop only the provenance file and let
     # the cases below write it (or omit it for 'missing').
-    git(remote, 'rm', '-q', '.build-provenance.txt')
+    git(remote, 'rm', '-q', '-f', '.build-provenance.txt')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass

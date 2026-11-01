@@ -194,6 +194,22 @@ def test_source_tree_accepts_root_attrs_with_extra_metadata(tmp_path, monkeypatc
     assert checker.main(["--package", str(pkg), "--source-tree"]) == 0
 
 
+def test_source_tree_stages_only_the_published_payload(tmp_path):
+    """Tooling, docs and local scratch must not enter the staged package."""
+    pkg = _package(tmp_path, "* text=auto eol=lf\n*.png binary\n")
+    (pkg / "tools").mkdir()
+    (pkg / "tools" / "x.py").write_text("x\n", encoding="utf-8", newline="")
+    (pkg / ".venv").mkdir()
+    (pkg / ".venv" / "junk").write_text("junk\n", encoding="utf-8", newline="")
+    dest = tmp_path / "staged"
+    dest.mkdir()
+    checker.stage_tree(pkg, dest, source_tree=True)
+    assert not (dest / "tools").exists()
+    assert not (dest / ".venv").exists()
+    assert (dest / "skills").is_dir()
+    assert (dest / ATTRS_NAME).is_file()
+
+
 def test_source_tree_flag_allows_a_package_with_no_rule(tmp_path, monkeypatch):
     """The positive control for the flag: --source-tree stages a throwaway rule."""
     attrs = tmp_path / "attrs"
