@@ -464,7 +464,7 @@ def apply_stack_provider_patch(out: Path, st: Stats) -> None:
   readonly fallback?: readonly string[];
 }
 
-export type StackProvider = "auto" | "graphite" | "github" | "gitlab";
+export type StackProvider = "auto" | "graphite" | "github" | "gitlab" | "local";
 """,
         "StackProvider type",
     )

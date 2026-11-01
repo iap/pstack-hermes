@@ -593,9 +593,9 @@ describe("Store", () => {
     await withFakeGt({
       directory,
       output: "◯ main\nthis line is not Graphite output\n",
-      operation: async () => {
+      operation: async (outputPath: string) => {
         await expect(
-          store.frontier.set({ repo: stack.repo })
+          store.frontier.set({ repo: stack.repo, provider: "graphite" })
         ).rejects.toThrow(
           'gt log short output has an unparseable line 2: "this line is not Graphite output"'
         );

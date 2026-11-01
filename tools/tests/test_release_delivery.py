@@ -1,6 +1,7 @@
 """Exercise delivery shell gates against real, isolated Git repositories."""
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -67,13 +68,31 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
-    git(remote, 'rm', '-rf', '.')
-    # Restore package files from source when payload unchanged
+
+    # Save package files from master before deleting on orphan dist branch
+    saved_skills = None
     if not payload_changed:
-        for f in ['README.md', 'LICENSE', 'config/models.json']:
-            (remote / f).write_text((remote / f).read_text())
-        import shutil
-        shutil.copytree(remote / 'skills', remote / 'skills')
+        for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
+            content = git(remote, 'show', 'master:' + f)
+            target = remote / f
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+        skills_src = remote / 'skills'
+        if skills_src.exists():
+            saved_skills = tmp_path / 'saved-skills'
+            shutil.copytree(skills_src, saved_skills)
+
+    git(remote, 'rm', '-rf', '.')
+
+    # Restore saved files after deletion
+    if not payload_changed:
+        for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
+            content = git(remote, 'show', 'master:' + f)
+            target = remote / f
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+        if saved_skills and saved_skills.exists():
+            shutil.copytree(saved_skills, remote / 'skills')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass

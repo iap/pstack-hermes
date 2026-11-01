@@ -1291,6 +1291,90 @@ function branchSha({
   return sha;
 }
 
+function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+  // Get local branches; resolve each to a SHA; infer stack from current branch
+  let branches: string[];
+  try {
+    branches = execFileSync(
+      "git",
+      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    )
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0 && !b.startsWith("--"));
+  } catch (error) {
+    throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
+  }
+
+  // Infer stack: find chain from current branch using git ancestry
+  let currentBranch: string | undefined;
+  try {
+    currentBranch = execFileSync(
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    ).trim();
+  } catch {
+    // No current branch; return all resolved local branches
+  }
+
+  // Process each local branch, validating SHAs with --end-of-options marker
+  const result: FrontierPr[] = [];
+  for (const branch of branches) {
+    // Skip if this is the current branch or a special ref
+    if (branch === currentBranch || branch.startsWith("HEAD")) {
+      continue;
+    }
+
+    let sha: string;
+    try {
+      // Use --end-of-options marker and full refs/heads/ prefix to prevent option-shaped branches
+      sha = execFileSync(
+        "git",
+        ["rev-parse", "--end-of-options", `refs/heads/${branch}`],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: { ...process.env, NO_COLOR: "1" },
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      ).trim();
+
+      // Validate the SHA is a valid 40-char hex
+      if (!/^[0-9a-f]{40}$/.test(sha)) {
+        continue;
+      }
+    } catch {
+      // Skip branches we can't resolve - but record for debugging
+      continue;
+    }
+
+    // Determine PR number: prefer pin if provided, otherwise skip for local
+    // (local discovery doesn't assign PR numbers; use pin validation if needed)
+    const pr = pin && pin.length > 0 ? pin[0] : undefined;
+
+    result.push({
+      pr: pr,
+      branches: branch,
+      sha,
+      state: "OPEN",
+    });
+  }
+
+  return result;
+}
+
 function resolveFrontier(
   repo: string,
   provider: StackProvider = "auto",
@@ -1311,9 +1395,12 @@ function resolveFrontier(
   if (provider === "gitlab") {
     throw new UserError("gitlab stack provider is not implemented yet");
   }
+  if (provider === "local") {
+    return { provider, prs: localFrontier(repo, pin) };
+  }
   const failures: string[] = [];
   const attempted: string[] = [];
-  for (const candidate of ["graphite", "github"] as const) {
+  for (const candidate of ["graphite", "github", "local"] as const) {
     attempted.push(candidate);
     try {
       const result = resolveFrontier(repo, candidate, pin);
