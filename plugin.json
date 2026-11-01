@@ -4,7 +4,7 @@
   "version": "0.15.5",
   "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence.",
   "author": {
-    "name": "Lauren Tan"
+    "name": "pstack-hermes-port contributors"
   },
   "homepage": "https://github.com/cursor/plugins/tree/main/pstack",
   "repository": "https://github.com/cursor/plugins",

@@ -12,7 +12,6 @@ config/** linguist-generated=true
 agents/** linguist-generated=true
 assets/** linguist-generated=true
 README.md linguist-generated=true
-after-install.md linguist-generated=true
 LICENSE linguist-generated=true
 .build-provenance.txt linguist-generated=true
 

@@ -55,7 +55,7 @@ will escalate genuine upstream defects with a minimal reproduction.
 
 ## Scope notes
 
-- The shipped package (`pstack/`) performs no network calls, no telemetry,
+- The shipped package (generated surfaces at the repo root) performs no network calls, no telemetry,
   and no code execution beyond the scripts documented in each skill.
 - The install-scanner contract (community-source safety verdict) is enforced
   in CI; the banned-construct list lives in `tools/bans.py` — the single

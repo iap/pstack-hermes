@@ -2,10 +2,13 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
+
+pytestmark = pytest.mark.skipif(sys.platform == 'win32', reason='release delivery shell gates are verified on Linux CI; Windows/MSYS path handling differs')
 
 ROOT = Path(__file__).resolve().parents[2]
 

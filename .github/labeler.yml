@@ -39,5 +39,4 @@ documentation:
       - any-glob-to-any-file: "AGENTS.md"
       - any-glob-to-any-file: "SECURITY.md"
       - any-glob-to-any-file: "docs/**"
-      - any-glob-to-any-file: "after-install.md"
       - any-glob-to-any-file: "CHANGELOG.md"

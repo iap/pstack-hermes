@@ -5,6 +5,8 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Changed
+- Drop `after-install.md`: converter no longer emits it; first-run guidance stays in package README / `docs/USING.md`. Publish/release/CI package lists and root-layout obsolete cleanup updated. Next convert refresh clears the stale provenance fix line.
+- Agent docs job flow (hermes-guide style): short always-on `AGENTS.md`; deep ops under `docs/agent/` only (`layout`, `convert-adapt`, `upstream-drift`, `review-ops` + router). Removed redundant `docs/AGENTS.md` and the `docs/RUNBOOK-upstream-drift.md` stub. One owner per fact: convert/verify in `convert-adapt`, layout paths in `layout`, CONTRIBUTING keeps Setup/Actions/PR/release. Root-layout facts corrected (`skills/` / `config/` at repo root; three `UPSTREAM_PIN` declarers).
 - Restructure round for the native-hermes install model: the README leads with the native `hermes plugins` install/update path (development tree now on `master`), the issue forms are project-only — the dual-load platform dropdown is replaced by an install-route field and the upstream-method contact link now points at this repo's user guide — and `docs/MODELS.md` documents the provisional upstream-name → hermes-default model mapping (code/judgment/reviewer roles) alongside the shipped panel.
 - The `master` rename is wired end to end: CI and publish triggers filter on `master`, the drift-watcher scheduler stub dispatches `ref=master` (source asset and dist copy), and the CONTRIBUTING/AGENTS install-route references are updated. The dist default-branch shims are now documented as a set — scheduler, labeler, dependabot — with their re-bootstrap sources.
 

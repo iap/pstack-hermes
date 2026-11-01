@@ -74,7 +74,6 @@ jobs:
             "plugin.yaml"
             "README.md"
             "LICENSE"
-            "after-install.md"
             ".build-provenance.txt"
           )
           hash_git_tree() {
@@ -106,7 +105,7 @@ jobs:
             local root="$1"
             (
               cd "$root" && {
-                for f in plugin.json plugin.yaml README.md LICENSE after-install.md; do
+                for f in plugin.json plugin.yaml README.md LICENSE; do
                   if [ -f "$f" ]; then
                     printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
                   fi

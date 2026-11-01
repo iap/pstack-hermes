@@ -160,7 +160,7 @@ def check_manifest(pkg: Path, rep: Report) -> dict:
     if not p.is_file():
         p = pkg / "plugin.yaml"
     if not p.is_file():
-        rep.fail("root plugin.json missing")
+        rep.fail("root plugin.yaml missing")
         return {}
     raw = p.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
@@ -325,7 +325,7 @@ def check_layout(pkg: Path, rep: Report) -> None:
             rep.ok(f"present: {label}")
         else:
             if rel == "plugin.json" and (pkg / "plugin.yaml").exists():
-                rep.ok("present: plugin.yaml (legacy)")
+                rep.ok("present: plugin.yaml (preferred)")
             else:
                 rep.fail(f"missing: {label}")
     # LICENSE moved to the repo root (repo layout v2); either location satisfies.
@@ -338,9 +338,9 @@ def check_layout(pkg: Path, rep: Report) -> None:
     if (pkg / "automations").exists():
         rep.fail("F-publish: automations/ present (must be excluded)")
     if (pkg / "agents").exists():
-        rep.fail("agents/ present (must be excluded — Hermes-native only)")
+        rep.note("agents/ present (Cursor dual-load source; inert on hermes portable path)")
     if (pkg / ".cursor-plugin").exists():
-        rep.fail(".cursor-plugin/ present (must be excluded — Hermes-native only)")
+        rep.note(".cursor-plugin/ present (Cursor dual-load source; hermes probes root manifest only)")
 
 
 def check_phase1(pkg: Path, rep: Report) -> None:

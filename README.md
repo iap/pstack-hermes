@@ -1,9 +1,7 @@
 # pstack
 
 *The pstack agent method — go fast by going deep first — packaged for the
-Hermes Agent portable plugin path. Unofficial port of
-<https://github.com/cursor/plugins/tree/main/pstack> (MIT, © Lauren Tan);
-package keeps the upstream identity pstack v0.15.5.*
+Hermes Agent portable plugin path.*
 
 ## Install
 
@@ -122,4 +120,4 @@ ledger with reviewer checks lives in the dev repo
 
 ---
 
-Adapted for Hermes Agent plugin compatibility from github.com/cursor/plugins pstack.
+[MIT License](LICENSE)

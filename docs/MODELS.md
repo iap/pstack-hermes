@@ -29,7 +29,7 @@ the panel is refreshed, and `setup-pstack` lets you override every row.
 
 ## The shipped panel
 
-`pstack/config/models.json` (shipped defaults; 18 roles):
+`config/models.json` (shipped defaults at package root; 18 roles):
 
 | Role | Default |
 |---|---|
