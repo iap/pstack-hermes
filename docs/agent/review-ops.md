@@ -9,6 +9,22 @@ weakening the port contract.
 - **Reply to the correct thread.** Use the thread ID from GraphQL when replying (or the correct `pullRequestReviewThread` endpoint).
 - **Fallback gracefully.** If GraphQL is blocked by auth/scopes, fall back to `gh pr view`/REST and note that limitation when replying or reporting checks.
 
+## Bot review order
+
+1. **Qodo AI triggers automatically.** Cross-check each finding against the
+   pre-change contract, current code, callers, tests, and the current review
+   thread. Resolve every valid finding until Qodo reports no remaining
+   findings. Dismiss false positives or out-of-scope items with evidence
+   (see step 3 below) — do not weaken the contract to satisfy a bot.
+2. **CodeRabbit triggers a "full review" after Qodo is reviewed.** Wait for
+   CodeRabbit findings to appear. Resolve every valid finding until CodeRabbit
+   reports no remaining findings. Dismiss false positives or out-of-scope
+   items with evidence.
+3. **Cross-check and verify findings are resolved before merge.** Both bots
+   must report clean. If a finding from the second bot surfaces a re-opened
+   issue from the first bot, return to step 1 and re-resolve. Do not merge
+   while any bot has an open finding.
+
 ## Process
 
 1. **Inspect before changing.** Check each finding against the pre-change
