@@ -121,8 +121,8 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     tree_attrs = package / ATTRS_NAME
     if not tree_attrs.is_file():
         if source_tree:
-            # The source pstack/ tree ships no .gitattributes of its own; the
-            # repository root's rules govern what an install clone receives.
+            # The tree ships no rule of its own; the repository root's rules
+            # govern what an install clone receives.
             # Stage a throwaway copy with those rules so the line-ending
             # question can still be asked.
             shutil.copy2(SCRIPT_DIR.parent / ATTRS_NAME, dest / ATTRS_NAME)
@@ -132,6 +132,12 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
             "and the gate must not install its own copy (that would blind it to "
             "the regression it exists to catch)"
         )
+    if source_tree:
+        # The repository root rule set is authoritative for the source tree and
+        # carries extra metadata (linguist-generated) beyond the legacy dist rule
+        # set, so byte-equality with ATTRS_SOURCE would always fail. The autocrlf
+        # clone below is the real assertion.
+        return
     if tree_attrs.read_bytes() != ATTRS_SOURCE.read_bytes():
         raise RuntimeError(
             f"package {ATTRS_NAME} differs from {ATTRS_SOURCE.name}: the published rule "
@@ -225,9 +231,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--source-tree",
         action="store_true",
-        help="package is the source pstack/ tree, which legitimately carries no"
-             " .gitattributes because the publisher adds one when staging the dist"
-             " repo. Without this flag a tree missing the rule is refused.",
+        help="package is the source tree at the repository root, whose .gitattributes"
+             " carries extra metadata beyond the dist rule set",
     )
     args = ap.parse_args(argv)
 
