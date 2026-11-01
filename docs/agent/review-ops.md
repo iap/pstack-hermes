@@ -27,6 +27,9 @@ weakening the port contract.
    thread status after reading the reply. If a reply cannot be sent, report
    that limitation rather than claiming it was posted.
 
+5. **Comment style.** Prefer replying as a comment linked to the bot's comment
+   rather than a standalone normal post (e.g. `Fix on: #<post-number> What: <short what> Why: <short why>`). If the fix needs follow-up on another PR, leave a short `{"what": ..., "why": ...}` comment pointing to that PR instead. Leave the resolve button to trigger automatically by the bot; fallback to manual resolution only when needed.
+
 ## Common false pressures on this repo
 
 | Bot nudge | Contract response |
