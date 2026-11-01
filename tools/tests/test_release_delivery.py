@@ -1,6 +1,7 @@
 """Exercise delivery shell gates against real, isolated Git repositories."""
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -70,7 +71,6 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, "checkout", "--orphan", "dist")
     git(remote, "rm", "-rf", ".")
     # Save package files from source before deleting on orphan dist branch
-    saved_files = {}
     if not payload_changed:
         for f in ["README.md", "LICENSE", "config/models.json", "plugin.json"]:
             # Read file content from master branch before it was deleted
