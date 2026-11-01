@@ -1291,6 +1291,53 @@ function branchSha({
   return sha;
 }
 
+function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+  // Get local branches in reverse order (most recent first)
+  let branches: string[];
+  try {
+    branches = execFileSync(
+      "git",
+      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    )
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
+  } catch (error) {
+    throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
+  }
+
+  const result: FrontierPr[] = [];
+  for (const branch of branches) {
+    try {
+      const sha = execFileSync(
+        "git",
+        ["rev-parse", branch],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: { ...process.env, NO_COLOR: "1" },
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      ).trim();
+      result.push({
+        pr: 0,
+        branches: branch,
+        sha,
+        state: "OPEN",
+      });
+    } catch (error) {
+      // Skip branches we can't parse
+    }
+  }
+  return result;
+}
+
 function resolveFrontier(
   repo: string,
   provider: StackProvider = "auto",
@@ -1311,9 +1358,12 @@ function resolveFrontier(
   if (provider === "gitlab") {
     throw new UserError("gitlab stack provider is not implemented yet");
   }
+  if (provider === "local") {
+    return { provider, prs: localFrontier(repo, pin) };
+  }
   const failures: string[] = [];
   const attempted: string[] = [];
-  for (const candidate of ["graphite", "github"] as const) {
+  for (const candidate of ["graphite", "github", "local"] as const) {
     attempted.push(candidate);
     try {
       const result = resolveFrontier(repo, candidate, pin);

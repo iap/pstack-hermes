@@ -158,8 +158,6 @@ def parse_frontmatter(text: str):
 def check_manifest(pkg: Path, rep: Report) -> dict:
     p = pkg / "plugin.json"
     if not p.is_file():
-        p = pkg / "plugin.yaml"
-    if not p.is_file():
         rep.fail("root plugin.json missing")
         return {}
     raw = p.read_bytes()

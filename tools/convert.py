@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import yaml
 import os
 import re
 import shutil
@@ -74,7 +73,7 @@ TEXT_EXTS = {
 # The conversion gate (study 3.2 fixes 2): frontmatter name must equal the
 # directory name (kebab-case) for the portable loader.
 FRONTMATTER_FIXES = {
-    "poteto-mode": ("Poteto Mode", "poteto-mode"),
+    "poteto-mode": ("poteto-mode", "poteto-mode"),
 }
 
 # ---------------------------------------------------------------------------
