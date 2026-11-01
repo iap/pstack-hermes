@@ -73,7 +73,9 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
         for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
             # Read file content from master branch before it was deleted
             content = git(remote, 'show', 'master:' + f)
-            (remote / f).write_text(content)
+            target = remote / f
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
         import shutil
         shutil.copytree(remote.parent / 'skills', remote / 'skills')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
