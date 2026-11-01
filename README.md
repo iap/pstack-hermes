@@ -7,30 +7,15 @@ package keeps the upstream identity pstack v0.15.5.*
 
 ## Install
 
-Choose the command for the current default branch shown on the
-[repository page](https://github.com/iap/pstack-hermes). During the migration
-it may be `dist` or `master`.
-
-If the default branch is `dist`, install the package at the repository root:
+Install the plugin:
 
 ```sh
 hermes plugins install iap/pstack-hermes --enable
 ```
 
-If the default branch is `master`, install the generated subdirectory:
+Unpinned installs update with `hermes plugins update pstack`.
 
-```sh
-hermes plugins install iap/pstack-hermes/pstack --enable
-```
-
-Both unpinned installs update with `hermes plugins update pstack`. Existing
-`dist` clones remain on `dist` after the default branch changes.
-
-Legacy subdirectory installs from older Hermes versions may lack source
-metadata and cannot auto-update. Upgrade Hermes to a version that records
-source metadata, back up local edits, then reinstall with `--force`:
-if the default branch is `dist`, `hermes plugins install iap/pstack-hermes --force --enable`;
-if it is `master`, `hermes plugins install iap/pstack-hermes/pstack --force --enable`.
+Pinned installs must be reinstalled with a new SHA and `--force`.
 
 GitHub Releases record package SHAs for immutable root installs. Pinned
 installs do not auto-update; to move an existing pin, use `hermes plugins
@@ -70,7 +55,7 @@ recorded source. Pinned installs must be reinstalled with a new SHA and `--force
   gateway, and save a backup outside the plugin before updating. Subdirectory
   updates replace shipped skills; in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
-  your fork's subdir (`hermes plugins install <you>/pstack-hermes/pstack --enable`).
+  your fork (`hermes plugins install <you>/pstack-hermes --enable`).
 - **Add your own new skills alongside** — a skill tap:
   `hermes skills tap add <you>/skills-repo`, then
   `hermes skills install <you>/skills-repo/<skill>`.
