@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Assert every UPSTREAM_PIN declaration agrees, and is well-formed.
 
-AGENTS.md and CONTRIBUTING.md both state the rule - the pin must stay in
-lock-step across ci.yml / release.yml / publish-dist.yml /
-upstream-drift-watch.yml - but nothing enforced it. A bump that missed one file
-would ship a package built from a pin that CI never validated, and only a code
-review would notice. This gate makes the documented rule machine-checked and
-exists specifically to de-risk the re-pin procedure in
-docs/RUNBOOK-upstream-drift.md.
+AGENTS.md and docs/agent/upstream-drift.md both state the rule - the pin must
+stay in lock-step across ci.yml / release.yml / publish-dist.yml - but nothing
+enforced it. A bump that missed one file would ship a package built from a pin
+that CI never validated, and only a code review would notice. This gate makes
+the documented rule machine-checked and exists specifically to de-risk the
+re-pin procedure in docs/agent/upstream-drift.md.
 
 Exit codes: 0 all declarations agree and are well-formed; 1 mismatch or
 malformed; 2 unreadable input.

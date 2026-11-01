@@ -58,5 +58,8 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 <!-- Anything a reviewer should weigh: trade-offs, skipped boxes and why,
      screenshots, follow-ups. Optional. -->
 
+> [!TIP]
+> **Draft-first content:** Prefer writing draft messages/content before publishing to the public git provider. Keep it technical, short, essential — only on-scope context relations. Cross-check and verify for no false positive/negative. If this is an open/draft PR, add a clear note for reviewers here so they can read the context clearly.
+
 
 <!-- /coderabbit-ai-generated:v1 -->

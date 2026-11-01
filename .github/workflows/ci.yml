@@ -71,10 +71,8 @@ jobs:
           # Package files only (repo root may also contain build tooling)
           PACKAGE_FILES=(
             "plugin.json"
-            "plugin.yaml"
             "README.md"
             "LICENSE"
-            "after-install.md"
             ".build-provenance.txt"
           )
           hash_git_tree() {
@@ -106,7 +104,7 @@ jobs:
             local root="$1"
             (
               cd "$root" && {
-                for f in plugin.json plugin.yaml README.md LICENSE after-install.md; do
+                for f in plugin.json README.md LICENSE; do
                   if [ -f "$f" ]; then
                     printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
                   fi
@@ -156,7 +154,14 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pstack-build-${{ matrix.os }}-${{ github.run_id }}
-          path: ./
+          path: |
+            plugin.json
+            README.md
+            LICENSE
+            .build-provenance.txt
+            skills/
+            config/
+            assets/
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
           # the artifact is a debugging aid, not a release artifact.

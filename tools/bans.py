@@ -32,7 +32,7 @@ DELEGATION_VOCAB_BANS: tuple[str, ...] = (
 VOCAB_EXEMPT_PREFIXES: tuple[str, ...] = (".build-provenance.txt",)
 GENERATED_DEPENDENCY_DIRS: frozenset[str] = frozenset({"node_modules"})
 # Repo-root tooling/documentation directories (only when at package root)
-ROOT_TOOLING_DIRS: frozenset[str] = frozenset({"tools", "docs", ".github", ".git", ".venv", "patches"})
+ROOT_TOOLING_DIRS: frozenset[str] = frozenset({"tools", "docs", ".github", ".git", ".venv", "patches", "agents", ".cursor-plugin", ".pytest-tmp", ".pytest_cache", ".ruff_cache"})
 
 
 # Repo-level tooling/documentation files that are NOT part of the installed package.

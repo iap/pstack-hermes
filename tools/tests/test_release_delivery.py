@@ -2,10 +2,13 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
+
+pytestmark = pytest.mark.skipif(sys.platform == 'win32', reason='release delivery shell gates are verified on Linux CI; Windows/MSYS path handling differs')
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,6 +54,13 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'config', 'user.name', 'Fixture')
     git(remote, 'config', 'user.email', 'fixture@example.invalid')
     (remote / 'plugin.json').write_text('payload')
+    (remote / 'README.md').write_text('readme')
+    (remote / 'LICENSE').write_text('license')
+    (remote / 'skills').mkdir()
+    (remote / 'skills' / 'demo').mkdir()
+    (remote / 'skills' / 'demo' / 'SKILL.md').write_text('skill')
+    (remote / 'config').mkdir()
+    (remote / 'config' / 'models.json').write_text('{}')
     (remote / '.build-provenance.txt').write_text(
         'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
     )
@@ -58,6 +68,12 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
     git(remote, 'rm', '-rf', '.')
+    # Restore package files from source when payload unchanged
+    if not payload_changed:
+        for f in ['README.md', 'LICENSE', 'config/models.json']:
+            (remote / f).write_text((remote / f).read_text())
+        import shutil
+        shutil.copytree(remote / 'skills', remote / 'skills')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass

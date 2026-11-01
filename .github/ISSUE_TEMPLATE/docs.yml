@@ -16,8 +16,8 @@ body:
       options:
         - README
         - CONTRIBUTING.md
-        - docs/RUNBOOK-upstream-drift.md, docs/USING.md
-        - skill prose (shipped in pstack/)
+        - docs/agent/, docs/USING.md
+        - skill prose (shipped skills/)
         - other
     validations:
       required: true
