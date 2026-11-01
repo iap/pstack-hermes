@@ -73,7 +73,7 @@ TEXT_EXTS = {
 # The conversion gate (study 3.2 fixes 2): frontmatter name must equal the
 # directory name (kebab-case) for the portable loader.
 FRONTMATTER_FIXES = {
-    "poteto-mode": ("poteto-mode", "poteto-mode"),
+    "poteto-mode": ("Poteto Mode", "poteto-mode"),
 }
 
 # ---------------------------------------------------------------------------
