@@ -127,14 +127,26 @@ def fetch_url(
     raise FetchError(f"{last}{_proxy_hint(system_proxy)}") from last
 
 
-def fetch_via_gh(url: str, runner=subprocess.run) -> str | None:
-    """Fetch a raw action file through `gh api` (authenticated api.github.com)."""
+def fetch_via_gh(
+    url: str, runner=subprocess.run, ref: str | None = None
+) -> str | None:
+    """Fetch a raw action file through `gh api` (authenticated api.github.com).
+
+    A ref can contain `/`, so a raw URL cannot be split back into ref and path
+    on its own. Callers that know the ref pass it; the remainder after
+    `owner/repo/<ref>/` is then the file path.
+    """
     if not url.startswith(RAW_BASE):
         raise ValueError(f"not a raw.githubusercontent.com URL: {url!r}")
-    # URL shape: owner/repo/<ref>/<path...>; the ref is the third segment and
-    # the action file may live in a subdirectory.
-    owner, repo_name, ref, name = url[len(RAW_BASE) :].split("/", 3)
+    owner, repo_name, remainder = url[len(RAW_BASE) :].split("/", 2)
     repo = f"{owner}/{repo_name}"
+    if ref is None:
+        ref, name = remainder.split("/", 1)
+    else:
+        prefix = f"{ref}/"
+        if not remainder.startswith(prefix):
+            raise ValueError(f"{ref!r} is not the ref in {url!r}")
+        name = remainder[len(prefix) :]
     endpoint = f"repos/{repo}/contents/{name}?ref={ref}"
     try:
         proc = runner(
@@ -170,7 +182,9 @@ def make_fetch(
     if transport not in {"auto", "urllib", "gh"}:
         raise ValueError(f"unknown transport: {transport!r}")
     if transport == "gh":
-        return gh_fetch or fetch_via_gh
+        if gh_fetch is not None:
+            return lambda url, ref=None: gh_fetch(url)
+        return fetch_via_gh
     opener = build_opener(system_proxy)
     direct = urllib_fetch or (
         lambda url: fetch_url(
@@ -181,14 +195,16 @@ def make_fetch(
         return direct
     fallback = gh_fetch or fetch_via_gh
 
-    def auto(url: str) -> str | None:
+    def auto(url: str, ref: str | None = None) -> str | None:
         try:
             return direct(url)
         except OSError as exc:
             if gh_fetch is None and shutil.which("gh") is None:
                 raise
             try:
-                return fallback(url)
+                if gh_fetch is not None:
+                    return gh_fetch(url)
+                return fallback(url, ref=ref)
             except OSError as gh_exc:
                 raise FetchError(f"{exc}; gh fallback failed: {gh_exc}") from exc
 
@@ -253,7 +269,9 @@ def declared_inputs(root: Path, uses: str, fetch) -> set[str] | None:
     subdir = "/".join(parts[2:])
     prefix = f"{subdir}/" if subdir else ""
     for name in ("action.yml", "action.yaml"):
-        body = fetch(RAW_URL.format(repo=repo, ref=ref, name=f"{prefix}{name}"))
+        body = fetch(
+            RAW_URL.format(repo=repo, ref=ref, name=f"{prefix}{name}"), ref=ref
+        )
         if body is not None:
             doc = yaml.safe_load(body) or {}
             return set((doc.get("inputs") or {}).keys())

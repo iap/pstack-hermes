@@ -43,13 +43,14 @@ BACKTICK_PATH_RE = re.compile(r"`([^`]+)`")
 WORKFLOW_TOKEN_RE = re.compile(r"`([A-Za-z0-9_.-]+\.ya?ml)`")
 STALE_PATH_RE = re.compile(
     r"(?<![\w./-])pstack/(?:skills|config|assets|agents|docs|patches)/"
+    r"|pstack/(?:plugin\.json|README\.md|\.gitattributes)"
     r"|pstack/\.build-provenance"
     r"|\$PWD/pstack"
     r"|pwd\)/pstack"
 )
 GENERATED_KINDS = frozenset({"generated", "copied"})
 HAND_WRITTEN_KINDS = frozenset({"hand-written"})
-CP_SOURCE_RE = re.compile(r'^\s*cp -a (?P<src>.+?) "\$dist/"\s*$', re.MULTILINE)
+CP_SOURCE_RE = re.compile(r'cp -a (?P<src>[^;\n"]+?) "\$dist/"')
 
 
 def _read(path: Path) -> str:
@@ -145,7 +146,11 @@ def check_pin_declarers(root: Path = ROOT) -> list[str]:
         return [f"tools/check_pins.py: cannot read REQUIRED_DECLARERS ({exc})"]
 
     problems: list[str] = []
-    docs = [root / "CONTRIBUTING.md", root / "docs" / "agent" / "upstream-drift.md"]
+    docs = [
+        root / "AGENTS.md",
+        root / "CONTRIBUTING.md",
+        root / "docs" / "agent" / "upstream-drift.md",
+    ]
     for doc in docs:
         if not doc.is_file():
             continue

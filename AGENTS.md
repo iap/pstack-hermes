@@ -87,7 +87,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Area | Decision |
 |---|---|
 | Stack provider | Graphite (`gt`) default when available; GitHub (`gh`) fallback; GitLab (`glab`) halted |
-| Package identity | Plugin/repo name `pstack`; upstream version follows the pin (`plugin.json`) |
+| Package identity | Plugin/repo name `pstack`; upstream version follows the pin (`plugin.json`); keep the `iap/pstack-hermes` repository — never create or rename one for an install alias (#100); update mechanics live in the package README |
 | Releases | Tooling releases recorded in `CHANGELOG.md`; never move an existing tag |
 | Planning | GitHub issues, native sub-issues and milestones own plans; `docs/` holds instructions only |
 | Encoding | LF-only, no BOM, UTF-8 (CI-enforced) |
@@ -100,7 +100,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | `tools/`, `tools/assets/` | hand-written source of package truth |
 | `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | hand-written docs |
 | `README.md` template in `tools/convert.py` | hand-written source; `README.md` itself is generated |
-| `.github/` | hand-written CI; `UPSTREAM_PIN` stays in lock-step across the three declaring workflows (`tools/check_pins.py`); action pins are bumped by dependabot, not by hand |
+| `.github/` | hand-written CI; `UPSTREAM_PIN` stays in lock-step across the declarers listed by `tools/check_pins.py`; action pins are bumped by dependabot, not by hand |
 | `agents/`, `.cursor-plugin/` | dual-load source; leave as-is |
 | `patches/` | historical reference only ([docs/PATCHES.md](docs/PATCHES.md)) |
 | `plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `.build-provenance.txt` | generated — never hand-edit |

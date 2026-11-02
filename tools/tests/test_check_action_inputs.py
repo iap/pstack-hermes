@@ -60,7 +60,7 @@ def _write_action(tmp_path: Path, name: str, inputs: dict, steps: list[dict]) ->
 def test_declared_input_passes(tmp_path):
     _local_action_with_inputs(tmp_path, ["sync-labels", "configuration-path"])
     _workflow(tmp_path, "./.github/actions/demo", {"sync-labels": True})
-    code, _ = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, _ = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 0
 
 
@@ -68,7 +68,7 @@ def test_undeclared_input_is_caught_the_labeler_case(tmp_path):
     """The counterfactual: `syncLabels` is not `sync-labels`."""
     _local_action_with_inputs(tmp_path, ["sync-labels"])
     _workflow(tmp_path, "./.github/actions/demo", {"syncLabels": True})
-    code, report = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, report = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 1
     assert any("FAIL" in line and "syncLabels" in line for line in report)
 
@@ -79,7 +79,7 @@ def test_remote_action_unknown_input_is_caught(tmp_path):
     url = check_action_inputs.RAW_URL.format(repo="actions/labeler", ref="a" * 40,
                                              name="action.yml")
     code, report = check_action_inputs.check(
-        tmp_path, fetch=lambda u: body if u == url else None
+        tmp_path, fetch=lambda u, **_: body if u == url else None
     )
     assert code == 1
     assert any("syncLabels" in line for line in report)
@@ -93,21 +93,21 @@ def test_action_yaml_fallback(tmp_path):
     yaml_ = check_action_inputs.RAW_URL.format(repo="actions/labeler", ref="b" * 40,
                                                name="action.yaml")
     code, _ = check_action_inputs.check(
-        tmp_path, fetch=lambda u: None if u == yml else (body if u == yaml_ else None)
+        tmp_path, fetch=lambda u, **_: None if u == yml else (body if u == yaml_ else None)
     )
     assert code == 0
 
 
 def test_unresolvable_action_is_a_tool_error_not_a_pass(tmp_path):
     _workflow(tmp_path, "actions/labeler@" + "c" * 40, {"x": "1"})
-    code, report = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, report = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 2  # cannot certify inputs it could not read
     assert any("cannot resolve" in line for line in report)
 
 
 def test_docker_reference_is_skipped(tmp_path):
     _workflow(tmp_path, "docker://alpine:3.20", {"entrypoint": "/bin/sh"})
-    code, report = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, report = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 0
     assert any("skip" in line for line in report)
 
@@ -115,7 +115,7 @@ def test_docker_reference_is_skipped(tmp_path):
 def test_step_without_with_is_fine(tmp_path):
     _write_action(tmp_path, "demo", {}, [{"shell": "bash", "run": "true"}])
     _workflow(tmp_path, "./.github/actions/demo")
-    code, _ = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, _ = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 0
 
 
@@ -128,7 +128,7 @@ def test_composite_action_steps_are_scanned_too(tmp_path):
         {},
         [{"uses": "./.github/actions/demo", "with": {"badInput": "1"}}],
     )
-    code, report = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, report = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 1
     assert any("badInput" in line for line in report)
 
@@ -137,7 +137,7 @@ def test_broken_yaml_is_a_tool_error(tmp_path):
     d = tmp_path / ".github" / "workflows"
     d.mkdir(parents=True)
     (d / "broken.yml").write_text("jobs: [unclosed\n", encoding="utf-8")
-    code, report = check_action_inputs.check(tmp_path, fetch=lambda url: None)
+    code, report = check_action_inputs.check(tmp_path, fetch=lambda url, **_: None)
     assert code == 2
     assert any("unparseable" in line or "cannot resolve" in line for line in report)
 
@@ -292,3 +292,41 @@ def test_fetch_via_gh_failure_is_a_tool_error():
     with pytest.raises(OSError, match="authentication required"):
         check_action_inputs.fetch_via_gh(_raw(), runner=lambda *a, **k: Proc())
 
+
+
+def test_fetch_via_gh_handles_refs_with_slashes():
+    body = "inputs: {}\n"
+    encoded = base64.b64encode(body.encode("utf-8")).decode("ascii")
+    seen: list[list[str]] = []
+
+    class Proc:
+        returncode = 0
+        stdout = encoded
+        stderr = ""
+
+    def runner(args, **kwargs):
+        seen.append(args)
+        return Proc()
+
+    url = _raw(ref="feature/windows")
+    assert (
+        check_action_inputs.fetch_via_gh(url, runner=runner, ref="feature/windows")
+        == body
+    )
+    assert seen[0][2] == (
+        "repos/actions/labeler/contents/action.yml?ref=feature/windows"
+    )
+
+
+def test_remote_action_with_slash_ref_and_subdirectory(tmp_path):
+    _workflow(tmp_path, "actions/labeler/sub@feature/windows", {"good-input": "1"})
+    body = yaml.safe_dump({"inputs": {"good-input": {"description": "x"}}})
+    url = check_action_inputs.RAW_URL.format(
+        repo="actions/labeler", ref="feature/windows", name="sub/action.yml"
+    )
+
+    def fetch(u, ref=None):
+        return body if (u, ref) == (url, "feature/windows") else None
+
+    code, report = check_action_inputs.check(tmp_path, fetch=fetch)
+    assert code == 0, report

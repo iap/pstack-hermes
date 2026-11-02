@@ -143,3 +143,36 @@ def test_publish_sources_exist(tmp_path):
 def test_repository_docs_are_clean():
     code, lines = check_docs.check(Path(check_docs.ROOT))
     assert code == 0, "\n".join(lines)
+
+
+def test_stale_root_generated_file_path_fails(tmp_path):
+    _write(tmp_path / "AGENTS.md", "copy pstack/plugin.json into the package\n")
+    problems = check_docs.check_stale_paths(tmp_path)
+    assert any("pstack/plugin.json" in item for item in problems)
+
+
+def test_bare_pstack_prose_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "docs" / "USING.md",
+        "The generated package lives at the repository root (not a `pstack/`\n"
+        "subdirectory).\n",
+    )
+    assert check_docs.check_stale_paths(tmp_path) == []
+
+
+def test_inline_conditional_publish_source_missing_fails(tmp_path):
+    _write(
+        tmp_path / ".github" / "workflows" / "publish-dist.yml",
+        'run: |\n  if [ -d assets ]; then cp -a assets "$dist/"; fi\n',
+    )
+    problems = check_docs.check_publish_sources(tmp_path)
+    assert any("assets" in item for item in problems)
+
+
+def test_inline_conditional_publish_source_exists(tmp_path):
+    _write(tmp_path / "assets" / "keep.txt", "x\n")
+    _write(
+        tmp_path / ".github" / "workflows" / "publish-dist.yml",
+        'run: |\n  if [ -d assets ]; then cp -a assets "$dist/"; fi\n',
+    )
+    assert check_docs.check_publish_sources(tmp_path) == []
