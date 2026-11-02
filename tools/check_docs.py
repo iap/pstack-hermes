@@ -50,6 +50,9 @@ STALE_PATH_RE = re.compile(
 )
 GENERATED_KINDS = frozenset({"generated", "copied"})
 HAND_WRITTEN_KINDS = frozenset({"hand-written"})
+BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
+CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
+LAYOUT_GENERATED_EXEMPT = frozenset({"plugin.yaml", "agents"})
 CP_SOURCE_RE = re.compile(r'cp -a (?P<src>[^;\n"]+?) "\$dist/"')
 
 
@@ -114,6 +117,7 @@ def check_layout_manifest(root: Path = ROOT) -> list[str]:
         return [".gitattributes: missing (cannot cross-check generated paths)"]
 
     problems: list[str] = []
+    documented: list[str] = []
     for line in _read(layout).splitlines():
         match = PATH_CELL_RE.match(line)
         if not match:
@@ -121,6 +125,8 @@ def check_layout_manifest(root: Path = ROOT) -> list[str]:
         kind = match.group("kind").strip().lower()
         for path in BACKTICK_PATH_RE.findall(match.group("paths")):
             generated = any(_covers(marker, path) for marker in markers)
+            if kind in GENERATED_KINDS:
+                documented.append(path)
             if kind in GENERATED_KINDS and not generated:
                 problems.append(
                     f"docs/agent/layout.md: {path} listed {kind} but .gitattributes does not mark it generated"
@@ -129,6 +135,17 @@ def check_layout_manifest(root: Path = ROOT) -> list[str]:
                 problems.append(
                     f"docs/agent/layout.md: {path} listed hand-written but .gitattributes marks it generated"
                 )
+    for marker in sorted(
+        m for m in markers if m.rstrip("/") not in LAYOUT_GENERATED_EXEMPT
+    ):
+        bare = marker.rstrip("/")
+        if not any(
+            path.rstrip("/") == bare or path.rstrip("/").startswith(f"{bare}/")
+            for path in documented
+        ):
+            problems.append(
+                f"docs/agent/layout.md: .gitattributes marks {marker} generated but layout.md does not list it"
+            )
     return problems
 
 
@@ -183,6 +200,8 @@ def check_stale_paths(root: Path = ROOT) -> list[str]:
         for lineno, line in enumerate(_read(doc).splitlines(), start=1):
             if STALE_PATH_RE.search(line):
                 problems.append(f"{rel}:{lineno}: stale package subdirectory path: {line.strip()}")
+            elif rel in CONTRACT_DOCS and BARE_PACKAGE_RE.search(line):
+                problems.append(f"{rel}:{lineno}: stale bare pstack/ package path: {line.strip()}")
     template = root / ".github" / "PULL_REQUEST_TEMPLATE.md"
     if template.is_file():
         for lineno, line in enumerate(_read(template).splitlines(), start=1):

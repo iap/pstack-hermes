@@ -176,3 +176,28 @@ def test_inline_conditional_publish_source_exists(tmp_path):
         'run: |\n  if [ -d assets ]; then cp -a assets "$dist/"; fi\n',
     )
     assert check_docs.check_publish_sources(tmp_path) == []
+
+
+def test_bare_package_path_in_agent_contract_fails(tmp_path):
+    _write(tmp_path / "AGENTS.md", "The package lives at pstack/ in this repo.\n")
+    problems = check_docs.check_stale_paths(tmp_path)
+    assert any("bare pstack/" in item for item in problems)
+
+
+def test_generated_marker_missing_from_layout_fails(tmp_path):
+    _write(tmp_path / ".gitattributes", "LICENSE linguist-generated=true\n")
+    _write(
+        tmp_path / "docs" / "agent" / "layout.md",
+        "| Path | Kind | Notes |\n|---|---|---|\n| `README.md` | generated | x |\n",
+    )
+    problems = check_docs.check_layout_manifest(tmp_path)
+    assert any("LICENSE" in item and "does not list it" in item for item in problems)
+
+
+def test_generated_marker_listed_in_layout_passes(tmp_path):
+    _write(tmp_path / ".gitattributes", "LICENSE linguist-generated=true\n")
+    _write(
+        tmp_path / "docs" / "agent" / "layout.md",
+        "| Path | Kind | Notes |\n|---|---|---|\n| `LICENSE` | generated | x |\n",
+    )
+    assert check_docs.check_layout_manifest(tmp_path) == []

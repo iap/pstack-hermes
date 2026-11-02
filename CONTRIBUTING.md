@@ -235,7 +235,7 @@ The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, val
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, the
 poteto-mode Bun suite (`bun run test` / `bun run typecheck`), provenance
 consistency. A PR that changes a generated surface (`skills/`, `config/`,
-`assets/`, `README.md`, `plugin.json`) must say `rebuilt from pin <sha>` in its
+`assets/`, `README.md`, `LICENSE`, `plugin.json`) must say `rebuilt from pin <sha>` in its
 body and name the converter change behind the rebuild — that tree is build
 output, and reviewers read it as output. The [PR template](.github/PULL_REQUEST_TEMPLATE.md)
 carries the matching "Generated package" fields. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
@@ -285,7 +285,8 @@ template, issue bodies). They carry more weight than a plain `> Note.` block.
   commit messages — they stay plain text. Say it in the subject line or the
   body as normal prose. The `type(scope): summary` convention already carries
   the what/why; add a second line for the why if it doesn't fit.
-- **The generated package.** `skills/`, `config/`, `assets/`, `README.md` and
+- **The generated package.** `skills/`, `config/`, `assets/`, `README.md`,
+  `LICENSE` and
   `plugin.json` are rebuilt by `tools/convert.py` from upstream and are never
   hand-edited. Don't add a
   callout convention there as a hand-edit rule — it would be wiped on the next

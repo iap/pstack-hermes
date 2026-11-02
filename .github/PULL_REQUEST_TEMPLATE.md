@@ -23,7 +23,7 @@ The ```yaml provenance``` block is machine-read by tools/pr_checklist.py.
 
 ## Affected surface
 - [ ] tooling (`tools/`, CI, docs)
-- [ ] generated package (`plugin.json`, `skills/`, `config/`, `assets/`, `README.md`) — **requires a rebuild from the current pin**
+- [ ] generated package (`plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `LICENSE`) — **requires a rebuild from the current pin**
 
 ## Provenance — required if a generated surface changed
 <!-- tools/pr_checklist.py compares source_commit below to the tree's

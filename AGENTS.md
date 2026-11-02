@@ -15,7 +15,7 @@ users at [docs/USING.md](docs/USING.md).
 
 > [!WARNING]
 > **The package is generated output and lives at the repository root.**
-> `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
+> `plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `LICENSE` and
 > `.build-provenance.txt` are rebuilt from the pinned upstream clone by
 > `tools/convert.py`. Hand edits are wiped on the next rebuild and fail the CI
 > reproducibility gate. To change the package, change `tools/` or
@@ -26,7 +26,7 @@ Everything below follows from that rule.
 ## Do not
 
 - Hand-edit a generated surface (root `skills/`, `config/`, `assets/`,
-  `README.md`, `plugin.json`, `.build-provenance.txt`). Edit `tools/assets/` or
+  `README.md`, `plugin.json`, `LICENSE`, `.build-provenance.txt`). Edit `tools/assets/` or
   the converter template, then rebuild.
 - Rewrite hermes primitives back into Cursor vocabulary (`delegate_task`,
   `clarify`, `session_search`, `hermes cron`, `hermesbot`). The bans in
@@ -103,7 +103,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | `.github/` | hand-written CI; `UPSTREAM_PIN` stays in lock-step across the declarers listed by `tools/check_pins.py`; action pins are bumped by dependabot, not by hand |
 | `agents/`, `.cursor-plugin/` | dual-load source; leave as-is |
 | `patches/` | historical reference only ([docs/PATCHES.md](docs/PATCHES.md)) |
-| `plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `.build-provenance.txt` | generated — never hand-edit |
+| `plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `LICENSE`, `.build-provenance.txt` | generated — never hand-edit |
 | `.venv/`, `.pytest-tmp/`, `.validate-data/`, `pstack.tmp-build/` | local scratch; never commit |
 
 <!-- coderabbit-ai-generated:v1 -->
