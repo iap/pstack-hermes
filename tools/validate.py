@@ -643,6 +643,26 @@ def subprocess_env() -> dict:
     return env
 
 
+def _loader_failure_status(stderr: str) -> str:
+    """Classify a loader subprocess that produced no JSON.
+
+    "import-failed"  the loader could not be imported - a broken environment
+    "call-failed"    the loader imported and then raised on the package, so the
+                     harness is fine and the input is not: a rejection
+    "no-json-stdout" no readable exception; unknown, treated as broken
+
+    Collapsing the middle case into "import-failed" sends a contributor to debug
+    their hermes install when the package is what the loader refused.
+    """
+    if "Traceback" not in stderr:
+        return "no-json-stdout"
+    lines = [ln for ln in stderr.strip().splitlines() if ln.strip()]
+    last = lines[-1] if lines else ""
+    if re.search(r"\b(ImportError|ModuleNotFoundError)\b", last):
+        return "import-failed"
+    return "call-failed"
+
+
 def gold_manifest_check(pkg: Path) -> dict:
     """[4] Run the REAL hermes loader manifest validation via its venv python."""
     if not VENV_PY.is_file():
@@ -667,7 +687,7 @@ def gold_manifest_check(pkg: Path) -> dict:
         result["status"] = "ok" if run.returncode == 0 else "nonzero-exit"
     except Exception:
         result["stdout_tail"] = run.stdout[-2000:]
-        result["status"] = "import-failed" if ("Traceback" in run.stderr) else "no-json-stdout"
+        result["status"] = _loader_failure_status(run.stderr)
     return result
 
 
@@ -706,7 +726,7 @@ def gold_load_check(pkg: Path, data_root: Path) -> dict:
         result["status"] = "ok" if run.returncode == 0 else "nonzero-exit"
     except Exception:
         result["stdout_tail"] = run.stdout[-2000:]
-        result["status"] = "import-failed" if ("Traceback" in run.stderr) else "no-json-stdout"
+        result["status"] = _loader_failure_status(run.stderr)
     return result
 
 
@@ -725,29 +745,31 @@ def cli_doctor(pkg: Path) -> dict:
             "stdout": run.stdout, "stderr": run.stderr}
 
 
-LOADER_RAN_STATUSES = ("ok", "nonzero-exit")
-LOADER_BROKEN_STATUSES = ("import-failed", "no-json-stdout", "error")
+# "call-failed" is a rejection: the loader imported and then raised on the
+# package, so it ran. The other two are "the loader executed".
+LOADER_RAN_STATUSES = ("ok", "nonzero-exit", "call-failed")
+LOADER_ABSENT_STATUSES = ("unavailable", "skipped")
 
 
 def loader_state(gold: dict, load: dict) -> str:
     """Classify the two loader checks as "ran", "broken" or "unavailable".
 
-    "ran"         both checks executed and returned structured output, whether
-                  or not they accepted the package
-    "broken"      the environment is present but could not drive the loader
-                  (import failure, crashed subprocess, unparseable stdout)
-    "unavailable" no hermes environment at all
+    "ran"         both checks executed against the package, accepted or not
+    "broken"      the harness could not be trusted: an import failure, a crashed
+                  subprocess, unparseable output, or one check running while the
+                  other did not. A partial run is never a skip.
+    "unavailable" neither check ran because there is no hermes environment
 
     The distinction is the point: a broken environment used to be reported as
     "the loader ran and rejected the package", which sends a reader hunting a
     package defect that does not exist.
     """
     statuses = (gold.get("status"), load.get("status"))
-    if any(s in LOADER_BROKEN_STATUSES for s in statuses):
-        return "broken"
     if all(s in LOADER_RAN_STATUSES for s in statuses):
         return "ran"
-    return "unavailable"
+    if all(s in LOADER_ABSENT_STATUSES for s in statuses):
+        return "unavailable"
+    return "broken"
 
 
 def resolve_exit_code(

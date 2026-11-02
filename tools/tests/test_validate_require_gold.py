@@ -4,9 +4,10 @@ CI runs `validate.py --require-gold`; without it, a runner with no hermes
 install degrades to the static mirror and exits 0, which is how the GOLD layer
 went unenforced for the entire history of this repo.
 
-The state split matters too: "the environment exists but the loader could not be
-driven" used to be reported as "the loader ran and rejected the package", which
-sends a reader hunting a defect in the package instead of the harness.
+The state split matters too. Two distinct failures were previously collapsed:
+"the environment is broken" (a harness problem) and "the loader refused the
+package" (an input problem). Reporting either as the other sends the reader to
+the wrong place.
 """
 
 import validate
@@ -36,16 +37,55 @@ def test_both_checks_returning_structured_output_means_ran():
     assert state("nonzero-exit", "nonzero-exit") == "ran"
 
 
+def test_loader_rejecting_the_package_still_counts_as_ran():
+    # The loader imported and then raised on the input: the harness is fine.
+    assert state("ok", "call-failed") == "ran"
+    assert state("call-failed", "call-failed") == "ran"
+
+
 def test_import_or_subprocess_failure_means_broken():
     assert state("import-failed", "ok") == "broken"
     assert state("ok", "no-json-stdout") == "broken"
     assert state("error", "error") == "broken"
 
 
-def test_missing_environment_means_unavailable():
+def test_partial_run_is_broken_never_skipped():
+    # One check ran, the other did not (environment vanished mid-run, or one
+    # probe errored). Half a verification is not a skip.
+    assert state("ok", "unavailable") == "broken"
+    assert state("unavailable", "ok") == "broken"
+    assert state("ok", "skipped") == "broken"
+
+
+def test_no_environment_at_all_means_unavailable():
     assert state("unavailable", "unavailable") == "unavailable"
-    # A skipped load (package dir missing) is not a broken harness.
     assert state("unavailable", "skipped") == "unavailable"
+
+
+# --- traceback classification ---------------------------------------------
+
+
+def test_import_error_traceback_is_a_broken_environment():
+    stderr = (
+        "Traceback (most recent call last):\n"
+        '  File "<string>", line 3, in <module>\n'
+        "ModuleNotFoundError: No module named 'hermes_cli'"
+    )
+    assert validate._loader_failure_status(stderr) == "import-failed"
+
+
+def test_loader_exception_traceback_is_a_rejection():
+    stderr = (
+        "Traceback (most recent call last):\n"
+        '  File "<string>", line 5, in <module>\n'
+        "hermes_cli.agent_plugins.AgentPluginError: invalid server declaration"
+    )
+    assert validate._loader_failure_status(stderr) == "call-failed"
+
+
+def test_unparseable_output_without_traceback_is_unknown():
+    assert validate._loader_failure_status("") == "no-json-stdout"
+    assert validate._loader_failure_status("some noise") == "no-json-stdout"
 
 
 # --- exit codes -----------------------------------------------------------
@@ -70,7 +110,6 @@ def test_absent_loader_skips_by_default_and_fails_when_required():
 
 
 def test_broken_loader_never_skips_silently():
-    # Present-but-broken is a harness failure, not a reason to report a pass.
     assert code(loader_state="broken") == 2
     assert code(loader_state="broken", require_gold=True) == 3
 
