@@ -182,9 +182,10 @@ a reply cannot be posted, report that limitation instead of claiming it landed.
 
 Tone is part of the format, not decoration:
 
-- **Open with the verdict, not a courtesy.** `Accepted` / `Rejected` /
-  `Already fixed` / `Out of scope`, then the mechanism and the evidence. No
-  preamble.
+- **Open with `<sha>: <verdict>`.** The head SHA you verified against, then the
+  verdict - `accepted` / `rejected` / `already fixed` / `out of scope` - then the
+  mechanism and the evidence. SHA first is not a courtesy to the reviewer; it is
+  what keeps a verdict SHA-bound per the round loop. No preamble before either.
 - **No thanks.** Never "thank you", "thanks", "great catch", "good find", or a
   thank-you mention of the bot. A finding is a claim to adjudicate, not a gift,
   and a reply that opens by thanking spends its most-read clause on nothing the
@@ -198,7 +199,7 @@ Tone is part of the format, not decoration:
 Wrong   <sha> - thank you, this was a real contract mismatch.
 Right   <sha>: accepted. main counted import-failed as available, so a loader
         that never ran was reported as exit 2. Fixed by a three-way
-        loader_state; 9 tests cover the matrix.
+        loader_state; 14 tests cover the matrix.
 ```
 
 ## Round ledger
