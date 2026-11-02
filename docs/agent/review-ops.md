@@ -30,6 +30,19 @@ SHA-current** state before merge. The port contract outranks every bot.
   requested**, never clean. If it does not respond, check CodeRabbit's
   documented commands rather than assuming it is clean.
 
+  Two "no verdict" states look identical in the UI and are not:
+
+  - `skipping` - never requested.
+  - `in_progress` that never moves - **the review is paused**, not slow. After a
+    run of new commits on one branch CodeRabbit posts a "Reviews paused" note and
+    stops reviewing, while its check run stays live and idle. Six fix commits
+    into a single round was enough to trigger it here. Send
+    `@coderabbitai resume`, then `@coderabbitai review`; a paused review never
+    times out, so waiting for it is not a strategy. The threshold is
+    `reviews.auto_pause_after_reviewed_commits` in `.coderabbit.yaml`, and hitting
+    it is a signal that the round is churning - prefer fewer, larger fix pushes
+    over one commit per finding.
+
 Round loop:
 
 1. Push, then wait for Qodo's verdict on the **new head SHA**.
