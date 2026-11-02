@@ -19,6 +19,12 @@
 # CI validates and a human then approves. Security updates bypass cooldown by
 # design - an advisory is not a reason to wait.
 #
+# The tiered `semver-*-days` keys are declared for `uv` only. GitHub's Dependabot
+# options reference marks SemVer-bump cooldowns as NOT supported for the
+# github-actions ecosystem (only `default-days` applies there), and an
+# unsupported key invalidates the whole file - which would silently stop
+# version-update PRs entirely.
+#
 # MERGE POLICY (review-enforced, not expressed in this file). Auto-merge
 # (`gh pr merge --auto --squash`) is allowed for the `actions-minor-patch` group
 # only. Everything else is merged by a human: any major bump, and the whole `uv`
@@ -38,8 +44,6 @@ updates:
       day: "monday"
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-patch-days: 3
     labels: ["tooling"]
     groups:
       actions-minor-patch:
@@ -60,8 +64,6 @@ updates:
       day: "monday"
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-patch-days: 3
     labels: ["tooling"]
 
   # pyproject.toml + uv.lock (the tooling venv: pyyaml, pytest, ruff,
