@@ -13,9 +13,10 @@ Layers:
 Usage: python validate.py [--package <package-dir>] [--require-gold]
 Exit codes: 0 = all hard checks passed (the loader checks are skipped only when hermes is
 absent and --require-gold was not passed); 1 = hard static failure; 2 = the loader ran and
-did not accept the package, or the loader environment exists but is broken; 3 =
---require-gold was passed and the loader never ran (absent or broken). CI passes the flag so
-a green run can never mean "the real loader was never asked".
+did not accept the package, or, without --require-gold, the loader environment exists but is
+broken; 3 = --require-gold was passed and the loader checks did not complete because the
+loader was absent or broken. CI passes the flag so a green run can never mean "the real
+loader was never asked".
 """
 
 from __future__ import annotations

@@ -123,7 +123,8 @@ one has already caught (or would have caught) a real defect here.
 - **The real-loader gate has its own workflow.** `validate-gold.yml` pins
   `hermes-agent` by commit SHA, builds its environment, and runs
   `tools/validate.py --require-gold`, which exits 3 instead of reporting a green
-  package when the loader never ran. It stays out of `ci.yml` on purpose: it
+  package when the required loader checks did not complete. It stays out of
+  `ci.yml` on purpose: it
   needs a network install, and the 2-OS build matrix should not pay for it.
   Promote it to a required check in the `Master` ruleset only after it has been
   green across unrelated PRs.
