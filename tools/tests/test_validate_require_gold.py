@@ -65,7 +65,10 @@ def test_no_environment_at_all_means_unavailable():
 # --- traceback classification ---------------------------------------------
 
 
-def test_import_error_traceback_is_a_broken_environment():
+def test_failure_before_the_import_marker_is_a_broken_environment():
+    # ModuleNotFoundError is the obvious case; the marker is what actually
+    # decides, so a SyntaxError during import lands here too instead of being
+    # mistaken for a rejection.
     stderr = (
         "Traceback (most recent call last):\n"
         '  File "<string>", line 3, in <module>\n'
@@ -73,12 +76,20 @@ def test_import_error_traceback_is_a_broken_environment():
     )
     assert validate._loader_failure_status(stderr) == "import-failed"
 
+    syntax = (
+        "Traceback (most recent call last):\n"
+        '  File "<string>", line 4, in <module>\n'
+        "SyntaxError: invalid syntax"
+    )
+    assert validate._loader_failure_status(syntax) == "import-failed"
 
-def test_loader_exception_traceback_is_a_rejection():
+
+def test_failure_after_the_import_marker_is_a_rejection():
     stderr = (
         "Traceback (most recent call last):\n"
-        '  File "<string>", line 5, in <module>\n'
-        "hermes_cli.agent_plugins.AgentPluginError: invalid server declaration"
+        '  File "<string>", line 7, in <module>\n'
+        "hermes_cli.agent_plugins.AgentPluginError: invalid server declaration\n"
+        f"{validate.LOADER_IMPORT_MARKER}\n"
     )
     assert validate._loader_failure_status(stderr) == "call-failed"
 

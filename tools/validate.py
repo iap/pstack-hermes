@@ -643,24 +643,25 @@ def subprocess_env() -> dict:
     return env
 
 
+# Printed by each loader subprocess immediately after the import succeeds, so the
+# parent can tell "the loader was never reached" from "the loader ran and refused
+# the package" without guessing from exception names. A SyntaxError or a
+# module-level RuntimeError during import is neither an ImportError nor a
+# rejection, and inferring from the last traceback line got that wrong.
+LOADER_IMPORT_MARKER = "hermes-loader-imported"
+
+
 def _loader_failure_status(stderr: str) -> str:
     """Classify a loader subprocess that produced no JSON.
 
-    "import-failed"  the loader could not be imported - a broken environment
-    "call-failed"    the loader imported and then raised on the package, so the
-                     harness is fine and the input is not: a rejection
+    "import-failed"  the loader was never reached - a broken environment
+    "call-failed"    the import completed and the loader then raised on the
+                     package: a rejection, not a harness problem
     "no-json-stdout" no readable exception; unknown, treated as broken
-
-    Collapsing the middle case into "import-failed" sends a contributor to debug
-    their hermes install when the package is what the loader refused.
     """
     if "Traceback" not in stderr:
         return "no-json-stdout"
-    lines = [ln for ln in stderr.strip().splitlines() if ln.strip()]
-    last = lines[-1] if lines else ""
-    if re.search(r"\b(ImportError|ModuleNotFoundError)\b", last):
-        return "import-failed"
-    return "call-failed"
+    return "call-failed" if LOADER_IMPORT_MARKER in stderr else "import-failed"
 
 
 def gold_manifest_check(pkg: Path) -> dict:
@@ -671,6 +672,7 @@ def gold_manifest_check(pkg: Path) -> dict:
         "import json, sys\n"
         f"sys.path.insert(0, {json.dumps(str(HERMES_SRC))})\n"
         "from hermes_cli.agent_plugins import read_agent_plugin_manifest\n"
+        f"print({LOADER_IMPORT_MARKER!r}, file=sys.stderr, flush=True)\n"
         f"d, diag = read_agent_plugin_manifest({json.dumps(str(pkg))})\n"
         "print(json.dumps({'data': d, 'diagnostics': [getattr(x, 'message', str(x)) for x in diag]}, indent=2, default=str))\n"
     )
@@ -700,6 +702,7 @@ def gold_load_check(pkg: Path, data_root: Path) -> dict:
         "import json, sys, dataclasses\n"
         f"sys.path.insert(0, {json.dumps(str(HERMES_SRC))})\n"
         "from hermes_cli.agent_plugins import load_agent_plugin\n"
+        f"print({LOADER_IMPORT_MARKER!r}, file=sys.stderr, flush=True)\n"
         f"p = load_agent_plugin({json.dumps(str(pkg))}, {json.dumps(str(data_root))})\n"
         "skills = getattr(p, 'skills', []) or []\n"
         "try:\n"
