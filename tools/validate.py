@@ -10,10 +10,12 @@ Layers:
   [6] READ-ONLY CLI attempt: `hermes.exe plugins doctor <pkg> --ci` (verbatim capture; errors are
       findings to record, not package failures — the doctor signature is verified in parallel)
 
-Usage: python validate.py [--package <package-dir>]
+Usage: python validate.py [--package <package-dir>] [--require-gold]
 Exit codes: 0 = all hard checks passed (GOLD checks skipped when hermes is unavailable
 on this machine); 1 = hard static failure; 2 = GOLD checks RAN and failed (hermes
-present, loader diagnostics non-zero).
+present, loader diagnostics non-zero); 3 = --require-gold was passed and the GOLD
+checks could not run at all. CI uses that so a green run can never mean "the real
+loader was never asked".
 """
 
 from __future__ import annotations
@@ -723,9 +725,37 @@ def cli_doctor(pkg: Path) -> dict:
             "stdout": run.stdout, "stderr": run.stderr}
 
 
+def resolve_exit_code(
+    *,
+    static_failed: bool,
+    gold_available: bool,
+    load_available: bool,
+    gold_ok: bool,
+    load_ok: bool,
+    require_gold: bool,
+) -> int:
+    """Map finished check results to the documented exit code.
+
+    Pure on purpose: the --require-gold policy is the one thing that must be
+    testable without a hermes install, because its whole job is to make "the
+    real loader never ran" impossible to mistake for a pass.
+    """
+    if static_failed:
+        return 1
+    if gold_available and load_available:
+        return 0 if (gold_ok and load_ok) else 2
+    return 3 if require_gold else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--package", default=str(DEFAULT_PACKAGE))
+    ap.add_argument(
+        "--require-gold",
+        action="store_true",
+        help="fail (exit 3) when the real hermes loader is unavailable, instead of "
+        "degrading silently to the static mirror",
+    )
     args = ap.parse_args()
     pkg = Path(args.package).resolve()
     rep = Report()
@@ -832,17 +862,28 @@ def main() -> int:
             print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
                   f"gold manifest: {'PASS' if gold_ok else 'FAIL'}; "
                   f"gold load: {'PASS' if load_ok else 'FAIL'}")
-            if rep.failed:
-                return 1
-            if not (gold_ok and load_ok):
-                return 2
-            return 0
-        # hermes not present (e.g. CI runners): gold checks cannot run -> skip
-        # them instead of failing. Static + repo YAML gates remain authoritative;
-        # the maintainer machine supplies gold evidence per CONTRIBUTING.md.
-        print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
-              "gold: SKIPPED (hermes not available on this machine)")
-        return 1 if rep.failed else 0
+        elif args.require_gold:
+            # --require-gold exists so a CI run can never go green after silently
+            # skipping the real loader. An absent hermes is a harness failure, not
+            # a package verdict, and it must not be reported as one.
+            print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
+                  "gold: REQUIRED but UNAVAILABLE (point HERMES_HOME at a hermes "
+                  "checkout that has a .venv, or drop --require-gold)")
+        else:
+            # hermes not present (e.g. a contributor machine): gold checks cannot
+            # run -> skip them instead of failing. Static + repo YAML gates remain
+            # authoritative; the maintainer machine supplies gold evidence per
+            # CONTRIBUTING.md.
+            print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
+                  "gold: SKIPPED (hermes not available on this machine)")
+        return resolve_exit_code(
+            static_failed=bool(rep.failed),
+            gold_available=gold_available,
+            load_available=load_available,
+            gold_ok=gold_ok,
+            load_ok=load_ok,
+            require_gold=args.require_gold,
+        )
 
 
 if __name__ == "__main__":
