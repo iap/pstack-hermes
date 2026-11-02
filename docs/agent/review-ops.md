@@ -68,10 +68,45 @@ in the reply.
 Prefer **GraphQL**: it is the only source for thread IDs, resolution state,
 outdated hunks, and the reviewed SHA. Use **REST** only as a fallback.
 
-Examples are POSIX shell. On PowerShell, put the query in a JSON file and call
-`gh api graphql --input <file>` (UTF-8, no BOM).
+Examples are POSIX shell. On PowerShell, `--paginate` cannot be combined with
+`--input`; run these in Git Bash, or drop `--paginate` and pass the cursor
+explicitly. Non-paginated calls can use `--input <file>` (UTF-8, no BOM).
 
-List threads with the reviewed head:
+Set the PR under review once; every command below uses these:
+
+```sh
+OWNER=$(gh repo view --json owner -q .owner.login)
+REPO=$(gh repo view --json name -q .name)
+PR=$(gh pr view --json number -q .number)   # run on the PR branch
+```
+
+List every review thread, paginated (`gh api` follows `$endCursor`):
+
+```sh
+gh api graphql --paginate --slurp -f query='
+query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
+  repository(owner:$owner,name:$repo){
+    pullRequest(number:$pr){
+      headRefOid
+      reviewThreads(first:100,after:$endCursor){
+        pageInfo{hasNextPage endCursor}
+        nodes{
+          id isResolved isOutdated path line subjectType
+          comments(first:1){nodes{
+            databaseId author{login} commit{oid} originalCommit{oid} body
+          }}
+        }
+      }
+    }
+  }
+}' -F owner="$OWNER" -F repo="$REPO" -F pr="$PR"
+```
+
+`--slurp` returns one object per page; inspect all of them. Without
+`--paginate`, pass the previous page's `endCursor` as `-F endCursor=...` and
+stop when `hasNextPage` is false.
+
+Bot verdicts carry their reviewed commit too:
 
 ```sh
 gh api graphql -f query='
@@ -79,19 +114,15 @@ query($owner:String!,$repo:String!,$pr:Int!){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$pr){
       headRefOid
-      reviewThreads(first:100){
-        pageInfo{hasNextPage endCursor}
-        nodes{
-          id isResolved isOutdated path line subjectType
-          comments(first:1){nodes{databaseId author{login} body}}
-        }
-      }
+      reviews(last:20){nodes{author{login} state commit{oid} submittedAt}}
     }
   }
-}' -F owner=iap -F repo=pstack-hermes -F pr=115
+}' -F owner="$OWNER" -F repo="$REPO" -F pr="$PR"
 ```
 
-Follow `pageInfo.endCursor` with `after:` for more than 100 threads.
+**SHA check.** A thread or verdict is current only when its `commit.oid`
+equals `headRefOid`. A different `commit.oid` (or an `originalCommit.oid`
+behind the head) is stale: re-request the bot, do not count it as clean.
 
 Reply in the same thread:
 
