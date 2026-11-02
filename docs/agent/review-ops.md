@@ -34,13 +34,14 @@ Round loop:
 
 1. Push, then wait for Qodo's verdict on the **new head SHA**.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-3. When Qodo has **no open finding on the head SHA**, request a CodeRabbit
-   **full review** (`@coderabbitai full review`) and wait for its verdict on
-   that same SHA.
+3. When Qodo has **no open finding on the head SHA**, request the appropriate
+   CodeRabbit review and wait for its verdict on that same SHA. Use
+   `full review` for the first pass, a rebase, a force-push, or a large diff;
+   use `review` only for a small fix push in the same round. Confirm the
+   verdict's `commit.oid` equals `headRefOid`.
 4. Triage CodeRabbit. Every fix push restarts the loop: Qodo re-runs
-   automatically, but CodeRabbit does not — re-request
-   `@coderabbitai review` after the push and confirm the new verdict's
-   `commit.oid` equals `headRefOid`. Return to step 1.
+   automatically, but CodeRabbit does not. Return to step 1; step 3
+   re-requests CodeRabbit for the new head.
 5. Merge only when both bots are clean **on the same head SHA**, every thread
    is resolved, CI is green, and the local gates pass. Confirm the CodeRabbit
    check is not `skipping`.
