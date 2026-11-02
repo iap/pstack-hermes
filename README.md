@@ -45,14 +45,16 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Hermes updates unpinned `dist` root installs and `master` subdirectory
-installs. Root installs use Git; subdirectory installs are re-cloned from the
-recorded source. Pinned installs must be reinstalled with a new SHA and `--force`.
+Unpinned installs update in place; pinned installs must be reinstalled with a
+new SHA and `--force` (see [Install](#install)). Installs created before the
+root-layout migration (the old `iap/pstack-hermes/pstack` route) cannot update
+in place — reinstall with
+`hermes plugins install iap/pstack-hermes --force --enable`.
 
 ## Customizing skills
 
 - **Tweak a line or two** — edit the installed `SKILL.md`, restart the
-  gateway, and save a backup outside the plugin before updating. Subdirectory
+  gateway, and save a backup outside the plugin before updating. Package
   updates replace shipped skills; in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
   your fork (`hermes plugins install <you>/pstack-hermes --enable`).

@@ -107,6 +107,40 @@ def test_stale_subdirectory_path_fails(tmp_path):
     assert any("pstack/skills" in item for item in problems)
 
 
+def test_stale_path_in_readme_fails(tmp_path):
+    _write(tmp_path / "README.md", "git show origin/main:pstack/skills/x\n")
+    problems = check_docs.check_stale_paths(tmp_path)
+    assert any("README.md" in item and "pstack/skills" in item for item in problems)
+
+
+def test_stale_subdirectory_install_route_in_readme_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "Hermes updates unpinned `dist` root installs and `master` subdirectory\n"
+        "installs.\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
+def test_stale_subdirectory_install_route_in_using_fails(tmp_path):
+    _write(
+        tmp_path / "docs" / "USING.md",
+        "Subdirectory updates replace shipped skills; in-place edits are not durable.\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("docs/USING.md" in item for item in problems)
+
+
+def test_migration_note_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "Installs created before the root-layout migration (the old\n"
+        "`iap/pstack-hermes/pstack` route) cannot update in place.\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
 def test_upstream_repo_path_is_not_flagged(tmp_path):
     _write(
         tmp_path / "docs" / "agent" / "upstream-drift.md",

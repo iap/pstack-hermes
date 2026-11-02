@@ -11,10 +11,13 @@ longer exists. This tool checks the facts that actually broke:
    way `.gitattributes` does (this is how `README.md` was mislabelled).
 3. Every doc paragraph that lists `UPSTREAM_PIN` workflows lists exactly
    `tools/check_pins.py::REQUIRED_DECLARERS`.
-4. Hand-written docs carry no stale package-subdirectory paths
-   (`pstack/skills/`, `pstack/config/`, `$PWD/pstack`, ...).
+4. Hand-written docs (plus the generated `README.md`) carry no stale
+   package-subdirectory paths (`pstack/skills/`, `pstack/config/`,
+   `$PWD/pstack`, ...).
 5. `publish-dist.yml` copies only paths that exist in the tree (the dropped
    `after-install.md` would have failed every master publish).
+6. Install docs (`README.md`, `docs/USING.md`) do not resurrect the dead
+   `master` subdirectory install route.
 
 Exit codes: 0 clean; 1 drift found; 2 unreadable input.
 """
@@ -36,6 +39,10 @@ HAND_WRITTEN_DOCS = (
     ".github/PULL_REQUEST_TEMPLATE.md",
 )
 HAND_WRITTEN_DOC_GLOBS = ("docs/*.md", "docs/agent/*.md")
+# README.md is generated, but its install prose is user-facing and drifted once
+# with the root-layout migration; scan it for the same stale package paths.
+SCAN_EXTRA_DOCS = ("README.md",)
+INSTALL_ROUTE_DOCS = ("README.md", "docs/USING.md")
 
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 PATH_CELL_RE = re.compile(r"^\|\s*(?P<paths>(?:`[^`]+`[,\s]*)+)\|\s*(?P<kind>[^|]+?)\s*\|")
@@ -50,6 +57,12 @@ STALE_PATH_RE = re.compile(
 )
 GENERATED_KINDS = frozenset({"generated", "copied"})
 HAND_WRITTEN_KINDS = frozenset({"hand-written"})
+STALE_INSTALL_RE = re.compile(
+    r"`?master`?\s+subdirectory\s+installs?"
+    r"|subdirectory\s+installs?\s+are\s+re-cloned"
+    r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills",
+    re.IGNORECASE,
+)
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
 CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
 LAYOUT_GENERATED_EXEMPT = frozenset({"plugin.yaml", "agents"})
@@ -61,7 +74,7 @@ def _read(path: Path) -> str:
 
 
 def _doc_paths(root: Path) -> list[Path]:
-    paths = [root / rel for rel in HAND_WRITTEN_DOCS]
+    paths = [root / rel for rel in (*HAND_WRITTEN_DOCS, *SCAN_EXTRA_DOCS)]
     for pattern in HAND_WRITTEN_DOC_GLOBS:
         paths.extend(sorted(root.glob(pattern)))
     seen: dict[Path, None] = {}
@@ -212,6 +225,22 @@ def check_stale_paths(root: Path = ROOT) -> list[str]:
     return problems
 
 
+def check_stale_install_route(root: Path = ROOT) -> list[str]:
+    problems: list[str] = []
+    for rel in INSTALL_ROUTE_DOCS:
+        doc = root / rel
+        if not doc.is_file():
+            continue
+        text = _read(doc)
+        for match in STALE_INSTALL_RE.finditer(text):
+            lineno = text.count("\n", 0, match.start()) + 1
+            snippet = " ".join(match.group(0).split())
+            problems.append(
+                f"{rel}:{lineno}: stale subdirectory-install route: {snippet}"
+            )
+    return problems
+
+
 def check_publish_sources(root: Path = ROOT) -> list[str]:
     workflow = root / ".github" / "workflows" / "publish-dist.yml"
     if not workflow.is_file():
@@ -233,6 +262,7 @@ CHECKS = (
     ("layout matches .gitattributes", check_layout_manifest),
     ("UPSTREAM_PIN declarers match check_pins", check_pin_declarers),
     ("no stale package subdirectory paths", check_stale_paths),
+    ("no stale subdirectory-install route", check_stale_install_route),
     ("publish-dist sources exist", check_publish_sources),
 )
 
