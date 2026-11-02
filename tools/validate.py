@@ -11,11 +11,11 @@ Layers:
       findings to record, not package failures — the doctor signature is verified in parallel)
 
 Usage: python validate.py [--package <package-dir>] [--require-gold]
-Exit codes: 0 = all hard checks passed (GOLD checks skipped when hermes is unavailable
-on this machine); 1 = hard static failure; 2 = GOLD checks RAN and failed (hermes
-present, loader diagnostics non-zero); 3 = --require-gold was passed and the GOLD
-checks could not run at all. CI uses that so a green run can never mean "the real
-loader was never asked".
+Exit codes: 0 = all hard checks passed (the loader checks are skipped only when hermes is
+absent and --require-gold was not passed); 1 = hard static failure; 2 = the loader ran and
+did not accept the package, or the loader environment exists but is broken; 3 =
+--require-gold was passed and the loader never ran (absent or broken). CI passes the flag so
+a green run can never mean "the real loader was never asked".
 """
 
 from __future__ import annotations
@@ -725,13 +725,36 @@ def cli_doctor(pkg: Path) -> dict:
             "stdout": run.stdout, "stderr": run.stderr}
 
 
+LOADER_RAN_STATUSES = ("ok", "nonzero-exit")
+LOADER_BROKEN_STATUSES = ("import-failed", "no-json-stdout", "error")
+
+
+def loader_state(gold: dict, load: dict) -> str:
+    """Classify the two loader checks as "ran", "broken" or "unavailable".
+
+    "ran"         both checks executed and returned structured output, whether
+                  or not they accepted the package
+    "broken"      the environment is present but could not drive the loader
+                  (import failure, crashed subprocess, unparseable stdout)
+    "unavailable" no hermes environment at all
+
+    The distinction is the point: a broken environment used to be reported as
+    "the loader ran and rejected the package", which sends a reader hunting a
+    package defect that does not exist.
+    """
+    statuses = (gold.get("status"), load.get("status"))
+    if any(s in LOADER_BROKEN_STATUSES for s in statuses):
+        return "broken"
+    if all(s in LOADER_RAN_STATUSES for s in statuses):
+        return "ran"
+    return "unavailable"
+
+
 def resolve_exit_code(
     *,
     static_failed: bool,
-    gold_available: bool,
-    load_available: bool,
-    gold_ok: bool,
-    load_ok: bool,
+    loader_state: str,
+    loader_ok: bool,
     require_gold: bool,
 ) -> int:
     """Map finished check results to the documented exit code.
@@ -742,9 +765,14 @@ def resolve_exit_code(
     """
     if static_failed:
         return 1
-    if gold_available and load_available:
-        return 0 if (gold_ok and load_ok) else 2
-    return 3 if require_gold else 0
+    if loader_state == "ran":
+        return 0 if loader_ok else 2
+    if require_gold:
+        return 3
+    # Without the flag a broken environment still has to fail - silently
+    # skipping it is how the loader layer went unenforced in the first place -
+    # but an absent one stays a no-op for contributors without hermes.
+    return 2 if loader_state == "broken" else 0
 
 
 def main() -> int:
@@ -856,12 +884,17 @@ def main() -> int:
             print(f"HARD FAILURES: {len(rep.failed)}")
             for m in rep.failed:
                 print(f"  - {m}")
-        gold_available = gold.get("status") != "unavailable"
-        load_available = load.get("status") not in ("skipped", "unavailable")
-        if gold_available and load_available:
+        state = loader_state(gold, load)
+        if state == "ran":
             print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
                   f"gold manifest: {'PASS' if gold_ok else 'FAIL'}; "
                   f"gold load: {'PASS' if load_ok else 'FAIL'}")
+        elif state == "broken":
+            # The environment is present but could not drive the loader. Say so:
+            # it is a harness failure, never a package verdict.
+            print(f"static: {'PASS' if not rep.failed else 'FAIL'}; "
+                  "gold: BROKEN (the hermes environment exists but the loader "
+                  "could not be driven - see the status blocks above)")
         elif args.require_gold:
             # --require-gold exists so a CI run can never go green after silently
             # skipping the real loader. An absent hermes is a harness failure, not
@@ -878,10 +911,8 @@ def main() -> int:
                   "gold: SKIPPED (hermes not available on this machine)")
         return resolve_exit_code(
             static_failed=bool(rep.failed),
-            gold_available=gold_available,
-            load_available=load_available,
-            gold_ok=gold_ok,
-            load_ok=load_ok,
+            loader_state=state,
+            loader_ok=gold_ok and load_ok,
             require_gold=args.require_gold,
         )
 
