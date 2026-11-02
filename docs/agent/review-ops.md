@@ -43,8 +43,14 @@ SHA-current** state before merge. The port contract outranks every bot.
     it is a signal that the round is churning - prefer fewer, larger fix pushes
     over one commit per finding.
 
-Round loop:
+One request per head SHA. Do not re-send a review command because a verdict is
+slow - that is noise, not pressure: a paused review does not resume because it
+was asked twice, and a running one gains nothing from a duplicate comment.
+Diagnose the state first (skipping / paused / running), clear it if paused, then
+wait. Repeating the command also buries the evidence the next reader needs under
+duplicate ask-and-ack comments.
 
+Round loop:
 1. Push, then wait for Qodo's verdict on the **new head SHA**.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
 3. When Qodo has **no open finding on the head SHA**, request the appropriate
