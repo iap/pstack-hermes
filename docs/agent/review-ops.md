@@ -114,11 +114,14 @@ query($owner:String!,$repo:String!,$pr:Int!){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$pr){
       headRefOid
-      reviews(last:20){nodes{author{login} state commit{oid} submittedAt}}
+      latestReviews(first:100){nodes{author{login} state commit{oid} submittedAt}}
     }
   }
 }' -F owner="$OWNER" -F repo="$REPO" -F pr="$PR"
 ```
+
+`latestReviews` returns the latest review per author, so a current bot verdict
+cannot be pushed out of the window by later reviews from someone else.
 
 **SHA check.** A thread or verdict is current only when its `commit.oid`
 equals `headRefOid`. A different `commit.oid` (or an `originalCommit.oid`
