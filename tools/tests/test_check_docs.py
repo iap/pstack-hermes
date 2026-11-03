@@ -212,6 +212,33 @@ def test_legacy_install_continuation_before_identifier_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_legacy_install_quoted_ref_separated_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install --ref \"$SHA\" iap/pstack-hermes/pstack\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
+def test_legacy_install_quoted_ref_equals_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install --ref=\"$SHA\" iap/pstack-hermes/pstack\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
+def test_legacy_install_newline_inside_inline_code_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "Run `hermes plugins install\niap/pstack-hermes/pstack --enable`.\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
 def test_legacy_schemeless_github_install_fails(tmp_path):
     _write(
         tmp_path / "README.md",
