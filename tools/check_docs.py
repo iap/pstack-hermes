@@ -60,20 +60,12 @@ HAND_WRITTEN_KINDS = frozenset({"hand-written"})
 STALE_INSTALL_RE = re.compile(
     r"`?master`?\s+subdirectory\s+installs?"
     r"|subdirectory\s+installs?\s+are\s+re-cloned"
-    r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills"
-    r"|plugins\s+install\b"
-    r"(?:(?:[ \t]*\\?\r?\n[ \t]*|[ \t]+)"
-    r"(?:-f|--force|--allow-removed|--no-deps|--yes-deps|--enable|--no-enable|-h|--help"
-    r"|--ref(?:=(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s`'\"]+)"
-    r"|[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s`'\"]+)"
-    r"|\\\r?\n[ \t]*(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s`'\"]+))))*"
-    r"(?:[ \t]*\\?\r?\n[ \t]*|[ \t]+)"
-    r"[`'\"]?(?<![\w./-])(?:(?:https?://)?github\.com/|git@github\.com:)?"
-    r"iap/pstack-hermes(?:\.git)?"
-    r"(?:/tree/[^/\s`'\"]+)?"
-    r"(?:/pstack|#pstack)(?=[\s/`'\"]|$)",
+    r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills",
     re.IGNORECASE,
 )
+LEGACY_REPO = "iap/pstack-hermes"
+LEGACY_PREFIX_TERMINATORS = " \t\r\n`'\"(="
+LEGACY_TAIL_TERMINATORS = " \t\r\n/`'\"(),."
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
 CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
 LAYOUT_GENERATED_EXEMPT = frozenset({"plugin.yaml", "agents"})
@@ -82,6 +74,26 @@ CP_SOURCE_RE = re.compile(r'cp -a (?P<src>[^;\n"]+?) "\$dist/"')
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _legacy_target(text: str, pos: int) -> bool:
+    """True when the repo name at *pos* points at the removed `pstack/` subdir."""
+    if pos > 0 and text[pos - 1] not in LEGACY_PREFIX_TERMINATORS:
+        prefix = text[max(0, pos - 12) : pos].lower()
+        if not (prefix.endswith("github.com/") or prefix.endswith("github.com:")):
+            return False
+    tail = text[pos + len(LEGACY_REPO) :].lower()
+    if tail.startswith(".git"):
+        tail = tail[4:]
+    if tail.startswith("/tree/"):
+        _, sep, subdir = tail[len("/tree/") :].partition("/")
+        if not sep or not subdir.startswith("pstack"):
+            return False
+        return len(subdir) == 6 or subdir[6] in LEGACY_TAIL_TERMINATORS
+    if not (tail.startswith("/pstack") or tail.startswith("#pstack")):
+        return False
+    rest = tail[7:]
+    return not rest or rest[0] in LEGACY_TAIL_TERMINATORS
 
 
 def _doc_paths(root: Path) -> list[Path]:
@@ -249,6 +261,22 @@ def check_stale_install_route(root: Path = ROOT) -> list[str]:
             problems.append(
                 f"{rel}:{lineno}: stale subdirectory-install route: {snippet}"
             )
+        lower = text.lower()
+        start = 0
+        while True:
+            pos = lower.find(LEGACY_REPO, start)
+            if pos == -1:
+                break
+            if _legacy_target(text, pos):
+                lineno = text.count("\n", 0, pos) + 1
+                line_end = text.find("\n", pos)
+                snippet = " ".join(
+                    text[pos : line_end if line_end != -1 else len(text)].split()
+                )
+                problems.append(
+                    f"{rel}:{lineno}: stale subdirectory-install route: {snippet}"
+                )
+            start = pos + len(LEGACY_REPO)
     return problems
 
 

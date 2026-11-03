@@ -49,7 +49,7 @@ Unpinned root installs update in place. Pinned installs must be reinstalled
 with a new SHA and `--force` (see [Install](#install)).
 
 Installs created before the root-layout migration (the old
-`iap/pstack-hermes/pstack` route) cannot update in place. Back up local edits,
+source-subdirectory route) cannot update in place. Back up local edits,
 remove the old install, then install the root package:
 
 ```sh
