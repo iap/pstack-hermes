@@ -132,11 +132,21 @@ def test_stale_subdirectory_install_route_in_using_fails(tmp_path):
     assert any("docs/USING.md" in item for item in problems)
 
 
+def test_legacy_subdirectory_install_command_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install iap/pstack-hermes/pstack --enable\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
 def test_migration_note_is_not_flagged(tmp_path):
     _write(
         tmp_path / "README.md",
         "Installs created before the root-layout migration (the old\n"
-        "`iap/pstack-hermes/pstack` route) cannot update in place.\n",
+        "`iap/pstack-hermes/pstack` route) cannot update in place. Remove it,\n"
+        "then run `hermes plugins install iap/pstack-hermes --enable`.\n",
     )
     assert check_docs.check_stale_install_route(tmp_path) == []
 

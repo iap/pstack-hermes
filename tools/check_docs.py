@@ -60,7 +60,8 @@ HAND_WRITTEN_KINDS = frozenset({"hand-written"})
 STALE_INSTALL_RE = re.compile(
     r"`?master`?\s+subdirectory\s+installs?"
     r"|subdirectory\s+installs?\s+are\s+re-cloned"
-    r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills",
+    r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills"
+    r"|plugins\s+install\s+[`'\"]?iap/pstack-hermes/pstack(?:\s|`|'|\"|$)",
     re.IGNORECASE,
 )
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
