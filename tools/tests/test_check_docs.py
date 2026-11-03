@@ -141,6 +141,15 @@ def test_legacy_subdirectory_install_command_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_legacy_subdirectory_install_command_with_trailing_slash_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install iap/pstack-hermes/pstack/ --enable\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
 def test_migration_note_is_not_flagged(tmp_path):
     _write(
         tmp_path / "README.md",
