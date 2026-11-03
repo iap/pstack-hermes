@@ -186,6 +186,14 @@ def test_legacy_install_option_with_value_before_identifier_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_other_owner_prefix_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install acme-iap/pstack-hermes/pstack --enable\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
 def test_root_git_url_install_is_not_flagged(tmp_path):
     _write(
         tmp_path / "README.md",
