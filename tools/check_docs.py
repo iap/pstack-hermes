@@ -61,9 +61,14 @@ STALE_INSTALL_RE = re.compile(
     r"`?master`?\s+subdirectory\s+installs?"
     r"|subdirectory\s+installs?\s+are\s+re-cloned"
     r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills"
-    r"|plugins\s+install\b[^\n`'\"]{0,120}?"
-    r"[`'\"]?(?<![\w./-])(?:(?:https?://github\.com/)|git@github\.com:)?"
+    r"|plugins\s+install\b"
+    r"(?:(?:[ \t]*\\\r?\n[ \t]*|[ \t]+)"
+    r"(?:-f|--force|--allow-removed|--no-deps|--yes-deps|--enable|--no-enable|-h|--help"
+    r"|--ref(?:=(?:[^\s`'\"]+)|[ \t]+[^\s`'\"]+|\\\r?\n[ \t]*[^\s`'\"]+)))*"
+    r"(?:[ \t]*\\\r?\n[ \t]*|[ \t]+)"
+    r"[`'\"]?(?<![\w./-])(?:(?:https?://)?github\.com/|git@github\.com:)?"
     r"iap/pstack-hermes(?:\.git)?"
+    r"(?:/tree/[^/\s`'\"]+)?"
     r"(?:/pstack|#pstack)(?=[\s/`'\"]|$)",
     re.IGNORECASE,
 )
