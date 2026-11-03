@@ -64,7 +64,7 @@ STALE_INSTALL_RE = re.compile(
     re.IGNORECASE,
 )
 LEGACY_REPO = "iap/pstack-hermes"
-LEGACY_PREFIX_TERMINATORS = " \t\r\n`'\"(="
+LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
 LEGACY_TAIL_TERMINATORS = " \t\r\n/`'\"(),."
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
 CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
@@ -79,9 +79,7 @@ def _read(path: Path) -> str:
 def _legacy_target(text: str, pos: int) -> bool:
     """True when the repo name at *pos* points at the removed `pstack/` subdir."""
     if pos > 0 and text[pos - 1] not in LEGACY_PREFIX_TERMINATORS:
-        prefix = text[max(0, pos - 12) : pos].lower()
-        if not (prefix.endswith("github.com/") or prefix.endswith("github.com:")):
-            return False
+        return False
     tail = text[pos + len(LEGACY_REPO) :].lower()
     if tail.startswith(".git"):
         tail = tail[4:]
