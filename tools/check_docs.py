@@ -65,7 +65,9 @@ STALE_INSTALL_RE = re.compile(
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
-LEGACY_TAIL_TERMINATORS = " \t\r\n/`'\"(),."
+LEGACY_NAME_CONTINUATIONS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
+)
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
 CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
 LAYOUT_GENERATED_EXEMPT = frozenset({"plugin.yaml", "agents"})
@@ -74,6 +76,10 @@ CP_SOURCE_RE = re.compile(r'cp -a (?P<src>[^;\n"]+?) "\$dist/"')
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _subdir_token_ends(rest: str) -> bool:
+    return not rest or rest[0] not in LEGACY_NAME_CONTINUATIONS
 
 
 def _legacy_target(text: str, pos: int) -> bool:
@@ -87,11 +93,10 @@ def _legacy_target(text: str, pos: int) -> bool:
         _, sep, subdir = tail[len("/tree/") :].partition("/")
         if not sep or not subdir.startswith("pstack"):
             return False
-        return len(subdir) == 6 or subdir[6] in LEGACY_TAIL_TERMINATORS
+        return _subdir_token_ends(subdir[len("pstack") :])
     if not (tail.startswith("/pstack") or tail.startswith("#pstack")):
         return False
-    rest = tail[7:]
-    return not rest or rest[0] in LEGACY_TAIL_TERMINATORS
+    return _subdir_token_ends(tail[7:])
 
 
 def _doc_paths(root: Path) -> list[Path]:
