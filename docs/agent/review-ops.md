@@ -62,8 +62,8 @@ reader needs under duplicate ask-and-ack comments.
 
 Round loop:
 1. Open or push, then wait for Qodo's automatic verdict on the **new head SHA**.
-   Never trigger it; if the verdict is stale, apply the Bot order recovery: a
-   post-enable push or a maintainer-created review event.
+   Never trigger it in the automatic setup; if the verdict is stale, apply the
+   Bot order recovery: a post-enable push or a maintainer-created review event.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
 3. When Qodo has **no open finding on the head SHA**, request the appropriate
    CodeRabbit review and wait for its verdict on that same SHA. Use
@@ -165,8 +165,8 @@ cannot be pushed out of the window by later reviews from someone else.
 **SHA check.** A thread or verdict is current only when its `commit.oid`
 equals `headRefOid`. A different `commit.oid` (or an `originalCommit.oid`
 behind the head) is stale and is not clean. Re-request CodeRabbit on the new
-head; Qodo follows Bot order and is never triggered manually to manufacture a
-current verdict.
+head; in the automatic setup, Qodo follows Bot order and is never triggered
+manually to manufacture a current verdict.
 
 Reply in the same thread:
 
