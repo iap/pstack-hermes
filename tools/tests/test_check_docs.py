@@ -203,6 +203,22 @@ def test_other_owner_prefix_is_not_flagged(tmp_path):
     assert check_docs.check_stale_install_route(tmp_path) == []
 
 
+def test_nested_path_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install acme/iap/pstack-hermes/pstack --enable\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
+def test_nested_url_path_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install https://github.com/acme/iap/pstack-hermes/pstack --enable\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
 def test_legacy_install_other_option_before_identifier_fails(tmp_path):
     _write(
         tmp_path / "README.md",

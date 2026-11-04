@@ -28,6 +28,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,6 +66,7 @@ STALE_INSTALL_RE = re.compile(
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
+LEGACY_TOKEN_BOUNDARIES = " \t\r\n`'\"(=<>"
 LEGACY_NAME_CONTINUATIONS = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
 )
@@ -78,14 +80,31 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _github_repo_prefix(text: str, pos: int) -> bool:
+    start = pos
+    while start > 0 and text[start - 1] not in LEGACY_TOKEN_BOUNDARIES:
+        start -= 1
+    token = text[start:pos].lower()
+    if token.endswith(":") and "@" in token:
+        return token[:-1].rsplit("@", 1)[1] == "github.com"
+    if "://" in token:
+        parsed = urlparse(token)
+        return (parsed.hostname or "") == "github.com" and parsed.path == "/"
+    return token == "github.com/"
+
+
 def _subdir_token_ends(rest: str) -> bool:
     return not rest or rest[0] not in LEGACY_NAME_CONTINUATIONS
 
 
 def _legacy_target(text: str, pos: int) -> bool:
     """True when the repo name at *pos* points at the removed `pstack/` subdir."""
-    if pos > 0 and text[pos - 1] not in LEGACY_PREFIX_TERMINATORS:
-        return False
+    if pos > 0:
+        separator = text[pos - 1]
+        if separator not in LEGACY_PREFIX_TERMINATORS:
+            return False
+        if separator in "/:" and not _github_repo_prefix(text, pos):
+            return False
     tail = text[pos + len(LEGACY_REPO) :].lower()
     if tail.startswith(".git"):
         tail = tail[4:]
