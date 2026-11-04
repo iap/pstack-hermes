@@ -1,7 +1,7 @@
 # Reviewer-bot threads
 
-How to drive automated review (Qodo first, then CodeRabbit) to a **clean,
-SHA-current** state before merge. The port contract outranks every bot.
+How to drive Qodo's open-PR review and CodeRabbit's **SHA-current** verdict to a
+clean state before merge. The port contract outranks every bot.
 
 ## Non-negotiables
 
@@ -12,23 +12,21 @@ SHA-current** state before merge. The port contract outranks every bot.
    `# noqa`, no broadened regex, no deleted/skipped test, no loosened assertion.
 3. **Never resolve threads yourself.** Reply in-thread with evidence; the
    maintainer (or the bot) resolves.
-4. **Clean is SHA-bound.** A verdict on an older commit is not clean. Compare
-   the review's commit with the current `headRefOid` before believing it.
+4. **CodeRabbit clean is SHA-bound.** A CodeRabbit verdict on an older commit
+   is not clean; compare its commit with the current `headRefOid` before
+   believing it. Qodo's open-PR review is recorded at its own commit and is not
+   treated as a current-head verdict.
 5. **One writer per file.** Delegated workers may read, triage, and verify in
    parallel; only the branch owner edits, rebases, and pushes.
 
 ## Bot order
 
-- **Qodo reviews automatically.** Qodo reviews a PR when it is opened, reopened,
-  or marked ready; the Qodo portal's **Review every push** setting controls
-  whether later pushes update that verdict. Never post `/agentic_review` in the
-  automatic setup; it is only for a confirmed manual-only configuration. If the
-  current head has no Qodo verdict, do not treat the older review as clean and do
-  not trigger it per PR: enable **Review every push** once (or ask the
-  maintainer to). Enabling it does not retroactively review an existing head;
-  the next push is the review event. If no further push is planned, ask the
-  maintainer to create a qualifying event (reopen or mark ready) rather than
-  waiting indefinitely.
+- **Qodo reviews the open PR automatically.** It reviews when a PR is opened,
+  reopened, or marked ready. Treat that as the Qodo review for the PR: triage its
+  findings, but do not wait for a fresh Qodo verdict after a fix push and do not
+  post `/agentic_review` in the automatic setup. A manual trigger is only for a
+  confirmed manual-only configuration. CodeRabbit is the SHA-bound per-head gate
+  below.
 - **CodeRabbit is manual in this repo.** `.coderabbit.yaml` sets
   `auto_review.enabled: false`, so a push never starts it. Request
   `@coderabbitai full review` for the first pass and again after any rebase,
@@ -61,25 +59,22 @@ it if paused, then wait. Repeating the command also buries the evidence the next
 reader needs under duplicate ask-and-ack comments.
 
 Round loop:
-1. Open or push, then wait for Qodo's automatic verdict on the **new head SHA**.
-   Never trigger it in the automatic setup; if the verdict is stale, apply the
-   Bot order recovery: a post-enable push or a maintainer-created review event.
+1. Open the PR and wait for Qodo's initial automatic review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-3. When Qodo has **no open finding on the head SHA**, request the appropriate
-   CodeRabbit review and wait for its verdict on that same SHA. Use
+   Do not wait for Qodo to re-review a later head.
+3. Request the appropriate CodeRabbit review on the current head. Use
    `full review` for the first pass, a rebase, a force-push, or a large diff;
    use `review` only for a small fix push in the same round. Confirm the
    verdict's `commit.oid` equals `headRefOid`.
-4. Triage CodeRabbit. A fix push restarts the loop only when Qodo's **Review
-   every push** setting is enabled; CodeRabbit always needs a new request.
-   Return to step 1.
-5. Merge only when both bots are clean **on the same head SHA**, every thread
-   is resolved, CI is green, and the local gates pass. Confirm the CodeRabbit
-   check is not `skipping`.
+4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request; Qodo
+   does not re-run. Return to step 3.
+5. Merge only when CodeRabbit is clean on the current head, every Qodo finding
+   is fixed or answered, every thread is resolved, CI is green, and the local
+   gates pass. Confirm the CodeRabbit check is not `skipping`.
 
-Wait for the bot on the current SHA — poll with backoff. Do not assume clean
-because no comment arrived within an arbitrary minute, and do not treat a
-pre-push "clean" comment as current.
+Wait for Qodo's initial review and CodeRabbit's current-head verdict - poll with
+backoff. Do not assume clean because no comment arrived within an arbitrary
+minute, and do not treat a pre-push "clean" comment as current.
 
 ## Triage matrix
 
@@ -162,11 +157,12 @@ query($owner:String!,$repo:String!,$pr:Int!){
 `latestReviews` returns the latest review per author, so a current bot verdict
 cannot be pushed out of the window by later reviews from someone else.
 
-**SHA check.** A thread or verdict is current only when its `commit.oid`
-equals `headRefOid`. A different `commit.oid` (or an `originalCommit.oid`
-behind the head) is stale and is not clean. Re-request CodeRabbit on the new
-head; in the automatic setup, Qodo follows Bot order and is never triggered
-manually to manufacture a current verdict.
+**SHA check.** A CodeRabbit thread or verdict is current only when its
+`commit.oid` equals `headRefOid`. A different `commit.oid` (or an
+`originalCommit.oid` behind the head) is stale and is not clean. Qodo's open-PR
+review is recorded at its own commit and is not a current-head verdict.
+Re-request CodeRabbit on the new head; never post a Qodo trigger in the
+automatic setup.
 
 Reply in the same thread:
 
