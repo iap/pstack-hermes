@@ -25,7 +25,10 @@ SHA-current** state before merge. The port contract outranks every bot.
   automatic setup; it is only for a confirmed manual-only configuration. If the
   current head has no Qodo verdict, do not treat the older review as clean and do
   not trigger it per PR: enable **Review every push** once (or ask the
-  maintainer to), then wait.
+  maintainer to). Enabling it does not retroactively review an existing head;
+  the next push is the review event. If no further push is planned, ask the
+  maintainer to create a qualifying event (reopen or mark ready) rather than
+  waiting indefinitely.
 - **CodeRabbit is manual in this repo.** `.coderabbit.yaml` sets
   `auto_review.enabled: false`, so a push never starts it. Request
   `@coderabbitai full review` for the first pass and again after any rebase,
@@ -59,7 +62,8 @@ reader needs under duplicate ask-and-ack comments.
 
 Round loop:
 1. Open or push, then wait for Qodo's automatic verdict on the **new head SHA**.
-   Never trigger it; if the verdict is stale, apply the Bot order rule above.
+   Never trigger it; if the verdict is stale, apply the Bot order recovery: a
+   post-enable push or a maintainer-created review event.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
 3. When Qodo has **no open finding on the head SHA**, request the appropriate
    CodeRabbit review and wait for its verdict on that same SHA. Use
