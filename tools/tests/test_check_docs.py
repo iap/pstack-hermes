@@ -194,6 +194,15 @@ def test_legacy_markdown_link_text_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_legacy_markdown_emphasis_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "See *https://github.com/iap/pstack-hermes/tree/master/pstack*.\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
 def test_legacy_hash_subdir_install_command_fails(tmp_path):
     _write(
         tmp_path / "README.md",
