@@ -299,6 +299,23 @@ def test_legacy_tree_url_with_query_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_legacy_tree_url_with_sentence_period_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "See https://github.com/iap/pstack-hermes/tree/master/pstack.\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
+def test_dot_named_subdirectory_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install iap/pstack-hermes/pstack.tools --enable\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
 def test_legacy_install_command_with_semicolon_fails(tmp_path):
     _write(
         tmp_path / "README.md",

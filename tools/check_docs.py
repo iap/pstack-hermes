@@ -94,7 +94,11 @@ def _github_repo_prefix(text: str, pos: int) -> bool:
 
 
 def _subdir_token_ends(rest: str) -> bool:
-    return not rest or rest[0] not in LEGACY_NAME_CONTINUATIONS
+    if not rest:
+        return True
+    if rest[0] != ".":
+        return rest[0] not in LEGACY_NAME_CONTINUATIONS
+    return len(rest) == 1 or rest[1] not in LEGACY_NAME_CONTINUATIONS
 
 
 def _legacy_target(text: str, pos: int) -> bool:
