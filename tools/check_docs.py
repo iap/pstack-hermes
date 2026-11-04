@@ -66,7 +66,7 @@ STALE_INSTALL_RE = re.compile(
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
-LEGACY_TOKEN_BOUNDARIES = " \t\r\n`'\"(=<>"
+LEGACY_TOKEN_BOUNDARIES = " \t\r\n`'\"(=<>[]{};,!#|*_~"
 LEGACY_NAME_CONTINUATIONS = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
 )
@@ -85,8 +85,8 @@ def _github_repo_prefix(text: str, pos: int) -> bool:
     while start > 0 and text[start - 1] not in LEGACY_TOKEN_BOUNDARIES:
         start -= 1
     token = text[start:pos].lower()
-    if token.endswith(":") and "@" in token:
-        return token[:-1].rsplit("@", 1)[1] == "github.com"
+    if token.endswith(":"):
+        return token[:-1].rsplit("@", 1)[-1] == "github.com"
     if "://" in token:
         parsed = urlparse(token)
         return (parsed.hostname or "") == "github.com" and parsed.path == "/"

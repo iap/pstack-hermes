@@ -168,6 +168,32 @@ def test_legacy_ssh_url_install_command_fails(tmp_path):
     assert any("subdirectory-install route" in item for item in problems)
 
 
+def test_legacy_userless_scp_install_command_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install github.com:iap/pstack-hermes/pstack --enable\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
+def test_unrelated_scp_install_command_is_not_flagged(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "hermes plugins install example.com:iap/pstack-hermes/pstack --enable\n",
+    )
+    assert check_docs.check_stale_install_route(tmp_path) == []
+
+
+def test_legacy_markdown_link_text_fails(tmp_path):
+    _write(
+        tmp_path / "README.md",
+        "[https://github.com/iap/pstack-hermes/pstack](https://example.com)\n",
+    )
+    problems = check_docs.check_stale_install_route(tmp_path)
+    assert any("subdirectory-install route" in item for item in problems)
+
+
 def test_legacy_hash_subdir_install_command_fails(tmp_path):
     _write(
         tmp_path / "README.md",
