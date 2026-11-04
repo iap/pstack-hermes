@@ -19,9 +19,13 @@ SHA-current** state before merge. The port contract outranks every bot.
 
 ## Bot order
 
-- **Qodo** reviews every push automatically. If there is no verdict for the
-  current head SHA, re-run it (UI or its configured command); do not assume
-  clean.
+- **Qodo reviews automatically.** Qodo reviews a PR when it is opened, reopened,
+  or marked ready; the Qodo portal's **Review every push** setting controls
+  whether later pushes update that verdict. Never post `/agentic_review` in the
+  automatic setup; it is only for a confirmed manual-only configuration. If the
+  current head has no Qodo verdict, do not treat the older review as clean and do
+  not trigger it per PR: enable **Review every push** once (or ask the
+  maintainer to), then wait.
 - **CodeRabbit is manual in this repo.** `.coderabbit.yaml` sets
   `auto_review.enabled: false`, so a push never starts it. Request
   `@coderabbitai full review` for the first pass and again after any rebase,
@@ -46,24 +50,25 @@ SHA-current** state before merge. The port contract outranks every bot.
     schema before setting it. Hitting the threshold is a signal that the round is
     churning: prefer fewer, larger fix pushes over one commit per finding.
 
-One request per head SHA. Do not re-send a review command because a verdict is
-slow - that is noise, not pressure: a paused review does not resume because it
-was asked twice, and a running one gains nothing from a duplicate comment.
-Diagnose the state first (skipping / paused / running), clear it if paused, then
-wait. Repeating the command also buries the evidence the next reader needs under
-duplicate ask-and-ack comments.
+For CodeRabbit, one request per head SHA. Do not re-send its review command
+because a verdict is slow - that is noise, not pressure: a paused review does
+not resume because it was asked twice, and a running one gains nothing from a
+duplicate comment. Diagnose the state first (skipping / paused / running), clear
+it if paused, then wait. Repeating the command also buries the evidence the next
+reader needs under duplicate ask-and-ack comments.
 
 Round loop:
-1. Push, then wait for Qodo's verdict on the **new head SHA**.
+1. Open or push, then wait for Qodo's automatic verdict on the **new head SHA**.
+   Never trigger it; if the verdict is stale, apply the Bot order rule above.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
 3. When Qodo has **no open finding on the head SHA**, request the appropriate
    CodeRabbit review and wait for its verdict on that same SHA. Use
    `full review` for the first pass, a rebase, a force-push, or a large diff;
    use `review` only for a small fix push in the same round. Confirm the
    verdict's `commit.oid` equals `headRefOid`.
-4. Triage CodeRabbit. Every fix push restarts the loop: Qodo re-runs
-   automatically, but CodeRabbit does not. Return to step 1; step 3
-   re-requests CodeRabbit for the new head.
+4. Triage CodeRabbit. A fix push restarts the loop only when Qodo's **Review
+   every push** setting is enabled; CodeRabbit always needs a new request.
+   Return to step 1.
 5. Merge only when both bots are clean **on the same head SHA**, every thread
    is resolved, CI is green, and the local gates pass. Confirm the CodeRabbit
    check is not `skipping`.
@@ -155,7 +160,9 @@ cannot be pushed out of the window by later reviews from someone else.
 
 **SHA check.** A thread or verdict is current only when its `commit.oid`
 equals `headRefOid`. A different `commit.oid` (or an `originalCommit.oid`
-behind the head) is stale: re-request the bot, do not count it as clean.
+behind the head) is stale and is not clean. Re-request CodeRabbit on the new
+head; Qodo follows Bot order and is never triggered manually to manufacture a
+current verdict.
 
 Reply in the same thread:
 
