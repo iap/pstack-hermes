@@ -2,8 +2,8 @@ package: pstack (hermes agent-plugins-v1, Phase-0 conversion)
 source: (local clone; public origin in source_url)
 source_url: https://github.com/cursor/plugins.git
 source_commit: c47b12849e43f18d5c374c7069c744cc55b0ea00
-converted_at: 2026-11-05T22:45:02Z
-converter: convert.py (sha256[:16]=9ca2f0927d00b6f4)
+converted_at: 2026-11-05T23:53:12Z
+converter: convert.py (sha256[:16]=b4549b7d11163b7c)
 schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
 fixes:
   - F-publish: skills/make-bot-ui excluded (Tailscale privilege-escalation scan; F33; upstream flattened the grokbot container)
