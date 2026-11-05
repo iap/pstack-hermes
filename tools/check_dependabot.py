@@ -11,6 +11,7 @@ Exit codes: 0 valid; 1 invalid; 2 unreadable input.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import sys
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def load_dependabot(root: Path = ROOT) -> tuple[int, dict | None, list[str]]:
         return 2, None, [f"error: cannot read {path}: {exc}"]
     dupes = _duplicate_keys(text)
     if dupes:
-        return 2, None, [f"error: duplicate keys in {path}: {sorted(set(dupes))}"]
+        return 1, None, [f"error: duplicate keys in {path}: {sorted(set(dupes))}"]
     try:
         data = yaml.safe_load(text)
     except (OSError, yaml.YAMLError) as exc:
@@ -157,7 +158,12 @@ def check(root: Path = ROOT) -> tuple[int, list[str]]:
     # Required composite actions covered by a github-actions entry.
     for name in composite_actions_with_uses(root):
         expected = f"/.github/actions/{name}"
-        matching = [e for (d, e) in scoped if d == expected and e == "github-actions"]
+        matching = []
+        for d, e in scoped:
+            if e != "github-actions":
+                continue
+            if d == expected or fnmatch.fnmatch(expected, d):
+                matching.append((d, e))
         if not matching:
             problems.append(
                 f"composite action {name!r} uses external actions but has no "

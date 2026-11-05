@@ -49,7 +49,7 @@ def test_wrong_count_fails(tmp_path):
     )
     code, report = check_pins.check_hermes_pin(root)
     assert code == 1
-    assert any("expected exactly one" in line for line in report)
+    assert any("declared multiple times" in line or "expected exactly one" in line for line in report)
 
 
 def test_malformed_sha_fails(tmp_path):

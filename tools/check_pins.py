@@ -19,6 +19,8 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # Every workflow that MUST declare the pin. Adding a workflow that builds or
@@ -57,27 +59,86 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
     hermes_wf = root / ".github" / "workflows" / HERMES_PIN_WORKFLOW
     if not hermes_wf.is_file():
         problems.append(f"HERMES_PIN: {HERMES_PIN_WORKFLOW} is missing; cannot verify pin")
-    else:
-        hermes_values: list[str] = []
-        for m in HERMES_PIN_RE.finditer(hermes_wf.read_text(encoding="utf-8")):
-            hermes_values.append(m.group(1))
+        if problems:
+            report.extend(f"FAIL: {p}" for p in problems)
+            return 1, report
+        return 0, report
+
+    try:
+        text = hermes_wf.read_text(encoding="utf-8")
+    except OSError as exc:
+        problems.append(f"cannot read {HERMES_PIN_WORKFLOW}: {exc}")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+
+    # Count HERMES_PIN declarations via YAML tree walk (preserves duplicate detection).
+    hermes_values: list[str] = []
+
+    def _walk_for_pin(node):
+        if isinstance(node, yaml.MappingNode):
+            for key_node, val_node in node.value:
+                key = key_node.value if hasattr(key_node, "value") else str(key_node)
+                if key == "HERMES_PIN":
+                    v = val_node.value if hasattr(val_node, "value") else None
+                    hermes_values.append(v)
+                _walk_for_pin(val_node)
+                _walk_for_pin(key_node)
+        elif isinstance(node, yaml.SequenceNode):
+            for item in node.value:
+                _walk_for_pin(item)
+
+    try:
+        composed = yaml.compose(text)
+    except yaml.YAMLError as exc:
+        problems.append(f"{HERMES_PIN_WORKFLOW} is not valid YAML: {exc}")
+        composed = None
+    if composed is not None:
+        _walk_for_pin(composed)
+
+    # Also check duplicate keys anywhere in the document.
+    # (reuse simple duplicate detection)
+    dupes = []
+    if composed is not None:
+
+        def _dup_walk(n, path=""):
+            if isinstance(n, yaml.MappingNode):
+                seen: set[str] = set()
+                for key_node, val_node in n.value:
+                    key = key_node.value if hasattr(key_node, "value") else str(key_node)
+                    if key in seen:
+                        dupes.append(key)
+                    seen.add(key)
+                    _dup_walk(val_node)
+                    _dup_walk(key_node)
+            elif isinstance(n, yaml.SequenceNode):
+                for item in n.value:
+                    _dup_walk(item)
+
+        _dup_walk(composed)
+    if "HERMES_PIN" in dupes:
+        problems.append(f"HERMES_PIN declared multiple times in {HERMES_PIN_WORKFLOW}")
+
+    if len(hermes_values) != 1 and "HERMES_PIN" not in dupes:
+        # If duplicates collapsed, hermes_values may still show 1; rely on dupes check above.
         if len(hermes_values) != 1:
             problems.append(
                 f"HERMES_PIN: expected exactly one declaration in "
                 f"{HERMES_PIN_WORKFLOW}, found {len(hermes_values)}"
             )
+
+    if len(hermes_values) == 1:
+        hv = hermes_values[0]
+        if not isinstance(hv, str) or not SHA_RE.match(hv):
+            problems.append(f"HERMES_PIN is not a full lowercase 40-char SHA: {hv!r}")
         else:
-            hv = hermes_values[0]
-            if not SHA_RE.match(hv):
-                problems.append(f"HERMES_PIN is not a full lowercase 40-char SHA: {hv!r}")
-            else:
-                report.append(f"  {HERMES_PIN_WORKFLOW}: HERMES_PIN {hv}")
-            contributing = root / "CONTRIBUTING.md"
-            if contributing.is_file():
-                if "HERMES_PIN" not in contributing.read_text(encoding="utf-8"):
-                    problems.append("HERMES_PIN is not named in CONTRIBUTING.md")
-            else:
-                problems.append("CONTRIBUTING.md missing; cannot verify HERMES_PIN is named")
+            report.append(f"  {HERMES_PIN_WORKFLOW}: HERMES_PIN {hv}")
+
+    contributing = root / "CONTRIBUTING.md"
+    if contributing.is_file():
+        if "HERMES_PIN" not in contributing.read_text(encoding="utf-8"):
+            problems.append("HERMES_PIN is not named in CONTRIBUTING.md")
+    else:
+        problems.append("CONTRIBUTING.md missing; cannot verify HERMES_PIN is named")
 
     if problems:
         report.extend(f"FAIL: {p}" for p in problems)
