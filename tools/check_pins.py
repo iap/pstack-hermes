@@ -32,6 +32,9 @@ REQUIRED_DECLARERS = (
 # `UPSTREAM_PIN: <value>` at the start of a YAML mapping entry. References like
 # `${{ env.UPSTREAM_PIN }}` do not match because the value must be token-shaped.
 DECL_RE = re.compile(r"^\s*UPSTREAM_PIN:\s*(\S+)\s*$", re.MULTILINE)
+# HERMES_PIN: full lowercase 40-char SHA, declared exactly once, in validate-gold.yml
+HERMES_PIN_RE = re.compile(r"^\s*HERMES_PIN:\s*(\S+)", re.MULTILINE)
+HERMES_PIN_WORKFLOW = "validate-gold.yml"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -43,6 +46,43 @@ def declarations(root: Path = ROOT) -> list[tuple[str, str]]:
         for match in DECL_RE.finditer(text):
             out.append((wf.name, match.group(1)))
     return out
+
+
+def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
+    """Verify HERMES_PIN: full lowercase 40-char SHA, declared exactly once in
+    validate-gold.yml, and named in CONTRIBUTING.md (issue #129 item 2)."""
+    report: list[str] = []
+    problems: list[str] = []
+
+    hermes_wf = root / ".github" / "workflows" / HERMES_PIN_WORKFLOW
+    if not hermes_wf.is_file():
+        problems.append(f"HERMES_PIN: {HERMES_PIN_WORKFLOW} is missing; cannot verify pin")
+    else:
+        hermes_values: list[str] = []
+        for m in HERMES_PIN_RE.finditer(hermes_wf.read_text(encoding="utf-8")):
+            hermes_values.append(m.group(1))
+        if len(hermes_values) != 1:
+            problems.append(
+                f"HERMES_PIN: expected exactly one declaration in "
+                f"{HERMES_PIN_WORKFLOW}, found {len(hermes_values)}"
+            )
+        else:
+            hv = hermes_values[0]
+            if not SHA_RE.match(hv):
+                problems.append(f"HERMES_PIN is not a full lowercase 40-char SHA: {hv!r}")
+            else:
+                report.append(f"  {HERMES_PIN_WORKFLOW}: HERMES_PIN {hv}")
+            contributing = root / "CONTRIBUTING.md"
+            if contributing.is_file():
+                if "HERMES_PIN" not in contributing.read_text(encoding="utf-8"):
+                    problems.append("HERMES_PIN is not named in CONTRIBUTING.md")
+            else:
+                problems.append("CONTRIBUTING.md missing; cannot verify HERMES_PIN is named")
+
+    if problems:
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    return 0, report
 
 
 def check(root: Path = ROOT) -> tuple[int, list[str]]:
@@ -95,9 +135,15 @@ def main(argv: list[str] | None = None) -> int:
     stream = sys.stderr if code else sys.stdout
     for line in report:
         print(line, file=stream)
-    if code == 0:
+    # HERMES_PIN (issue #129)
+    hcode, hreport = check_hermes_pin(args.root)
+    hstream = sys.stderr if hcode else sys.stdout
+    for line in hreport:
+        print(line, file=hstream)
+    if code == 0 and hcode == 0:
         print("upstream pin: in lock-step across all workflows")
-    return code
+        print("hermes pin: verified")
+    return code or hcode
 
 
 if __name__ == "__main__":
