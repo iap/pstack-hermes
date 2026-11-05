@@ -1040,7 +1040,7 @@ def apply_local_provider_patch(out: Path, st: Stats) -> None:
         '        stdio: ["ignore", "pipe", "pipe"],\n'
         '      }\n'
         '    )\n'
-        '      .split("\\n")\\n'
+        '      .split("\\n")\n'
         '      .map((b) => b.trim())\n'
         '      .filter((b) => b.length > 0);\n'
         '  } catch (error) {\n'

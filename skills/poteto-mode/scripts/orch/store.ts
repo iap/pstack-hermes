@@ -1305,7 +1305,8 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
         stdio: ["ignore", "pipe", "pipe"],
       }
     )
-      .split("\n")\n      .map((b) => b.trim())
+      .split("\n")
+      .map((b) => b.trim())
       .filter((b) => b.length > 0);
   } catch (error) {
     throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
