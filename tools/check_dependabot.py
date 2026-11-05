@@ -192,7 +192,7 @@ def check(root: Path = ROOT) -> tuple[int, list[str]]:
             problems.append(f"{loc}: package-ecosystem must be a string")
             continue
         has_dir = isinstance(directory, str)
-        has_dirs = isinstance(directories, list) and all(isinstance(x, str) for x in directories)
+        has_dirs = isinstance(directories, list) and len(directories) > 0 and all(isinstance(x, str) for x in directories)
         if not has_dir and not has_dirs:
             problems.append(f"{loc}: directory or directories must be a string/list of strings")
             continue

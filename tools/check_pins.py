@@ -71,8 +71,9 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
         report.extend(f"FAIL: {p}" for p in problems)
         return 1, report
 
-    # Count HERMES_PIN declarations ONLY in the top-level env: mapping.
-    hermes_values: list[str] = []
+    # Count ALL HERMES_PIN declarations in the document.
+    all_pin_values: list[str] = []
+    top_level_pin_values: list[str] = []
 
     try:
         composed = yaml.compose(text)
@@ -80,6 +81,23 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
         problems.append(f"{HERMES_PIN_WORKFLOW} is not valid YAML: {exc}")
         composed = None
 
+    def _walk_all_pins(node):
+        if isinstance(node, yaml.MappingNode):
+            for key_node, val_node in node.value:
+                key = key_node.value if hasattr(key_node, "value") else str(key_node)
+                if key == "HERMES_PIN":
+                    v = val_node.value if hasattr(val_node, "value") else None
+                    all_pin_values.append(v)
+                _walk_all_pins(val_node)
+                _walk_all_pins(key_node)
+        elif isinstance(node, yaml.SequenceNode):
+            for item in node.value:
+                _walk_all_pins(item)
+
+    if composed is not None:
+        _walk_all_pins(composed)
+
+    # Top-level env: HERMES_PIN
     if composed is not None and isinstance(composed, yaml.MappingNode):
         for key_node, val_node in composed.value:
             key = key_node.value if hasattr(key_node, "value") else str(key_node)
@@ -88,7 +106,16 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
                     ek_name = ek.value if hasattr(ek, "value") else str(ek)
                     if ek_name == "HERMES_PIN":
                         v = ev.value if hasattr(ev, "value") else None
-                        hermes_values.append(v)
+                        top_level_pin_values.append(v)
+
+    hermes_values = top_level_pin_values
+
+    # Reject overrides: if HERMES_PIN appears outside top-level env, fail.
+    if len(all_pin_values) != len(top_level_pin_values):
+        problems.append(
+            f"HERMES_PIN declared outside top-level env: "
+            f"{len(all_pin_values) - len(top_level_pin_values)} override(s) found"
+        )
 
     # Also check duplicate keys anywhere in the document.
     # (reuse simple duplicate detection)
