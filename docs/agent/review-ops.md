@@ -172,19 +172,22 @@ rationale.
 
 - **Qodo** — dismiss by addressing it explicitly in plain language:
   `@qodo false positive: …`, `@qodo this is intentional: …`, etc. Qodo classifies
-  the dismissal (chat labels: False positive / Rejected / Deferred / Intentional;
-  portal may show Fix later / Not specified) and resolves + collapses the thread.
-  Untagged replies are treated as reviewer discussion and left alone. Use only
-  Qodo's documented dismissal reasons; if a reason is not accepted, rephrase in
-  plain language rather than forcing a label.
+  the dismissal (chat labels observed 2026-11-05 from Qodo's chat doc: False
+  positive / Rejected / Deferred / Intentional; portal may show Fix later / Not
+  specified) and resolves + collapses the thread. Untagged replies are treated as
+  reviewer discussion and left alone. Use only Qodo's documented dismissal
+  reasons; if a reason is rejected, rephrase in plain language rather than
+  forcing a label. If no label is accepted, escalate as an open issue.
 - **CodeRabbit** — `@coderabbitai resolve` is a **new top-level PR comment** (the
   entire comment, no other text); it is not supported as a reply inside a review
   thread. It resolves **all** CodeRabbit threads on the PR at once, so use it
   only after every CodeRabbit finding is fixed or answered. `@coderabbitai approve`
-  resolves all + submits approval only when automatic approvals are enabled;
-  otherwise it resolves threads without submitting approval. Both must be
-  top-level comments. Mixing the command with evidence text makes CodeRabbit
-  treat it as chat and skip the resolve.
+  resolves all + submits approval only when automatic approvals are enabled AND
+  the CodeRabbit verdict's commit.oid equals headRefOid; otherwise it only
+  resolves threads without submitting approval. Approve is not a substitute for
+  the merge gate — prefer `@coderabbitai resolve` for clearing threads. Both
+  commands must be top-level comments. Mixing the command with evidence text
+  makes CodeRabbit treat it as chat and skip the resolve.
 - **Outdated threads** (lines moved by a later commit) — resolve only after
   confirming on the thread that the finding does not apply to the current head
   (`commit.oid == headRefOid`); then use the "Resolve conversation" button or
