@@ -18,10 +18,44 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def _duplicate_keys(text: str) -> list[str]:
+    """Return duplicate mapping keys found in a YAML document."""
+    dupes: list[str] = []
+    try:
+        node = yaml.compose(text)
+    except yaml.YAMLError:
+        return dupes
+
+    def walk(n):
+        if isinstance(n, yaml.MappingNode):
+            seen: set[str] = set()
+            for key_node, _ in n.value:
+                key = key_node.value if hasattr(key_node, "value") else str(key_node)
+                if key in seen:
+                    dupes.append(key)
+                seen.add(key)
+            for key_node, val_node in n.value:
+                walk(val_node)
+                walk(key_node)
+        elif isinstance(n, yaml.SequenceNode):
+            for item in n.value:
+                walk(item)
+
+    if node is not None:
+        walk(node)
+    return dupes
+
+
 # Ecosystems whose Dependabot cooldown options allow semver-* days.
-# GitHub's options reference marks SemVer-bump cooldowns as NOT supported
-# for github-actions (only default-days applies there).
-SEMVER_COOLDOWN_SUPPORTED: set[str] = {"uv"}
+# Per GitHub docs (dependabot options reference), semver-* cooldowns are
+# supported only for a subset of ecosystems; github-actions, gitsubmodule,
+# docker, terraform, etc. do NOT support them.
+SEMVER_COOLDOWN_SUPPORTED: set[str] = {
+    "uv", "pip", "npm", "bundler", "cargo", "composer", "gomod",
+    "maven", "gradle", "nuget", "bun", "conda", "deno", "elm",
+    "hex", "julia", "pub", "sbt", "swift",
+}
 
 
 def load_dependabot(root: Path = ROOT) -> tuple[int, dict | None, list[str]]:
@@ -29,7 +63,14 @@ def load_dependabot(root: Path = ROOT) -> tuple[int, dict | None, list[str]]:
     if not path.is_file():
         return 2, None, [f"error: no dependabot.yml at {path}"]
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return 2, None, [f"error: cannot read {path}: {exc}"]
+    dupes = _duplicate_keys(text)
+    if dupes:
+        return 2, None, [f"error: duplicate keys in {path}: {sorted(set(dupes))}"]
+    try:
+        data = yaml.safe_load(text)
     except (OSError, yaml.YAMLError) as exc:
         return 2, None, [f"error: cannot parse {path}: {exc}"]
     if not isinstance(data, dict):
@@ -38,7 +79,8 @@ def load_dependabot(root: Path = ROOT) -> tuple[int, dict | None, list[str]]:
 
 
 def composite_actions_with_uses(root: Path = ROOT) -> list[str]:
-    """Return directory names under .github/actions whose action.yml uses `uses:`."""
+    """Return directory names under .github/actions whose action.yml/yaml uses
+    an EXTERNAL action (a `uses:` step that is not a local `./...` reference)."""
     out: list[str] = []
     actions_dir = root / ".github" / "actions"
     if not actions_dir.is_dir():
@@ -46,14 +88,19 @@ def composite_actions_with_uses(root: Path = ROOT) -> list[str]:
     for action_dir in sorted(actions_dir.iterdir()):
         if not action_dir.is_dir():
             continue
-        action_yml = action_dir / "action.yml"
-        if not action_yml.is_file():
+        action_yml = None
+        for cand in ("action.yml", "action.yaml"):
+            p = action_dir / cand
+            if p.is_file():
+                action_yml = p
+                break
+        if action_yml is None:
             continue
         try:
             text = action_yml.read_text(encoding="utf-8")
         except OSError:
             continue
-        has_uses = False
+        has_external_uses = False
         try:
             data = yaml.safe_load(text)
         except yaml.YAMLError:
@@ -61,16 +108,21 @@ def composite_actions_with_uses(root: Path = ROOT) -> list[str]:
         if isinstance(data, dict):
             for step in (data.get("runs", {}) or {}).get("steps", []) or []:
                 if isinstance(step, dict) and "uses" in step:
-                    has_uses = True
-                    break
+                    val = step["uses"]
+                    if isinstance(val, str) and not val.startswith("./"):
+                        has_external_uses = True
+                        break
         # Only fall back to text scan when YAML parsing failed.
         if data is None:
             for line in text.splitlines():
                 s = line.strip()
                 if s and not s.startswith("#") and "uses:" in s:
-                    has_uses = True
-                    break
-        if has_uses:
+                    # extract value
+                    val = s.split("uses:", 1)[-1].strip()
+                    if val and not val.startswith("./"):
+                        has_external_uses = True
+                        break
+        if has_external_uses:
             out.append(action_dir.name)
     return out
 
@@ -113,7 +165,7 @@ def check(root: Path = ROOT) -> tuple[int, list[str]]:
             )
 
     VALID_UPDATE_TYPES = {"major", "minor", "patch"}
-    VALID_COOLDOWN_KEYS = {"default-days", "semver-major-days", "semver-minor-days", "semver-patch-days"}
+    VALID_COOLDOWN_KEYS = {"default-days", "semver-major-days", "semver-minor-days", "semver-patch-days", "include", "exclude"}
 
     for i, entry in enumerate(updates):
         loc = f"updates[{i}]"
