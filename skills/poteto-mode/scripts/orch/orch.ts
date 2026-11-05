@@ -111,12 +111,11 @@ function stackProvider(value: string): StackProvider {
     value === "auto" ||
     value === "graphite" ||
     value === "github" ||
-    value === "gitlab" ||
-    value === "local"
+    value === "gitlab"
   ) {
     return value;
   }
-  throw new InvalidArgumentError("must be auto, graphite, github, gitlab, or local");
+  throw new InvalidArgumentError("must be auto, graphite, github, or gitlab");
 }
 
 function countLine(value: Counts): string {
@@ -498,7 +497,7 @@ function createProgram(io: Io): Command {
     )
     .option(
       "--provider <provider>",
-      "stack provider: auto, graphite, github, gitlab, or local",
+      "stack provider: auto, graphite, github, or gitlab",
       stackProvider,
       "auto"
     )
