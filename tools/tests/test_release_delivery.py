@@ -1,7 +1,6 @@
 """Exercise delivery shell gates against real, isolated Git repositories."""
 
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
