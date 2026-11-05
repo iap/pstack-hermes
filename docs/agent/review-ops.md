@@ -178,16 +178,16 @@ rationale.
   reviewer discussion and left alone. Use only Qodo's documented dismissal
   reasons; if a reason is rejected, rephrase in plain language rather than
   forcing a label. If no label is accepted, escalate as an open issue.
-- **CodeRabbit** — `@coderabbitai resolve` is a **new top-level PR comment** (the
-  entire comment, no other text); it is not supported as a reply inside a review
-  thread. It resolves **all** CodeRabbit threads on the PR at once, so use it
-  only after every CodeRabbit finding is fixed or answered. `@coderabbitai approve`
-  resolves all + submits approval only when automatic approvals are enabled AND
-  the CodeRabbit verdict's commit.oid equals headRefOid; otherwise it only
-  resolves threads without submitting approval. Approve is not a substitute for
-  the merge gate — prefer `@coderabbitai resolve` for clearing threads. Both
-  commands must be top-level comments. Mixing the command with evidence text
-  makes CodeRabbit treat it as chat and skip the resolve.
+- **CodeRabbit** — `@coderabbitai resolve` must be the **entire comment** (no other
+  text). Posted as a reply in a CodeRabbit review thread it resolves **only that
+  thread**; posted as a top-level PR comment it resolves **all** CodeRabbit
+  threads on the PR at once. The "whole comment" rule is what makes it work —
+  mixing it with evidence text makes CodeRabbit treat the whole thing as chat and
+  skip the resolve. `@coderabbitai approve` resolves all + submits approval only
+  when automatic approvals are enabled AND the verdict's commit.oid equals
+  headRefOid; otherwise it only resolves threads without approving. Approve is
+  not a substitute for the merge gate — prefer `resolve` for clearing threads.
+  Both commands must be whole comments.
 - **Outdated threads** (lines moved by a later commit) — resolve only after
   confirming on the thread that the finding does not apply to the current head
   (`commit.oid == headRefOid`); then use the "Resolve conversation" button or
