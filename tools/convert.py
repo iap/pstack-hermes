@@ -820,6 +820,9 @@ function branchSha({
   if (provider === "local") {
     return { provider, prs: localFrontier(repo, pin) };
   }
+  if (provider === "local") {
+    return { provider, prs: localFrontier(repo, pin) };
+  }
   const failures: string[] = [];
   const attempted: string[] = [];
   for (const candidate of ["graphite", "github"] as const) {
