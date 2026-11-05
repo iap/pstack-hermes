@@ -1270,12 +1270,7 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
     branches = execFileSync(
       "git",
       ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
-      {
-        cwd: repo,
-        encoding: "utf8",
-        env: { ...process.env, NO_COLOR: "1" },
-        stdio: ["ignore", "pipe", "pipe"],
-      }
+      { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }
     )
       .split("
 ")
@@ -1286,48 +1281,17 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
   }
   let currentBranch: string | undefined;
   try {
-    currentBranch = execFileSync(
-      "git",
-      ["rev-parse", "--abbrev-ref", "HEAD"],
-      {
-        cwd: repo,
-        encoding: "utf8",
-        env: { ...process.env, NO_COLOR: "1" },
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    ).trim();
-  } catch {
-    // ignore
-  }
+    currentBranch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+  } catch {}
   const result: FrontierPr[] = [];
   for (const branch of branches) {
-    if (branch === currentBranch || branch.startsWith("HEAD")) {
-      continue;
-    }
+    if (branch === currentBranch || branch.startsWith("HEAD")) continue;
     let sha: string;
     try {
-      sha = execFileSync(
-        "git",
-        ["rev-parse", "--end-of-options", `refs/heads/${branch}`],
-        {
-          cwd: repo,
-          encoding: "utf8",
-          env: { ...process.env, NO_COLOR: "1" },
-          stdio: ["ignore", "pipe", "pipe"],
-        }
-      ).trim();
-      if (!/^[0-9a-f]{40}$/.test(sha)) {
-        continue;
-      }
-    } catch {
-      continue;
-    }
-    result.push({
-      pr: pin && pin.length > 0 ? (pin[result.length] ?? 0) : 0,
-      branches: branch,
-      sha,
-      state: "OPEN",
-    });
+      sha = execFileSync("git", ["rev-parse", "--end-of-options", `refs/heads/${branch}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+      if (!/^[0-9a-f]{40}$/.test(sha)) continue;
+    } catch { continue; }
+    result.push({ pr: pin && pin.length > 0 ? (pin[result.length] ?? 0) : 0, branches: branch, sha, state: "OPEN" });
   }
   return result;
 }
