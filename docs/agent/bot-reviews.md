@@ -85,19 +85,21 @@ Rules:
 - An untagged reply (no `@qodo` / no `@coderabbitai resolve`) is treated as
   reviewer discussion: the bot does **not** act and the thread stays open. This is
   the #1 reason "replying in the bot chat didn't work".
-- For CodeRabbit, `@coderabbitai resolve` must be a **new top-level PR comment** (the
-  entire comment, no other text) — it is not supported as a reply inside a review
-  thread. It resolves **all** CodeRabbit threads on the PR at once, so use it only
-  after every CodeRabbit finding is fixed or answered. Mixing it with evidence text
-  makes CodeRabbit treat the whole thing as chat and skip the resolve.
+- For CodeRabbit, `@coderabbitai resolve` must be the **entire comment** (no other
+  text). Posted as a reply in a CodeRabbit review thread it resolves **only that
+  thread**; posted as a top-level PR comment it resolves **all** CodeRabbit
+  threads on the PR at once. The "whole comment" rule is the trigger — mixing it
+  with evidence text makes CodeRabbit treat the whole thing as chat and skip the
+  resolve. Use it only after every CodeRabbit finding is fixed or answered.
 - For Qodo, address it in **every** follow-up message in the thread, including
   re-reviews (`@qodo I pushed fixes, can you review again?`).
 - Outdated threads (lines changed by a later commit) no longer describe current
-  code. Resolve them only after confirming on the thread that the finding does
-  **not** apply to the current head (`commit.oid == headRefOid`); then use the
-  "Resolve conversation" button / `resolvePullRequestReviewThread`. Do not
-  resolve a substantive finding this way, and do not resolve merely because the
-  lines moved.
+  code. A commit mismatch identifies staleness but is not a prerequisite for
+  confirming whether the finding applies — compare the finding against the code at
+  `headRefOid`. Resolve them only after confirming on the thread that the finding
+  does **not** apply to the current head; then use the "Resolve conversation"
+  button / `resolveReviewThread`. Do not resolve a substantive finding this way,
+  and do not resolve merely because the lines moved.
 
 ## Cross-check before merge (anti-double-reply)
 

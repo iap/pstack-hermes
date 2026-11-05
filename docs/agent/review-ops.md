@@ -188,11 +188,13 @@ rationale.
   headRefOid; otherwise it only resolves threads without approving. Approve is
   not a substitute for the merge gate — prefer `resolve` for clearing threads.
   Both commands must be whole comments.
-- **Outdated threads** (lines moved by a later commit) — resolve only after
-  confirming on the thread that the finding does not apply to the current head
-  (`commit.oid == headRefOid`); then use the "Resolve conversation" button or
-  `resolvePullRequestReviewThread`. Do not resolve merely because the lines moved,
-  and do not use this to bypass a substantive finding.
+- **Outdated threads** (lines moved by a later commit) — a commit mismatch
+  identifies staleness but is not a prerequisite for confirming whether the
+  finding applies; compare the finding against the code at `headRefOid`. Resolve
+  only after confirming on the thread that the finding does not apply to the
+  current head; then use the "Resolve conversation" button or
+  `resolveReviewThread`. Do not resolve merely because the lines moved, and do not
+  use this to bypass a substantive finding.
 
 ## Reply in the same thread
 
