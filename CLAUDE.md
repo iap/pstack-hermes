@@ -89,11 +89,11 @@ mappings are enforced by the converter and validation gates:
 
 | Cursor term | Hermes equivalent |
 |---|---|
-| `Task` (backtick) | `delegate_task` |
-| `subagent_type: generalPurpose` | `delegate_task` (role: `leaf`) |
-| `AskQuestion` | `clarify` |
-| `environment: "cloud"` | `local execution` (or omit) |
-| `run_in_background: true` | `background execution` |
+| `delegate_task` (backtick) | `delegate_task` |
+| `role: leaf` | `delegate_task` (role: `leaf`) |
+| `clarify` | `clarify` |
+| `hermes runtime` | `local execution` (or omit) |
+| `background execution: true` | `background execution` |
 | `/loop` | `hermes cron` wake |
 | `/goal` | write `goal.md` in the agent store |
 | `poteto-agent` | Do not override — respect what the skill prescribes |
