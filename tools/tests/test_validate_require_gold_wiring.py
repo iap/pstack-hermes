@@ -54,7 +54,10 @@ def test_require_gold_passed_to_resolve_exit_code(monkeypatch):
 
     # Stub the loader so main() reaches the resolve_exit_code call.
     monkeypatch.setattr(V, "loader_state", lambda *a, **k: "ran")
-    monkeypatch.setattr(V, "HERMES_SRC", __import__("pathlib").Path("/nonexistent"))
+    nonexistent = __import__("pathlib").Path("/nonexistent")
+    monkeypatch.setattr(V, "HERMES_SRC", nonexistent)
+    monkeypatch.setattr(V, "VENV_PY", nonexistent / "python")
+    monkeypatch.setattr(V, "VENV_HERMES", nonexistent / "hermes")
 
     # Run main with --require-gold in an isolated env.
     import os
