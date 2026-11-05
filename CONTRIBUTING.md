@@ -244,6 +244,8 @@ Do not keep parallel plans or adaptation ledgers in `docs/`.
 4. **Merge only when both bots are clean on the same head commit.** Green CI alone is insufficient. Treat "skipping"/"pending" as not clean.
 5. Reply to findings with comments explaining what/why (not just resolving). Cross-check for false positives before applying fixes.
 
+Qodo config: optional repo-level Qodo/PR-Agent config may live at `.pr_agent.toml` or `.qodo/pr-agent.toml`; this repo ships none. If added, keep it to a one-line pointer here and in `AGENTS.md`. See `docs/agent/bot-reviews.md`.
+
 
 > [!TIP]
 > **Draft content first.**

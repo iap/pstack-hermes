@@ -58,6 +58,14 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 <!-- Anything a reviewer should weigh: trade-offs, skipped boxes and why,
      screenshots, follow-ups. Optional. -->
 
+## Bot review (gate)
+<!-- Qodo runs automatically on open/reopen/ready. CodeRabbit is manual.
+     See docs/agent/bot-reviews.md and CONTRIBUTING.md "Bot review gate". -->
+- [ ] Qodo [bot] findings triaged (fixed or answered with evidence) on this head
+- [ ] CodeRabbit requested (`@coderabbitai full review` / `review`) and clean on this head (`commit.oid == headRefOid`)
+- [ ] No `skipping` / `pending` CodeRabbit check
+- [ ] Round ledger comment updated (round, head SHA, open findings, action)
+
 > [!TIP]
 > **Draft-first content:** Prefer writing draft messages/content before publishing to the public git provider. Keep it technical, short, essential — only on-scope context relations. Cross-check and verify for no false positive/negative. If this is an open/draft PR, add a clear note for reviewers here so they can read the context clearly.
 
