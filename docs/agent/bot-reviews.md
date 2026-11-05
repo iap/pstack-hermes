@@ -77,8 +77,8 @@ trigger; missing it leaves the thread open, which blocks the merge gate.
 
 | Bot | To dismiss a finding | Trigger | Auto-resolves thread? |
 |---|---|---|---|
-| Qodo | Address it explicitly: `@qodo <reason>` (e.g. `@qodo false positive: ...`) | Plain language at the start of the reply | Yes — Qodo marks dismissed (false positive / rejected / deferred / intentional), strikethroughs the finding, and resolves + collapses the thread |
-| CodeRabbit | Reply with evidence, then post `@coderabbitai resolve` as a **new top-level PR comment** (the whole comment, no other text) | `@coderabbitai resolve` (whole comment, top-level) | Yes — resolves **all** CodeRabbit threads on the PR at once; `@coderabbitai approve` resolves all + submits approval |
+| Qodo | Address it explicitly in plain language: `@qodo <reason>` (e.g. `@qodo false positive: ...`, `@qodo this is intentional: ...`) | Plain language at the start of the reply | Yes — Qodo classifies the dismissal (chat labels: False positive / Rejected / Deferred / Intentional; portal may show Fix later / Not specified), strikethroughs the finding, and resolves + collapses the thread |
+| CodeRabbit | Reply with evidence, then post `@coderabbitai resolve` as a **new top-level PR comment** (the whole comment, no other text) | `@coderabbitai resolve` (whole comment, top-level) | Yes — resolves **all** CodeRabbit threads on the PR at once; `@coderabbitai approve` resolves all + submits approval only when automatic approvals are enabled (otherwise resolves threads without submitting approval). Both must be top-level comments |
 | GitHub (outdated) | When a push moves the lines, GitHub marks the thread `outdated` | "Resolve conversation" button / `resolvePullRequestReviewThread` GraphQL | Manual (maintainer or bot) |
 
 Rules:

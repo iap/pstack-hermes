@@ -170,16 +170,21 @@ Bots do not auto-resolve on a plain evidence reply; each needs its own trigger.
 See `docs/agent/bot-reviews.md` § "Thread resolution mechanics" for the full
 rationale.
 
-- **Qodo** — dismiss by addressing it explicitly: `@qodo false positive: …`,
-  `@qodo rejected: …`, `@qodo deferred: …`, `@qodo intentional: …`. Qodo marks
-  the finding dismissed, strikethroughs it, and resolves + collapses the thread.
-  Untagged replies are treated as reviewer discussion and left alone.
-+- **CodeRabbit** — `@coderabbitai resolve` is a **new top-level PR comment** (the
+- **Qodo** — dismiss by addressing it explicitly in plain language:
+  `@qodo false positive: …`, `@qodo this is intentional: …`, etc. Qodo classifies
+  the dismissal (chat labels: False positive / Rejected / Deferred / Intentional;
+  portal may show Fix later / Not specified) and resolves + collapses the thread.
+  Untagged replies are treated as reviewer discussion and left alone. Use only
+  Qodo's documented dismissal reasons; if a reason is not accepted, rephrase in
+  plain language rather than forcing a label.
+- **CodeRabbit** — `@coderabbitai resolve` is a **new top-level PR comment** (the
   entire comment, no other text); it is not supported as a reply inside a review
   thread. It resolves **all** CodeRabbit threads on the PR at once, so use it
   only after every CodeRabbit finding is fixed or answered. `@coderabbitai approve`
-  resolves all + submits approval. Mixing the command with evidence text makes
-  CodeRabbit treat it as chat and skip the resolve.
+  resolves all + submits approval only when automatic approvals are enabled;
+  otherwise it resolves threads without submitting approval. Both must be
+  top-level comments. Mixing the command with evidence text makes CodeRabbit
+  treat it as chat and skip the resolve.
 - **Outdated threads** (lines moved by a later commit) — resolve only after
   confirming on the thread that the finding does not apply to the current head
   (`commit.oid == headRefOid`); then use the "Resolve conversation" button or
