@@ -174,13 +174,17 @@ rationale.
   `@qodo rejected: …`, `@qodo deferred: …`, `@qodo intentional: …`. Qodo marks
   the finding dismissed, strikethroughs it, and resolves + collapses the thread.
   Untagged replies are treated as reviewer discussion and left alone.
-- **CodeRabbit** — reply with evidence, then post `@coderabbitai resolve` as a
-  **whole comment** (no other text) in the same thread; it resolves only that
-  thread. `@coderabbitai approve` resolves all threads + submits approval.
-- **Outdated threads** (lines moved by a later commit) — resolve via the
-  "Resolve conversation" button or `resolvePullRequestReviewThread`. Safe because
-  the finding no longer describes current code; do not use this to bypass a
-  substantive finding.
++- **CodeRabbit** — `@coderabbitai resolve` is a **new top-level PR comment** (the
+  entire comment, no other text); it is not supported as a reply inside a review
+  thread. It resolves **all** CodeRabbit threads on the PR at once, so use it
+  only after every CodeRabbit finding is fixed or answered. `@coderabbitai approve`
+  resolves all + submits approval. Mixing the command with evidence text makes
+  CodeRabbit treat it as chat and skip the resolve.
+- **Outdated threads** (lines moved by a later commit) — resolve only after
+  confirming on the thread that the finding does not apply to the current head
+  (`commit.oid == headRefOid`); then use the "Resolve conversation" button or
+  `resolvePullRequestReviewThread`. Do not resolve merely because the lines moved,
+  and do not use this to bypass a substantive finding.
 
 ## Reply in the same thread
 

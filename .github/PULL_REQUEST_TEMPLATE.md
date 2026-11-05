@@ -68,7 +68,9 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 - [ ] No `skipping` / `pending` CodeRabbit check
 - [ ] Round ledger comment updated (round, head SHA, bot, open findings, action, status)
 <!-- Before merge, every review thread must be resolved. Agents must not resolve
-     threads themselves; the maintainer or bot resolves them. -->
+     threads themselves (maintainer or bot resolves), except outdated threads
+     (lines moved) after confirming on the thread that the finding no longer
+     applies to the current head (commit.oid == headRefOid). -->
 <!-- Cross-check: exactly one in-thread reply with evidence per finding; no
      double (standalone + in-thread) replies; no untagged replies left open. -->
 

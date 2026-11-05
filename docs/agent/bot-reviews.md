@@ -78,22 +78,26 @@ trigger; missing it leaves the thread open, which blocks the merge gate.
 | Bot | To dismiss a finding | Trigger | Auto-resolves thread? |
 |---|---|---|---|
 | Qodo | Address it explicitly: `@qodo <reason>` (e.g. `@qodo false positive: ...`) | Plain language at the start of the reply | Yes — Qodo marks dismissed (false positive / rejected / deferred / intentional), strikethroughs the finding, and resolves + collapses the thread |
-| CodeRabbit | Reply with evidence, then post `@coderabbitai resolve` as a **whole comment** (no other text) in the same thread | `@coderabbitai resolve` (whole comment) | Yes — resolves that thread only; `@coderabbitai approve` resolves all + submits approval |
+| CodeRabbit | Reply with evidence, then post `@coderabbitai resolve` as a **new top-level PR comment** (the whole comment, no other text) | `@coderabbitai resolve` (whole comment, top-level) | Yes — resolves **all** CodeRabbit threads on the PR at once; `@coderabbitai approve` resolves all + submits approval |
 | GitHub (outdated) | When a push moves the lines, GitHub marks the thread `outdated` | "Resolve conversation" button / `resolvePullRequestReviewThread` GraphQL | Manual (maintainer or bot) |
 
 Rules:
 - An untagged reply (no `@qodo` / no `@coderabbitai resolve`) is treated as
   reviewer discussion: the bot does **not** act and the thread stays open. This is
   the #1 reason "replying in the bot chat didn't work".
-- For CodeRabbit, the resolve command must be the **entire** comment. Mixing it
-  with evidence text makes CodeRabbit treat the whole thing as chat and skip the
-  resolve.
+- For CodeRabbit, `@coderabbitai resolve` must be a **new top-level PR comment** (the
+  entire comment, no other text) — it is not supported as a reply inside a review
+  thread. It resolves **all** CodeRabbit threads on the PR at once, so use it only
+  after every CodeRabbit finding is fixed or answered. Mixing it with evidence text
+  makes CodeRabbit treat the whole thing as chat and skip the resolve.
 - For Qodo, address it in **every** follow-up message in the thread, including
   re-reviews (`@qodo I pushed fixes, can you review again?`).
 - Outdated threads (lines changed by a later commit) no longer describe current
-  code: resolve them via the "Resolve conversation" button / GraphQL. They are
-  safe to resolve because the finding does not apply to the current tree; do not
-  resolve substantive findings this way.
+  code. Resolve them only after confirming on the thread that the finding does
+  **not** apply to the current head (`commit.oid == headRefOid`); then use the
+  "Resolve conversation" button / `resolvePullRequestReviewThread`. Do not
+  resolve a substantive finding this way, and do not resolve merely because the
+  lines moved.
 
 ## Cross-check before merge (anti-double-reply)
 
@@ -113,6 +117,8 @@ If a bot still does not mark a thread resolved after the correct trigger is used
 (verified against the docs above), treat it as an open research item: capture the
 PR/thread URL, the exact trigger used, and the bot's response (or silence), and
 file an issue for deep research rather than merging around it.
+
+## Reply format
 
 Reply in the bot's thread, not as a standalone post. Open with `<sha>: <verdict>`
 (`accepted` / `rejected` / `already fixed` / `out of scope`), then mechanism and
