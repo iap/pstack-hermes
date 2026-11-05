@@ -174,10 +174,13 @@ rationale.
   `@qodo false positive: …`, `@qodo this is intentional: …`, etc. Qodo classifies
   the dismissal (chat labels observed 2026-11-05 from Qodo's chat doc: False
   positive / Rejected / Deferred / Intentional; portal may show Fix later / Not
-  specified) and resolves + collapses the thread. Untagged replies are treated as
-  reviewer discussion and left alone. Use only Qodo's documented dismissal
-  reasons; if a reason is rejected, rephrase in plain language rather than
-  forcing a label. If no label is accepted, escalate as an open issue.
+  specified) and, for ordinary findings, resolves + collapses the thread. When a
+  cross-repo conflict is dismissed because its relationship is wrong or outdated,
+  Qodo keeps the thread open so the relationship link remains visible. Untagged
+  replies are treated as reviewer discussion and left alone. Use only Qodo's
+  documented dismissal reasons; if a reason is rejected, rephrase in plain
+  language rather than forcing a label. If no label is accepted, escalate as an
+  open issue.
 - **CodeRabbit** — `@coderabbitai resolve` must be the **entire comment** (no other
   text). Posted as a reply in a CodeRabbit review thread it resolves **only that
   thread**; posted as a top-level PR comment it resolves **all** CodeRabbit
