@@ -705,7 +705,7 @@ function parseFrontier(raw: string): Frontier {
       !isRecord(row) ||
       typeof row.pr !== "number" ||
       !Number.isSafeInteger(row.pr) ||
-      row.pr < 1 ||
+      row.pr < 0 ||
       typeof row.branches !== "string" ||
       row.branches.length === 0 ||
       typeof row.sha !== "string" ||

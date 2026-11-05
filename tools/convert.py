@@ -1121,6 +1121,14 @@ def apply_local_provider_patch(out: Path, st: Stats) -> None:
         "orch option desc local",
     )
 
+    # Allow pr: 0 sentinel for local provider (no PR number)
+    replace_required(
+        store,
+        "      row.pr < 1 ||",
+        "      row.pr < 0 ||",
+        "parseFrontier allow pr 0",
+    )
+
     st.fixes.append(
         "T16: local (git-native) stack provider added "
         "(auto/graphite/github/gitlab/local)"
