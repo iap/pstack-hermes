@@ -141,28 +141,35 @@ def check(root: Path = ROOT) -> tuple[int, list[str]]:
         problems.append("updates: must be a non-empty list")
         return 1, problems
 
-    # Collect scoped directories and their ecosystems.
-    scoped: list[tuple[str, str]] = []  # (directory, ecosystem)
+    # Collect scoped directories and their ecosystems, tracking singular vs plural.
+    scoped: list[tuple[str, str, bool]] = []  # (directory, ecosystem, is_plural)
     for entry in updates:
         if isinstance(entry, dict):
             eco = entry.get("package-ecosystem")
             d = entry.get("directory")
             if isinstance(d, str) and isinstance(eco, str):
-                scoped.append((d, eco))
+                scoped.append((d, eco, False))  # singular: no globs
             ds = entry.get("directories")
             if isinstance(ds, list):
                 for dd in ds:
                     if isinstance(dd, str) and isinstance(eco, str):
-                        scoped.append((dd, eco))
+                        scoped.append((dd, eco, True))  # plural: globs supported
 
     # Required composite actions covered by a github-actions entry.
     for name in composite_actions_with_uses(root):
         expected = f"/.github/actions/{name}"
         matching = []
-        for d, e in scoped:
+        for d, e, is_plural in scoped:
             if e != "github-actions":
                 continue
-            if d == expected or fnmatch.fnmatch(expected, d):
+            # Singular 'directory' does not support wildcards; only exact match.
+            # Plural 'directories' supports glob patterns.
+            if d == expected:
+                matching.append((d, e))
+            elif is_plural and "*" in d and fnmatch.fnmatch(expected, d):
+                # Only count if this d came from a 'directories' (plural) entry.
+                # We track that by checking the original entry; here we approximate
+                # by requiring the pattern to not be an exact singular path.
                 matching.append((d, e))
         if not matching:
             problems.append(

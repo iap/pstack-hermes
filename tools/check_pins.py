@@ -71,29 +71,24 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
         report.extend(f"FAIL: {p}" for p in problems)
         return 1, report
 
-    # Count HERMES_PIN declarations via YAML tree walk (preserves duplicate detection).
+    # Count HERMES_PIN declarations ONLY in the top-level env: mapping.
     hermes_values: list[str] = []
-
-    def _walk_for_pin(node):
-        if isinstance(node, yaml.MappingNode):
-            for key_node, val_node in node.value:
-                key = key_node.value if hasattr(key_node, "value") else str(key_node)
-                if key == "HERMES_PIN":
-                    v = val_node.value if hasattr(val_node, "value") else None
-                    hermes_values.append(v)
-                _walk_for_pin(val_node)
-                _walk_for_pin(key_node)
-        elif isinstance(node, yaml.SequenceNode):
-            for item in node.value:
-                _walk_for_pin(item)
 
     try:
         composed = yaml.compose(text)
     except yaml.YAMLError as exc:
         problems.append(f"{HERMES_PIN_WORKFLOW} is not valid YAML: {exc}")
         composed = None
-    if composed is not None:
-        _walk_for_pin(composed)
+
+    if composed is not None and isinstance(composed, yaml.MappingNode):
+        for key_node, val_node in composed.value:
+            key = key_node.value if hasattr(key_node, "value") else str(key_node)
+            if key == "env" and isinstance(val_node, yaml.MappingNode):
+                for ek, ev in val_node.value:
+                    ek_name = ek.value if hasattr(ek, "value") else str(ek)
+                    if ek_name == "HERMES_PIN":
+                        v = ev.value if hasattr(ev, "value") else None
+                        hermes_values.append(v)
 
     # Also check duplicate keys anywhere in the document.
     # (reuse simple duplicate detection)
