@@ -5,7 +5,9 @@
 <!--
 Keep this short: a template nobody finishes is worse than none.
 Every checkbox below is something CI or tools/pr_checklist.py can actually
-verify. Boxes that cannot be verified were deleted, not softened.
+verify, EXCEPT the "Bot review (gate)" section, which is human-only
+attestation (Qodo/CodeRabbit state cannot be verified by CI).
+Boxes that cannot be verified were deleted, not softened.
 Instructions live in HTML comments and never render in the PR form.
 Full gate list mirrors the CONTRIBUTING "Pull requests" section.
 Attribution is standing policy in CONTRIBUTING.md - no per-PR checkbox.
@@ -64,7 +66,9 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 - [ ] Qodo [bot] findings triaged (fixed or answered with evidence) on this head
 - [ ] CodeRabbit requested (`@coderabbitai full review` / `review`) and clean on this head (`commit.oid == headRefOid`)
 - [ ] No `skipping` / `pending` CodeRabbit check
-- [ ] Round ledger comment updated (round, head SHA, open findings, action)
+- [ ] Round ledger comment updated (round, head SHA, bot, open findings, action, status)
+<!-- Before merge, every review thread must be resolved. Agents must not resolve
+     threads themselves; the maintainer or bot resolves them. -->
 
 > [!TIP]
 > **Draft-first content:** Prefer writing draft messages/content before publishing to the public git provider. Keep it technical, short, essential — only on-scope context relations. Cross-check and verify for no false positive/negative. If this is an open/draft PR, add a clear note for reviewers here so they can read the context clearly.
