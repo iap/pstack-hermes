@@ -1292,18 +1292,23 @@ function branchSha({
 }
 
 function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
-  // Discover the stack from local git state (branches + commits, no external API).
-  let branches: string[];
+  let currentBranch: string;
   try {
-    branches = execFileSync(
+    currentBranch = execFileSync(
       "git",
-      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
-      {
-        cwd: repo,
-        encoding: "utf8",
-        env: { ...process.env, NO_COLOR: "1" },
-        stdio: ["ignore", "pipe", "pipe"],
-      }
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }
+    ).trim();
+  } catch (error) {
+    throw new UserError(`git rev-parse HEAD failed: ${errorMessage(error)}`);
+  }
+
+  let allBranches: string[];
+  try {
+    allBranches = execFileSync(
+      "git",
+      ["branch", "--format=%(refname:short)"],
+      { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }
     )
       .split("\n")
       .map((b) => b.trim())
@@ -1312,28 +1317,29 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
     throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
   }
 
-  const result: FrontierPr[] = [];
-  for (const branch of branches) {
+  const stackBranches: string[] = [];
+  for (const branch of allBranches) {
+    if (branch === currentBranch) { stackBranches.push(branch); continue; }
     try {
-      const sha = execFileSync(
-        "git",
-        ["rev-parse", branch],
-        {
-          cwd: repo,
-          encoding: "utf8",
-          env: { ...process.env, NO_COLOR: "1" },
-          stdio: ["ignore", "pipe", "pipe"],
-        }
-      ).trim();
-      result.push({
-        pr: 0,
-        branches: branch,
-        sha,
-        state: "OPEN",
-      });
-    } catch (error) {
-      // Skip branches we cannot parse
+      execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${branch}`, "HEAD"], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+      stackBranches.push(branch);
+    } catch {
+      try {
+        execFileSync("git", ["merge-base", "--is-ancestor", "HEAD", `refs/heads/${branch}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+        stackBranches.push(branch);
+      } catch { /* unrelated */ }
     }
+  }
+
+  const result: FrontierPr[] = [];
+  for (const branch of stackBranches) {
+    try {
+      const sha = execFileSync("git", ["rev-parse", `refs/heads/${branch}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+      result.push({ pr: 0, branches: branch, sha, state: "OPEN" });
+    } catch (error) { /* skip */ }
+  }
+  if (result.length === 0) {
+    throw new UserError("local stack discovery found no branches in the current stack");
   }
   return result;
 }

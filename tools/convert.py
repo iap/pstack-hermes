@@ -1025,83 +1025,36 @@ def apply_local_provider_patch(out: Path, st: Stats) -> None:
     )
 
     # 2. Insert localFrontier() before resolveFrontier()
-    local_frontier_fn = (
-        'function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {\n'
-        '  // Discover the stack from local git state (branches + commits, no external API).\n'
-        '  let branches: string[];\n'
-        '  try {\n'
-        '    branches = execFileSync(\n'
-        '      "git",\n'
-        '      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],\n'
-        '      {\n'
-        '        cwd: repo,\n'
-        '        encoding: "utf8",\n'
-        '        env: { ...process.env, NO_COLOR: "1" },\n'
-        '        stdio: ["ignore", "pipe", "pipe"],\n'
-        '      }\n'
-        '    )\n'
-        '      .split("\\n")\n'
-        '      .map((b) => b.trim())\n'
-        '      .filter((b) => b.length > 0);\n'
-        '  } catch (error) {\n'
-        '    throw new UserError(`git branch listing failed: ${errorMessage(error)}`);\n'
-        '  }\n'
-        '\n'
-        '  const result: FrontierPr[] = [];\n'
-        '  for (const branch of branches) {\n'
-        '    try {\n'
-        '      const sha = execFileSync(\n'
-        '        "git",\n'
-        '        ["rev-parse", branch],\n'
-        '        {\n'
-        '          cwd: repo,\n'
-        '          encoding: "utf8",\n'
-        '          env: { ...process.env, NO_COLOR: "1" },\n'
-        '          stdio: ["ignore", "pipe", "pipe"],\n'
-        '        }\n'
-        '      ).trim();\n'
-        '      result.push({\n'
-        '        pr: 0,\n'
-        '        branches: branch,\n'
-        '        sha,\n'
-        '        state: "OPEN",\n'
-        '      });\n'
-        '    } catch (error) {\n'
-        '      // Skip branches we cannot parse\n'
-        '    }\n'
-        '  }\n'
-        '  return result;\n'
-        '}\n'
-        '\n'
-    )
+    template_path = Path(__file__).resolve().parent / "templates" / "local_frontier.ts"
+    local_frontier_fn = template_path.read_text(encoding="utf-8") + chr(10)
     replace_required(
         store,
-        "function resolveFrontier(\n",
-        local_frontier_fn + "function resolveFrontier(\n",
+        "function resolveFrontier(" + chr(10),
+        local_frontier_fn + "function resolveFrontier(" + chr(10),
         "localFrontier insertion",
     )
 
     # 3. Add local case in resolveFrontier (after gitlab case)
     replace_required(
         store,
-        '  if (provider === "gitlab") {\n    throw new UserError("gitlab stack provider is not implemented yet");\n  }\n',
-        '  if (provider === "gitlab") {\n    throw new UserError("gitlab stack provider is not implemented yet");\n  }\n  if (provider === "local") {\n    return { provider, prs: localFrontier(repo, pin) };\n  }\n',
+        '  if (provider === "gitlab") {' + chr(10) + '    throw new UserError("gitlab stack provider is not implemented yet");' + chr(10) + '  }' + chr(10),
+        '  if (provider === "gitlab") {' + chr(10) + '    throw new UserError("gitlab stack provider is not implemented yet");' + chr(10) + '  }' + chr(10) + '  if (provider === "local") {' + chr(10) + '    return { provider, prs: localFrontier(repo, pin) };' + chr(10) + '  }' + chr(10),
         "resolveFrontier local case",
     )
 
-    # 4. Add "local" to auto candidate list
+    # 4. parseFrontier: accept pr: 0 (local provider sentinel)
     replace_required(
         store,
-        '  for (const candidate of ["graphite", "github"] as const) {',
-        '  for (const candidate of ["graphite", "github"] as const) {',
-        "auto candidate local",
+        "      row.pr < 1 ||",
+        "      row.pr < 0 ||",
+        "parseFrontier allow pr 0",
     )
 
     # 5. orch.ts: stackProvider parser - add local
     replace_required(
         orch,
-        '    value === "gitlab"\n  ) {',
-        '    value === "gitlab" ||\n    value === "local"\n  ) {',
+        '    value === "gitlab"' + chr(10) + '  ) {',
+        '    value === "gitlab" ||' + chr(10) + '    value === "local"' + chr(10) + '  ) {',
         "orch stackProvider local",
     )
 
@@ -1121,20 +1074,10 @@ def apply_local_provider_patch(out: Path, st: Stats) -> None:
         "orch option desc local",
     )
 
-    # Allow pr: 0 sentinel for local provider (no PR number)
-    replace_required(
-        store,
-        "      row.pr < 1 ||",
-        "      row.pr < 0 ||",
-        "parseFrontier allow pr 0",
-    )
-
     st.fixes.append(
         "T16: local (git-native) stack provider added "
         "(auto/graphite/github/gitlab/local)"
     )
-
-
 
 
 def apply_phase1_transforms(out: Path, st: Stats) -> None:
