@@ -69,6 +69,8 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
 - [ ] Round ledger comment updated (round, head SHA, bot, open findings, action, status)
 <!-- Before merge, every review thread must be resolved. Agents must not resolve
      threads themselves; the maintainer or bot resolves them. -->
+<!-- Cross-check: exactly one in-thread reply with evidence per finding; no
+     double (standalone + in-thread) replies; no untagged replies left open. -->
 
 > [!TIP]
 > **Draft-first content:** Prefer writing draft messages/content before publishing to the public git provider. Keep it technical, short, essential — only on-scope context relations. Cross-check and verify for no false positive/negative. If this is an open/draft PR, add a clear note for reviewers here so they can read the context clearly.

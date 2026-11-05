@@ -164,7 +164,25 @@ review is recorded at its own commit and is not a current-head verdict.
 Re-request CodeRabbit on the new head; never post a Qodo trigger in the
 automatic setup.
 
-Reply in the same thread:
+## Thread resolution commands
+
+Bots do not auto-resolve on a plain evidence reply; each needs its own trigger.
+See `docs/agent/bot-reviews.md` § "Thread resolution mechanics" for the full
+rationale.
+
+- **Qodo** — dismiss by addressing it explicitly: `@qodo false positive: …`,
+  `@qodo rejected: …`, `@qodo deferred: …`, `@qodo intentional: …`. Qodo marks
+  the finding dismissed, strikethroughs it, and resolves + collapses the thread.
+  Untagged replies are treated as reviewer discussion and left alone.
+- **CodeRabbit** — reply with evidence, then post `@coderabbitai resolve` as a
+  **whole comment** (no other text) in the same thread; it resolves only that
+  thread. `@coderabbitai approve` resolves all threads + submits approval.
+- **Outdated threads** (lines moved by a later commit) — resolve via the
+  "Resolve conversation" button or `resolvePullRequestReviewThread`. Safe because
+  the finding no longer describes current code; do not use this to bypass a
+  substantive finding.
+
+## Reply in the same thread
 
 ```sh
 gh api graphql -f query='
