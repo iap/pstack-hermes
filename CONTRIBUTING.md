@@ -238,9 +238,9 @@ Do not keep parallel plans or adaptation ledgers in `docs/`.
 
 ## Bot review gate (pre-merge mandate)
 
-1. **Qodo** triggers automatically on PRs. Review and resolve Qodo findings first. Do not trigger Qodo manually if findings are resolved and no new issues exist.
-2. **CodeRabbit** is not auto-review by default (to reduce noise and bot-to-bot conflict). Trigger `@coderabbitai full review` only after Qodo is clean.
-3. After CodeRabbit reviews, resolve all findings. Wait for CodeRabbit CI flow to complete successfully.
+1. **Qodo [bot]** triggers automatically on PRs. Do not trigger Qodo manually. Review and resolve Qodo findings first. If Qodo findings are resolved and no new issues exist on the same head, proceed to CodeRabbit without re-triggering Qodo.
+2. **CodeRabbit** is not auto-review by default (to reduce noise and bot-to-bot conflict). Trigger `@coderabbitai full review` only after Qodo is clean on the same head.
+3. After CodeRabbit reviews, resolve all findings. Continue resolving from CodeRabbit until its CI flow/check completes successfully.
 4. **Merge only when both bots are clean on the same head commit.** Green CI alone is insufficient. Treat "skipping"/"pending" as not clean.
 5. Reply to findings with comments explaining what/why (not just resolving). Cross-check for false positives before applying fixes.
 
