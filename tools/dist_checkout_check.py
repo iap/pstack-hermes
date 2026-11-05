@@ -4,9 +4,9 @@
 Why this exists
 ---------------
 The package contract is LF-only (see ``tools/validate.py::check_encoding``), and
-the pstack/ subtree is what ``hermes plugins install
-iap/pstack-hermes/pstack`` actually clones. The
-``build`` CI job validates the *source* ``pstack/`` directory, where files are LF
+the repository root is what ``hermes plugins install iap/pstack-hermes`` actually
+clones. The
+``build`` CI job validates the *source* package at the repo root, where files are LF
 because ``tools/convert.py`` wrote them that way. That job is structurally
 incapable of catching a line-ending or binary-asset regression introduced by the
 publish step, because it never constructs a checkout of the published tree on a
@@ -94,9 +94,25 @@ def is_text_file(staged: Path, rel: str) -> bool:
         return True
     return b"\x00" not in data
 
+SOURCE_TREE_PATHS = (
+    "plugin.json",
+    "skills",
+    "config",
+    "assets",
+    "README.md",
+    "LICENSE",
+    ".build-provenance.txt",
+)
+
+
 def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     """Copy the package tree into ``dest`` the way the publisher stages it."""
-    for item in package.iterdir():
+    items = list(package.iterdir())
+    if source_tree:
+        # The repository root also holds tooling, docs and local scratch
+        # (.venv, .pytest-tmp); stage only what publish-dist.yml ships.
+        items = [package / name for name in SOURCE_TREE_PATHS if (package / name).exists()]
+    for item in items:
         if item.name in {".git", ".venv", "__pycache__"}:
             continue
         target = dest / item.name
@@ -104,12 +120,17 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
             shutil.copytree(item, target, ignore=shutil.ignore_patterns("__pycache__"))
         else:
             shutil.copy2(item, target)
-    # Do NOT install ATTRS_SOURCE here. The package under test is supposed to
-    # carry its own .gitattributes (the publisher copies the asset into the dist
-    # tree before this gate runs). Substituting the canonical rule would make the
-    # gate validate its own copy instead of the published one, so a missing or
-    # stale rule in the tree - precisely the regression this gate exists to catch
-    # - would pass silently. Verify the tree's file instead.
+
+    if source_tree:
+        # The repository root .gitattributes governs the source tree and carries
+        # extra metadata (linguist-generated) beyond the legacy dist asset, so it
+        # is staged as-is; the autocrlf clone below is the real assertion.
+        attrs = package / ATTRS_NAME
+        if not attrs.is_file():
+            attrs = SCRIPT_DIR.parent / ATTRS_NAME
+        shutil.copy2(attrs, dest / ATTRS_NAME)
+        return
+
     # A tree that is going to be published must carry the rule; the check never
     # installs its own copy, because substituting it is exactly what would blind
     # this gate to a missing or stale rule in the tree it is meant to police.
@@ -227,9 +248,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--source-tree",
         action="store_true",
-        help="package is the source pstack/ tree, which legitimately carries no"
-             " .gitattributes because the publisher adds one when staging the dist"
-             " repo. Without this flag a tree missing the rule is refused.",
+        help="package is the source tree at the repository root, whose .gitattributes"
+             " carries extra metadata beyond the dist rule set",
     )
     args = ap.parse_args(argv)
 

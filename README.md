@@ -45,13 +45,27 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 hermes plugins update pstack
 ```
 
-Hermes updates unpinned installs from the repository root. Pinned installs must be reinstalled with a new SHA and `--force`.
+Unpinned root installs update in place. Pinned installs must be reinstalled
+with a new SHA and `--force` (see [Install](#install)).
+
+Installs created before the root-layout migration (the old
+source-subdirectory route) cannot update in place. Back up local edits,
+remove the old install, then install the root package:
+
+```sh
+hermes plugins remove pstack
+hermes plugins install iap/pstack-hermes --enable
+```
+
+If the old install was pinned, add `--ref <new-package-SHA>` to the install
+command.
 
 ## Customizing skills
 
 - **Tweak a line or two** — edit the installed `SKILL.md`, restart the
-  gateway, and save a backup outside the plugin before updating. Subdirectory
-  updates replace shipped skills; in-place edits are temporary.
+  gateway, and save a backup outside the plugin before updating. Git-backed
+  updates autostash and re-apply local edits (conflicts stay in `git stash`);
+  reinstalls replace shipped skills, so in-place edits are temporary.
 - **Own several changed skills** — fork `iap/pstack-hermes`, commit, install from
   your fork (`hermes plugins install <you>/pstack-hermes --enable`).
 - **Add your own new skills alongside** — a skill tap:
@@ -69,7 +83,7 @@ a hermes defect that reproduces with the plugin disabled →
 - **47 skills** (24 workflow/mode +
   23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
   discovered via the root `plugin.json` (agent-plugins-v1 manifest,
-  9-field manifest output).
+  9 whitelisted fields).
 - `skills/hermesbot/` — hermes-native control-surface skill on the gateway
   webhook (`X-Webhook-Signature-V2` HMAC) plus `hermes send` / `hermes peer`;
   fills the excluded `make-bot-ui` slot.
@@ -78,13 +92,15 @@ a hermes defect that reproduces with the plugin disabled →
 
 Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner
 verdicts — persistence / privilege escalation; `--force` cannot override) and
-upstream's `docs/guide/` (read it upstream for the guided tour).
+upstream's `docs/guide/` (read it upstream for the guided tour). `agents/` and
+`.cursor-plugin/` are inert on hermes — kept so the tree still dual-loads as a
+Cursor plugin structurally; for real Cursor-side work install upstream pstack.
 
 ## Differences from upstream
 
 | Pass | What changed |
 |---|---|
-| manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field output |
+| manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
 | R1 | poteto-mode principles index regenerated from the 23 leaves |
 | F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |

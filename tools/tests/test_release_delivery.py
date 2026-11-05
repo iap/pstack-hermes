@@ -68,31 +68,10 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
-
-    # Save package files from master before deleting on orphan dist branch
-    saved_skills = None
-    if not payload_changed:
-        for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
-            content = git(remote, 'show', 'master:' + f)
-            target = remote / f
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
-        skills_src = remote / 'skills'
-        if skills_src.exists():
-            saved_skills = tmp_path / 'saved-skills'
-            shutil.copytree(skills_src, saved_skills)
-
-    git(remote, 'rm', '-rf', '.')
-
-    # Restore saved files after deletion
-    if not payload_changed:
-        for f in ['README.md', 'LICENSE', 'config/models.json', 'plugin.json']:
-            content = git(remote, 'show', 'master:' + f)
-            target = remote / f
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
-        if saved_skills and saved_skills.exists():
-            shutil.copytree(saved_skills, remote / 'skills')
+    # The orphan checkout keeps the source tree in the index and working tree, so
+    # the package files are already present. Drop only the provenance file and let
+    # the cases below write it (or omit it for 'missing').
+    git(remote, 'rm', '-q', '-f', '.build-provenance.txt')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
     if provenance_change == 'missing':
         pass
