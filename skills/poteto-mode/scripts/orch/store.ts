@@ -1331,6 +1331,21 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
     }
   }
 
+  // Sort: ancestors first (by ancestry depth), then current, then descendants
+  stackBranches.sort((a, b) => {
+    if (a === currentBranch) return 1;
+    if (b === currentBranch) return -1;
+    try {
+      execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${a}`, `refs/heads/${b}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+      return -1; // a is ancestor of b
+    } catch { /* a is not ancestor of b */ }
+    try {
+      execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${b}`, `refs/heads/${a}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+      return 1; // b is ancestor of a
+    } catch { /* neither is ancestor */ }
+    return a.localeCompare(b);
+  });
+
   const result: FrontierPr[] = [];
   for (const branch of stackBranches) {
     try {
