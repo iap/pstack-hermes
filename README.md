@@ -93,7 +93,7 @@ a hermes defect that reproduces with the plugin disabled →
 Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner
 verdicts — persistence / privilege escalation; `--force` cannot override) and
 upstream's `docs/guide/` (read it upstream for the guided tour). This tree is
-Hermes-native only; for Cursor-side work install upstream pstack.
+Hermes-native only; for real Cursor-side work install upstream pstack.
 
 ## Differences from upstream
 
