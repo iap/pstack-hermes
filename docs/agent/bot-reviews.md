@@ -12,7 +12,8 @@ short form and must stay consistent with this file.
    Do **not** trigger Qodo manually. Triage its findings first; do not wait for a fresh
    Qodo verdict after a fix push.
 2. **CodeRabbit** is manual (`.coderabbit.yaml` sets `auto_review.enabled: false`).
-   Trigger `@coderabbitai full review` only after Qodo is clean on the same head.
+   Trigger `@coderabbitai full review` only after Qodo findings are triaged
+   (fixed or answered with evidence) on this head.
    Use `@coderabbitai review` for a small fix push within the same round.
 
 ## Gate (merge requires ALL)
