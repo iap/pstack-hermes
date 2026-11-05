@@ -511,7 +511,75 @@ interface StackFrontierResult {
     )
     replace_required(
         store,
-        """function branchSha({
+        """function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+  let branches: string[];
+  try {
+    branches = execFileSync(
+      "git",
+      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    )
+      .split("
+")
+      .map((b: string) => b.trim())
+      .filter((b: string) => b.length > 0 && !b.startsWith("--"));
+  } catch (error) {
+    throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
+  }
+  let currentBranch: string | undefined;
+  try {
+    currentBranch = execFileSync(
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    ).trim();
+  } catch {
+    // ignore
+  }
+  const result: FrontierPr[] = [];
+  for (const branch of branches) {
+    if (branch === currentBranch || branch.startsWith("HEAD")) {
+      continue;
+    }
+    let sha: string;
+    try {
+      sha = execFileSync(
+        "git",
+        ["rev-parse", "--end-of-options", `refs/heads/${branch}`],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: { ...process.env, NO_COLOR: "1" },
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      ).trim();
+      if (!/^[0-9a-f]{40}$/.test(sha)) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    result.push({
+      pr: pin && pin.length > 0 ? (pin[result.length] ?? 0) : 0,
+      branches: branch,
+      sha,
+      state: "OPEN",
+    });
+  }
+  return result;
+}
+
+function branchSha({
   branch,
   repo,
 }: {
@@ -642,6 +710,74 @@ function githubFrontier(
   return result;
 }
 
+function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+  let branches: string[];
+  try {
+    branches = execFileSync(
+      "git",
+      ["branch", "--sort=-committerdate", "--format=%(refname:short)"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    )
+      .split("
+")
+      .map((b: string) => b.trim())
+      .filter((b: string) => b.length > 0 && !b.startsWith("--"));
+  } catch (error) {
+    throw new UserError(`git branch listing failed: ${errorMessage(error)}`);
+  }
+  let currentBranch: string | undefined;
+  try {
+    currentBranch = execFileSync(
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    ).trim();
+  } catch {
+    // ignore
+  }
+  const result: FrontierPr[] = [];
+  for (const branch of branches) {
+    if (branch === currentBranch || branch.startsWith("HEAD")) {
+      continue;
+    }
+    let sha: string;
+    try {
+      sha = execFileSync(
+        "git",
+        ["rev-parse", "--end-of-options", `refs/heads/${branch}`],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: { ...process.env, NO_COLOR: "1" },
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      ).trim();
+      if (!/^[0-9a-f]{40}$/.test(sha)) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    result.push({
+      pr: pin && pin.length > 0 ? (pin[result.length] ?? 0) : 0,
+      branches: branch,
+      sha,
+      state: "OPEN",
+    });
+  }
+  return result;
+}
+
 function branchSha({
   branch,
   repo,
@@ -680,6 +816,9 @@ function branchSha({
   }
   if (provider === "gitlab") {
     throw new UserError("gitlab stack provider is not implemented yet");
+  }
+  if (provider === "local") {
+    return { provider, prs: localFrontier(repo, pin) };
   }
   const failures: string[] = [];
   const attempted: string[] = [];
@@ -809,11 +948,12 @@ function branchSha({
     value === "auto" ||
     value === "graphite" ||
     value === "github" ||
-    value === "gitlab"
+    value === "gitlab" ||
+    value === "local"
   ) {
     return value;
   }
-  throw new InvalidArgumentError("must be auto, graphite, github, or gitlab");
+  throw new InvalidArgumentError("must be auto, graphite, github, gitlab, or local");
 }
 
 function countLine(value: Counts): string {
@@ -842,7 +982,7 @@ function countLine(value: Counts): string {
 """,
         """    .option(
       "--provider <provider>",
-      "stack provider: auto, graphite, github, or gitlab",
+      "stack provider: auto, graphite, github, gitlab, or local",
       stackProvider,
       "auto"
     )
