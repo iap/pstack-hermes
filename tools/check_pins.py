@@ -150,7 +150,7 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
 
     if len(hermes_values) == 1:
         hv = hermes_values[0]
-        if not isinstance(hv, str) or not SHA_RE.match(hv):
+        if not isinstance(hv, str) or not SHA_RE.fullmatch(hv):
             problems.append(f"HERMES_PIN is not a full lowercase 40-char SHA: {hv!r}")
         else:
             report.append(f"  {HERMES_PIN_WORKFLOW}: HERMES_PIN {hv}")

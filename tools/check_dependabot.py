@@ -86,8 +86,11 @@ def composite_actions_with_uses(root: Path = ROOT) -> list[str]:
     actions_dir = root / ".github" / "actions"
     if not actions_dir.is_dir():
         return out
-    for action_dir in sorted(actions_dir.iterdir()):
-        if not action_dir.is_dir():
+    for action_dir in sorted(actions_dir.rglob(".")):
+        if not action_dir.is_dir() or action_dir == actions_dir:
+            continue
+        # Only consider directories that directly contain action.yml/yaml
+        if not any((action_dir / c).is_file() for c in ("action.yml", "action.yaml")):
             continue
         action_yml = None
         for cand in ("action.yml", "action.yaml"):
@@ -124,7 +127,8 @@ def composite_actions_with_uses(root: Path = ROOT) -> list[str]:
                         has_external_uses = True
                         break
         if has_external_uses:
-            out.append(action_dir.name)
+            rel = action_dir.relative_to(actions_dir)
+            out.append(str(rel).replace(chr(92), "/"))
     return out
 
 
