@@ -1093,7 +1093,7 @@ def apply_local_provider_patch(out: Path, st: Stats) -> None:
     replace_required(
         store,
         '  for (const candidate of ["graphite", "github"] as const) {',
-        '  for (const candidate of ["graphite", "github", "local"] as const) {',
+        '  for (const candidate of ["graphite", "github"] as const) {',
         "auto candidate local",
     )
 

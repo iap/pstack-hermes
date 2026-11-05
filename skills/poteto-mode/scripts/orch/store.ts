@@ -1363,7 +1363,7 @@ function resolveFrontier(
   }
   const failures: string[] = [];
   const attempted: string[] = [];
-  for (const candidate of ["graphite", "github", "local"] as const) {
+  for (const candidate of ["graphite", "github"] as const) {
     attempted.push(candidate);
     try {
       const result = resolveFrontier(repo, candidate, pin);
