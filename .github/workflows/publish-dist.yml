@@ -52,7 +52,7 @@ jobs:
                     # Remove __pycache__ from the package before publishing so the dist
                     # checkout check and the published tree use the same file set.
                     find plugin.json skills/ config/ assets/ -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-                    cp -a plugin.json skills/ config/ assets/ README.md after-install.md LICENSE .build-provenance.txt "dist/"
+                    cp -a plugin.json skills/ config/ assets/ README.md LICENSE .build-provenance.txt "$dist/"
           if [ -d assets ]; then cp -a assets "$dist/"; fi
           # The dist branch is consumed by `hermes plugins install` (a git
           # clone), so it needs its own .gitattributes. The package contract is
