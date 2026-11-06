@@ -6,16 +6,18 @@ name: round-ledger
 # triage rows below <!-- round-ledger:manual --> belong to the maintainer /
 # agent and are preserved verbatim across runs.
 #
-# Triggers: PR open/sync/reopen/ready and review submissions. Bots post issue
-# comments rather than reviews, and the timestamp of issue_comment cannot be
-# used as a trigger without re-entering on our own ledger edits, so a manual
-# refresh after bot comments is: `gh workflow run round-ledger.yml -f pr=<N>`.
+# Triggers: pull_request_target (open/sync/reopen/ready) and manual dispatch.
+# The repo default GITHUB_TOKEN is read-only (default_workflow_permissions:
+# read), so push/PR-context tokens cannot comment. pull_request_target gives
+# the base-repo token write permission — same contract as .github/workflows/
+# labeler.yml. No PR code is checked out or executed: every input comes from
+# the API, and fork PRs are skipped by the job guard. Bots post issue comments
+# rather than reviews, so after bot verdicts land a manual refresh is:
+# `gh workflow run round-ledger.yml -f pr=<N>`.
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
-  pull_request_review:
-    types: [submitted]
   workflow_dispatch:
     inputs:
       pr:
@@ -34,8 +36,8 @@ concurrency:
 
 jobs:
   ledger:
-    # Fork PRs receive a read-only token; the bot cannot comment there anyway.
-    # workflow_dispatch carries no pull_request payload and is always allowed.
+    # Same-repo PRs only (ledger comments on this repo's PRs). workflow_dispatch
+    # carries no pull_request payload and is always allowed.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -61,7 +63,6 @@ jobs:
           fi
 
           HEAD="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)"
-
           # Check rollup. `gh pr checks` exits non-zero when any check fails,
           # so capture loosely and fall back to an empty rollup.
           checks_json="$(gh pr checks "$PR" --json name,bucket 2>/dev/null || true)"
