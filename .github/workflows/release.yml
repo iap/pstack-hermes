@@ -41,6 +41,10 @@ jobs:
         with:
           ref: master
           persist-credentials: false
+          # Full clone: the gate must be able to traverse master's complete
+          # history to prove that an older signed tag's commit is an ancestor
+          # of master (a depth-one checkout cannot).
+          fetch-depth: 0
 
 # The tag is the trust root of the release: everything downstream
 # (pin check, build, publish) attests to whatever ref was dispatched.
@@ -60,7 +64,10 @@ jobs:
         run: |
           set -euo pipefail
           TAG="$TAG_NAME"
-          git fetch origin "refs/heads/master:refs/remotes/origin/master" "refs/tags/$TAG"
+          # Explicit destination for the tag ref: a source-only refspec can be
+          # present only in FETCH_HEAD (no local refs/tags/$TAG) for tags
+          # outside the checkout's auto-follow depth.
+          git fetch origin "refs/heads/master:refs/remotes/origin/master" "refs/tags/$TAG:refs/tags/$TAG"
           tag_obj="$(git rev-parse "refs/tags/$TAG")"
           peeled="$(git rev-parse "refs/tags/$TAG^{}")"
           # Pin the exact tag object for the whole run; the "Confirm the tag
