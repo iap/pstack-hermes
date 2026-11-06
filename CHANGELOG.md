@@ -5,6 +5,7 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- `.github/workflows/round-ledger.yml` (prototype): maintains the bot machine block of the PR "Round ledger" comment — head SHA, CI check rollup, CodeRabbit check bucket, latest Qodo review timestamp + parsed commit, unresolved thread count — on PR open/sync/reopen/ready and `pull_request_review`, preserving the manual triage rows below the `<!-- round-ledger:manual -->` marker verbatim. Bots post issue comments rather than reviews, so after bot verdicts land a manual refresh is `gh workflow run round-ledger.yml -f pr=<N>`. Informational only, never a merge gate.
 - `--provider local` (git-native stack discovery): `localFrontier()` lists the current branch plus its ancestors and descendants, ordered bottom-to-top, and marks every row with PR sentinel `0`. Injected by `tools/convert.py` (`T16`) and covered by a generated Bun regression test that pins ordering, unrelated-branch exclusion, and the empty-repo error (#127).
 
 ### Changed

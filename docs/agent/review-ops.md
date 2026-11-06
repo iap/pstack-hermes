@@ -268,9 +268,21 @@ Right   <sha>: accepted. main counted import-failed as available, so a loader
 
 ## Round ledger
 
-Keep **one** PR comment updated per round: round number, head SHA, bot, open
+Keep **one** PR comment updated per round: head SHA, bot verdict(s), open
 findings, action (fix / reply / dismiss), status. It prevents re-triaging the
 same root cause across rounds and gives the maintainer a merge checklist.
+
+`.github/workflows/round-ledger.yml` maintains the **machine block** of this
+comment automatically: head SHA, CI check rollup, CodeRabbit check bucket,
+latest Qodo review timestamp + parsed commit, unresolved thread count. It runs
+on PR open/sync/reopen/ready and on `pull_request_review`, and rewrites only
+the section between `<!-- round-ledger:auto:start -->` and
+`<!-- round-ledger:auto:end -->`; the triage rows below
+`<!-- round-ledger:manual -->` are preserved verbatim. Bots post issue
+comments rather than reviews, so after bot verdicts land a manual refresh is
+`gh workflow run round-ledger.yml -f pr=<N>`. The triage verdicts
+(fix / reply / dismiss) stay agent/maintainer-written — the workflow never
+adjudicates findings, and its output is informational, never a merge gate.
 
 ## Loop budget and escalation
 
