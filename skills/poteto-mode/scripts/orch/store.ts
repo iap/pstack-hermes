@@ -1291,7 +1291,7 @@ function branchSha({
   return sha;
 }
 
-function localFrontier(repo: string, pin?: readonly number[]): readonly FrontierPr[] {
+export function localFrontier(repo: string): readonly FrontierPr[] {
   let currentBranch: string;
   try {
     currentBranch = execFileSync(
@@ -1331,10 +1331,9 @@ function localFrontier(repo: string, pin?: readonly number[]): readonly Frontier
     }
   }
 
-  // Sort: ancestors first (by ancestry depth), then current, then descendants
+  // Ancestry decides the order: ancestors first, then the current branch,
+  // then descendants. Excluded (unrelated) branches never reach this sort.
   stackBranches.sort((a, b) => {
-    if (a === currentBranch) return 1;
-    if (b === currentBranch) return -1;
     try {
       execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${a}`, `refs/heads/${b}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
       return -1; // a is ancestor of b
@@ -1380,7 +1379,7 @@ function resolveFrontier(
     throw new UserError("gitlab stack provider is not implemented yet");
   }
   if (provider === "local") {
-    return { provider, prs: localFrontier(repo, pin) };
+    return { provider, prs: localFrontier(repo) };
   }
   const failures: string[] = [];
   const attempted: string[] = [];
