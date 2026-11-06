@@ -97,16 +97,23 @@ jobs:
             exit 1
           fi
 
-          # Qodo posts an issue comment, not a review. Select the exact bot
-          # identity (a plain login substring would let lookalikes forge the
-          # ledger's Qodo entry), and parse the commit marker from it.
-          qodo="$(jq -c '[.[][] | select(.user.login == "qodo-code-review[bot]" and .user.type == "Bot")] | last // empty' <<<"$comments_json")"
-          if [ -n "$qodo" ]; then
-            qodo_at="$(jq -r .created_at <<<"$qodo")"
-            qodo_sha="$(jq -r .body <<<"$qodo" | grep -oE 'commit/[0-9a-f]{40}' | tail -n1 | cut -d/ -f2 || true)"
-            [ -z "$qodo_sha" ] && qodo_sha="not parsed"
+          # Qodo's review is recorded as a pull-request review (GraphQL
+          # latestReviews carries the reviewed commit), not as a parseable
+          # issue comment; reading it from reviews avoids trusting marker
+          # text in comments. No review recorded yet reads as "no review yet".
+          qodo_gl_query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){latestReviews(first:100){nodes{author{login} commit{oid} submittedAt}}}}}'
+          if qodo_gl="$(gh api graphql -f query="$qodo_gl_query" -F owner="$OWNER" -F repo="$REPO" -F pr="$PR" 2>"$work/qodo.err")"; then
+            qodo_node="$(jq -c '[.data.repository.pullRequest.latestReviews.nodes[] | select(.author.login == "qodo-code-review" or .author.login == "qodo-code-review[bot]")] | sort_by(.submittedAt) | last // empty' <<<"$qodo_gl")"
+            if [ -n "$qodo_node" ]; then
+              qodo_at="$(jq -r .submittedAt <<<"$qodo_node")"
+              qodo_sha="$(jq -r .commit.oid <<<"$qodo_node")"
+            else
+              qodo_at="no review yet"
+              qodo_sha="n/a"
+            fi
           else
-            qodo_at="no review yet"
+            cat "$work/qodo.err" >&2
+            qodo_at="unavailable (review query failed; see log)"
             qodo_sha="n/a"
           fi
 
