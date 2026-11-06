@@ -54,6 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set -x
           PR="${DISPATCH_PR:-$EVENT_PR}"
           if ! [[ "$PR" =~ ^[0-9]+$ ]]; then
             echo "::error::no pull request number resolvable from this event"
