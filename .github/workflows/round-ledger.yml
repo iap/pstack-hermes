@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
 
-          HEAD="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)"
+          HEAD="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)" || { echo "::error::gh pr view failed"; exit 1; }
           # Check rollup. `gh pr checks` exits non-zero when any check fails,
           # so capture loosely and fall back to an empty rollup.
           checks_json="$(gh pr checks "$PR" --json name,bucket 2>/dev/null || true)"
@@ -137,10 +137,11 @@ jobs:
           ${manual}
           EOF
 
+          echo "ledger: target comment id=${ledger_id:-<none, will create>}"
           if [ -n "$ledger_id" ]; then
-            gh api --method PATCH "repos/$OWNER/$REPO/issues/comments/$ledger_id" -F body=@"$body_file" > /dev/null
+            gh api --method PATCH "repos/$OWNER/$REPO/issues/comments/$ledger_id" -F body=@"$body_file" > /dev/null || { echo "::error::PATCH ledger comment failed"; exit 1; }
             echo "ledger updated (comment $ledger_id)"
           else
-            gh api --method POST "repos/$OWNER/$REPO/issues/$PR/comments" -F body=@"$body_file" > /dev/null
+            gh api --method POST "repos/$OWNER/$REPO/issues/$PR/comments" -F body=@"$body_file" > /dev/null || { echo "::error::POST ledger comment failed"; exit 1; }
             echo "ledger created on PR #$PR"
           fi
