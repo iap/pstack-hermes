@@ -8,11 +8,11 @@ name: round-ledger
 #
 # Triggers: pull_request_target (open/sync/reopen/ready) and manual dispatch.
 # The repo default GITHUB_TOKEN is read-only (default_workflow_permissions:
-# read), so push/PR-context tokens cannot comment. pull_request_target gives
-# the base-repo token write permission — same contract as .github/workflows/
-# labeler.yml. No PR code is checked out or executed: every input comes from
-# the API, and fork PRs are skipped by the job guard. Bots post issue comments
-# rather than reviews, so after bot verdicts land a manual refresh is:
+# read), so the write-capable base-repo token is required for PR-comment
+# mutations (same contract as .github/workflows/labeler.yml). No PR code is
+# checked out or executed: every input comes from the API, and fork PRs are
+# skipped by the job guard. Bots post issue comments rather than reviews, so
+# after bot verdicts land a manual refresh is:
 # `gh workflow run round-ledger.yml -f pr=<N>`.
 
 on:
@@ -26,8 +26,7 @@ on:
         type: number
 
 permissions:
-  issues: write        # create/edit the ledger conversation comment
-  pull-requests: read  # read PR metadata and review threads
+  pull-requests: write # create/edit the ledger comment on the PR conversation
   checks: read         # read the check rollup (Checks API)
 
 concurrency:
@@ -36,8 +35,8 @@ concurrency:
 
 jobs:
   ledger:
-    # Same-repo PRs only (ledger comments on this repo's PRs). workflow_dispatch
-    # carries no pull_request payload and is always allowed.
+    # Same-repo PRs only (the ledger comments on this repo's PRs).
+    # workflow_dispatch carries no pull_request payload and is always allowed.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -61,27 +60,47 @@ jobs:
             echo "::error::no pull request number resolvable from this event"
             exit 1
           fi
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
 
           HEAD="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)" || { echo "::error::gh pr view failed"; exit 1; }
-          # Check rollup. `gh pr checks` exits non-zero when any check fails,
-          # so capture loosely and fall back to an empty rollup.
-          checks_json="$(gh pr checks "$PR" --json name,bucket 2>/dev/null || true)"
-          if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$checks_json"; then
-            checks_json='[]'
-          fi
-          total="$(jq 'length' <<<"$checks_json")"
-          passed="$(jq '[.[] | select(.bucket == "pass")] | length' <<<"$checks_json")"
-          failed="$(jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length' <<<"$checks_json")"
-          pending="$(jq '[.[] | select(.bucket == "pending")] | length' <<<"$checks_json")"
-          cr_bucket="$(jq -r '[.[] | select(.name | test("(?i)coderabbit"))] | last | .bucket // "not present"' <<<"$checks_json")"
 
-          # Qodo posts an issue comment, not a review; find the latest one and
-          # parse the reviewed commit out of its HTML marker, if present.
-          comments_json="$(gh api "repos/$OWNER/$REPO/issues/$PR/comments" --paginate --slurp 2>/dev/null || echo '[[]]')"
-          if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$comments_json"; then
-            comments_json='[[]]'
+          # Check rollup. `gh pr checks` exits non-zero when any check fails,
+          # but still prints valid JSON to stdout; only trust stdout if it
+          # parses as an array, otherwise treat the rollup as unavailable.
+          checks_json="$(gh pr checks "$PR" --json name,bucket 2>"$work/checks.err" || true)"
+          if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$checks_json"; then
+            cat "$work/checks.err" >&2
+            checks_available=0
+            checks_display="unavailable (request failed; see log)"
+            cr_display="unavailable"
+          else
+            checks_available=1
+            total="$(jq 'length' <<<"$checks_json")"
+            passed="$(jq '[.[] | select(.bucket == "pass")] | length' <<<"$checks_json")"
+            failed="$(jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length' <<<"$checks_json")"
+            pending="$(jq '[.[] | select(.bucket == "pending")] | length' <<<"$checks_json")"
+            skipping="$(jq '[.[] | select(.bucket == "skipping")] | length' <<<"$checks_json")"
+            checks_display="${passed} passed / ${failed} failed / ${pending} pending / ${skipping} skipped (of ${total})"
+            cr_display="$(jq -r '[.[] | select(.name | test("(?i)coderabbit"))] | last | .bucket // "not present"' <<<"$checks_json")"
           fi
-          qodo="$(jq -c '[.[][] | select(.user.login | test("(?i)qodo"))] | last // empty' <<<"$comments_json")"
+
+          # Issue comments. A failed or invalid fetch must abort the refresh:
+          # treating it as an empty list would duplicate an existing ledger.
+          if ! comments_json="$(gh api "repos/$OWNER/$REPO/issues/$PR/comments" --paginate --slurp 2>"$work/comments.err")"; then
+            cat "$work/comments.err" >&2
+            echo "::error::could not list issue comments; aborting instead of risking a duplicate ledger"
+            exit 1
+          fi
+          if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$comments_json"; then
+            echo "::error::issue comments response is not a JSON array; aborting instead of risking a duplicate ledger"
+            exit 1
+          fi
+
+          # Qodo posts an issue comment, not a review. Select the exact bot
+          # identity (a plain login substring would let lookalikes forge the
+          # ledger's Qodo entry), and parse the commit marker from it.
+          qodo="$(jq -c '[.[][] | select(.user.login == "qodo-code-review[bot]" and .user.type == "Bot")] | last // empty' <<<"$comments_json")"
           if [ -n "$qodo" ]; then
             qodo_at="$(jq -r .created_at <<<"$qodo")"
             qodo_sha="$(jq -r .body <<<"$qodo" | grep -oE 'commit/[0-9a-f]{40}' | tail -n1 | cut -d/ -f2 || true)"
@@ -91,42 +110,62 @@ jobs:
             qodo_sha="n/a"
           fi
 
-          # Unresolved review threads (the merge gate counts these). The
-          # integration token answers 403 for this query, so degrade to n/a
-          # rather than failing the job; unresolved threads stay a human check.
+          # Unresolved review threads, paginated (reviewThreads only returns
+          # one page per request). On failure the ledger reports n/a and the
+          # captured error goes to the log; it is never silently hidden.
+          graphql_err="$work/graphql.err"
           graphql_query="$(cat <<'GRAPHQL'
-          query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{isResolved}}}}}
+          query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100,after:$cursor){pageInfo{hasNextPage endCursor}nodes{isResolved}}}}}
           GRAPHQL
           )"
-          if threads="$(gh api graphql -f query="$graphql_query" -F owner="$OWNER" -F repo="$REPO" -F pr="$PR" 2>/dev/null)"; then
-            total_threads="$(jq '[.data.repository.pullRequest.reviewThreads.nodes[]] | length' <<<"$threads")"
-            unresolved="$(jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' <<<"$threads")"
+          threads_ok=1
+          total_threads=0
+          unresolved=0
+          cursor=""
+          while :; do
+            args=(-F owner="$OWNER" -F repo="$REPO" -F pr="$PR")
+            if [ -n "$cursor" ]; then
+              args+=(-F cursor="$cursor")
+            fi
+            if ! page="$(gh api graphql -f query="$graphql_query" "${args[@]}" 2>"$graphql_err")"; then
+              threads_ok=0
+              break
+            fi
+            if ! jq -e '.data.repository.pullRequest.reviewThreads' >/dev/null 2>&1 <<<"$page"; then
+              threads_ok=0
+              break
+            fi
+            page_t="$(jq '[.data.repository.pullRequest.reviewThreads.nodes[]] | length' <<<"$page")"
+            page_u="$(jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' <<<"$page")"
+            total_threads=$((total_threads + page_t))
+            unresolved=$((unresolved + page_u))
+            has_next="$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page")"
+            cursor="$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor // empty' <<<"$page")"
+            [ "$has_next" = "true" ] || break
+          done
+          if [ "$threads_ok" -eq 1 ]; then
             threads_note=""
           else
+            echo "::warning::threads query failed; thread count reported as n/a:"
+            cat "$graphql_err" >&2
             total_threads="n/a"
             unresolved="n/a"
-            threads_note=" (threads API unavailable to this token; count not checked)"
+            threads_note=" (threads query failed; see log)"
           fi
 
-          # Preserve the manual triage section from an existing ledger comment.
-          ledger_id="$(jq -r '[.[][] | select(.body | contains("<!-- round-ledger -->"))] | first | .id // empty' <<<"$comments_json")"
-          manual=""
-          if [ -n "$ledger_id" ]; then
-            manual="$(jq -r --argjson id "$ledger_id" '.[][] | select(.id == $id) | .body' <<<"$comments_json" | sed -n '/<!-- round-ledger:manual -->/,$p' | tail -n +2)"
-          fi
-          if [ -z "${manual//[[:space:]]/}" ]; then
-            manual='- _no triage rows yet; the agent/maintainer maintains this section_'
-          fi
-
-          body_file="$(mktemp)"
-          cat > "$body_file" <<EOF
+          # Build the comment body. The auto markers bracket the machine
+          # block; everything below the manual marker is copied over
+          # byte-for-byte (via files, not command substitution).
+          build_body() {
+            local existing="$1" out="$2"
+            cat > "$out" <<EOF
           <!-- round-ledger -->
           ## Round ledger
 
           <!-- round-ledger:auto:start -->
           - head: \`$HEAD\`
-          - CI checks: ${passed} passed / ${failed} failed / ${pending} pending (of ${total})
-          - CodeRabbit check: ${cr_bucket}
+          - CI checks: ${checks_display}
+          - CodeRabbit check: ${cr_display}
           - Qodo latest review: ${qodo_at} (commit: ${qodo_sha})
           - unresolved review threads: ${unresolved} / ${total_threads}${threads_note}
           - updated by [round-ledger run](${SERVER_URL}/${OWNER}/${REPO}/actions/runs/${RUN_ID}) at $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -134,11 +173,39 @@ jobs:
 
           ### Triage (maintainer/agent-maintained)
           <!-- round-ledger:manual -->
-          ${manual}
           EOF
+            if [ -n "$existing" ] && grep -qF '<!-- round-ledger:manual -->' "$existing"; then
+              sed -n '/<!-- round-ledger:manual -->/,$p' "$existing" | tail -n +2 >> "$out"
+            else
+              printf -- '- _no triage rows yet; the agent/maintainer maintains this section_\n' >> "$out"
+            fi
+          }
+
+          # The ledger is owned by the workflow bot; a lookalike marker in
+          # someone else's comment must never become the PATCH target.
+          ledger_id="$(jq -r '[.[][] | select((.body | contains("<!-- round-ledger -->")) and .user.login == "github-actions[bot]")] | first | .id // empty' <<<"$comments_json")"
+          existing_body="$work/existing.md"
+          : > "$existing_body"
+          if [ -n "$ledger_id" ]; then
+            jq -r --argjson id "$ledger_id" '.[][] | select(.id == $id) | .body' <<<"$comments_json" > "$existing_body"
+          fi
+
+          body_file="$work/body.md"
+          build_body "$existing_body" "$body_file"
 
           echo "ledger: target comment id=${ledger_id:-<none, will create>}"
           if [ -n "$ledger_id" ]; then
+            # Re-fetch immediately before patching; if the maintainer edited
+            # the comment between our reads, rebuild from the fresh body
+            # rather than overwriting their edit.
+            if ! gh api "repos/$OWNER/$REPO/issues/comments/$ledger_id" --jq .body > "$work/fresh.md"; then
+              echo "::error::could not re-fetch ledger comment $ledger_id; aborting instead of clobbering"
+              exit 1
+            fi
+            if ! cmp -s "$existing_body" "$work/fresh.md"; then
+              echo "ledger changed during refresh; rebuilding from fresh read"
+              build_body "$work/fresh.md" "$body_file"
+            fi
             gh api --method PATCH "repos/$OWNER/$REPO/issues/comments/$ledger_id" -F body=@"$body_file" > /dev/null || { echo "::error::PATCH ledger comment failed"; exit 1; }
             echo "ledger updated (comment $ledger_id)"
           else
