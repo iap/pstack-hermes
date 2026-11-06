@@ -25,7 +25,8 @@ on:
 
 permissions:
   issues: write        # create/edit the ledger conversation comment
-  pull-requests: read  # read PR metadata, checks, review threads
+  pull-requests: read  # read PR metadata and review threads
+  checks: read         # read the check rollup (Checks API)
 
 concurrency:
   group: round-ledger-${{ github.event.pull_request.number || inputs.pr }}
