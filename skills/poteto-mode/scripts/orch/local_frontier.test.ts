@@ -7,6 +7,7 @@ import { UserError, localFrontier } from "./store.ts";
 const directories: string[] = [];
 const TIMEOUT = 30000;
 
+/** Run git in a throwaway repo and return trimmed stdout. */
 function git(repo: string, ...args: string[]): string {
   const result = Bun.spawnSync(["git", "-C", repo, ...args]);
   if (result.exitCode !== 0) {
@@ -15,6 +16,7 @@ function git(repo: string, ...args: string[]): string {
   return result.stdout.toString().trim();
 }
 
+/** Create an isolated repo whose initial branch is `main`. */
 async function makeRepo(): Promise<string> {
   const repo = await mkdtemp(join(tmpdir(), "orch-local-"));
   directories.push(repo);
@@ -26,10 +28,12 @@ async function makeRepo(): Promise<string> {
   return repo;
 }
 
+/** Commit an empty change so tests never depend on worktree bytes. */
 function commit(repo: string, message: string): void {
   git(repo, "commit", "-q", "--allow-empty", "-m", message);
 }
 
+/** Build main -> bottom -> middle -> top, one commit per branch. */
 async function linearStack(): Promise<string> {
   const repo = await makeRepo();
   commit(repo, "base");
@@ -42,6 +46,7 @@ async function linearStack(): Promise<string> {
   return repo;
 }
 
+/** Return the branch column of a local frontier. */
 function branchNames(repo: string): string[] {
   return localFrontier(repo).map((row) => row.branches);
 }
@@ -71,6 +76,21 @@ describe("localFrontier", () => {
       const repo = await linearStack();
       git(repo, "checkout", "-q", "bottom");
       expect(branchNames(repo)).toEqual(["main", "bottom", "middle", "top"]);
+    },
+    TIMEOUT
+  );
+
+  it(
+    "breaks equal-depth sibling ties by branch name",
+    async () => {
+      const repo = await makeRepo();
+      commit(repo, "base");
+      git(repo, "checkout", "-q", "-b", "zeta");
+      commit(repo, "zeta");
+      git(repo, "checkout", "-q", "-b", "alpha", "main");
+      commit(repo, "alpha");
+      git(repo, "checkout", "-q", "main");
+      expect(branchNames(repo)).toEqual(["main", "alpha", "zeta"]);
     },
     TIMEOUT
   );

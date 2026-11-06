@@ -1337,27 +1337,32 @@ export function localFrontier(repo: string): readonly FrontierPr[] {
 
   // Order by ancestry without a pairwise comparator: rev-list counts grow
   // monotonically from ancestor to descendant, so sorting by count puts the
-  // bottom of the stack first. Siblings and equal SHAs tiebreak by name, which
-  // keeps the comparator total (and spawns one git process per branch).
+  // bottom of the stack first. Siblings and equal SHAs tiebreak by code unit,
+  // which keeps the comparator total and locale-independent.
   const depth = new Map<string, number>();
   for (const branch of stackBranches) {
+    let count: number;
     try {
-      const count = Number(
+      count = Number(
         execFileSync(
           "git",
           ["rev-list", "--count", `refs/heads/${branch}`],
           { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }
         ).trim()
       );
-      depth.set(branch, Number.isSafeInteger(count) ? count : Number.MAX_SAFE_INTEGER);
-    } catch {
-      depth.set(branch, Number.MAX_SAFE_INTEGER);
+    } catch (error) {
+      throw new UserError(`git rev-list --count ${branch} failed: ${errorMessage(error)}`);
     }
+    if (!Number.isSafeInteger(count) || count < 1) {
+      throw new UserError(`git rev-list --count ${branch} returned an invalid count: ${count}`);
+    }
+    depth.set(branch, count);
   }
   stackBranches.sort((a, b) => {
     const da = depth.get(a) ?? Number.MAX_SAFE_INTEGER;
     const db = depth.get(b) ?? Number.MAX_SAFE_INTEGER;
-    return da !== db ? da - db : a.localeCompare(b);
+    if (da !== db) return da - db;
+    return a < b ? -1 : a > b ? 1 : 0;
   });
 
   const result: FrontierPr[] = [];
