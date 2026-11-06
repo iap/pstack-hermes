@@ -1291,6 +1291,10 @@ function branchSha({
   return sha;
 }
 
+/**
+ * Build a forge-free frontier from local branches: the current branch, its
+ * ancestors, and its descendants, ordered bottom-to-top with PR sentinel 0.
+ */
 export function localFrontier(repo: string): readonly FrontierPr[] {
   let currentBranch: string;
   try {
@@ -1331,18 +1335,29 @@ export function localFrontier(repo: string): readonly FrontierPr[] {
     }
   }
 
-  // Ancestry decides the order: ancestors first, then the current branch,
-  // then descendants. Excluded (unrelated) branches never reach this sort.
+  // Order by ancestry without a pairwise comparator: rev-list counts grow
+  // monotonically from ancestor to descendant, so sorting by count puts the
+  // bottom of the stack first. Siblings and equal SHAs tiebreak by name, which
+  // keeps the comparator total (and spawns one git process per branch).
+  const depth = new Map<string, number>();
+  for (const branch of stackBranches) {
+    try {
+      const count = Number(
+        execFileSync(
+          "git",
+          ["rev-list", "--count", `refs/heads/${branch}`],
+          { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] }
+        ).trim()
+      );
+      depth.set(branch, Number.isSafeInteger(count) ? count : Number.MAX_SAFE_INTEGER);
+    } catch {
+      depth.set(branch, Number.MAX_SAFE_INTEGER);
+    }
+  }
   stackBranches.sort((a, b) => {
-    try {
-      execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${a}`, `refs/heads/${b}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
-      return -1; // a is ancestor of b
-    } catch { /* a is not ancestor of b */ }
-    try {
-      execFileSync("git", ["merge-base", "--is-ancestor", `refs/heads/${b}`, `refs/heads/${a}`], { cwd: repo, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
-      return 1; // b is ancestor of a
-    } catch { /* neither is ancestor */ }
-    return a.localeCompare(b);
+    const da = depth.get(a) ?? Number.MAX_SAFE_INTEGER;
+    const db = depth.get(b) ?? Number.MAX_SAFE_INTEGER;
+    return da !== db ? da - db : a.localeCompare(b);
   });
 
   const result: FrontierPr[] = [];
