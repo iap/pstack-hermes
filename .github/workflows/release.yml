@@ -72,7 +72,10 @@ jobs:
           peeled="$(git rev-parse "refs/tags/$TAG^{}")"
           # The signature attests to the tag object's embedded name; a
           # re-pointed copy of a signed tag under a new name must fail.
-          signed_name="$(git cat-file tag "$tag_obj" | sed -n 's/^tag //p' | head -n 1)"
+          # Line 3 of `git cat-file tag` is the `tag <name>` header; consuming
+          # the full output (no head) keeps a long tag message from killing
+          # the pipe under pipefail before verification.
+          signed_name="$(git cat-file tag "$tag_obj" | sed -n '3s/^tag //p')"
           if [ -z "$signed_name" ] || [ "$signed_name" != "$TAG" ]; then
             echo "::error::signed tag name '$signed_name' does not match dispatched tag '$TAG'; refusing to verify" >&2
             exit 1
