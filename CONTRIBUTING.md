@@ -214,7 +214,30 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 
 1. Merge the release changes to `master`, including the `CHANGELOG.md`
    section for the `v0.4.x` tooling version. Package version stays upstream's.
-2. Wait for `publish-dist` to succeed. Create a `v*` tag on that source commit.
+2. Wait for `publish-dist` to succeed. Create a **signed, annotated** `v*`
+   tag on that source commit; `release.yml` fails closed before packaging
+   unless the tag verifies (SSH ed25519 against `keys/allowed_signers`
+   first; OpenPGP keys registered on your GitHub profile as the fallback,
+   fetched live at release time — no key material is committed). Unsigned
+   tags, and `v0.4.3` / `v0.5.0`-style lightweight tags, cannot be released.
+
+   ```sh
+   # SSH (primary — dedicated signing key, principal iap@users.noreply.github.com)
+   git -c gpg.format=ssh -c user.signingkey="$HOME/.ssh/pstack-hermes-signing.pub" \
+     tag -s vX.Y.Z -m "vX.Y.Z" <source-sha>
+   # OpenPGP (fallback — key 9166D30F6FE70F56, already registered on GitHub)
+   git -c gpg.format=openpgp -c user.signingkey=9166D30F6FE70F56 \
+     tag -s vX.Y.Z -m "vX.Y.Z" <source-sha>
+   # verify before pushing
+   git -c gpg.ssh.allowedSignersFile=keys/allowed_signers -c gpg.format=ssh verify-tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+   To make signing the local default without touching the global config:
+   `git config gpg.format ssh && git config user.signingkey ~/.ssh/pstack-hermes-signing.pub && git config tag.gpgsign true` (repo-local).
+   GitHub only accepts keys registered for signing for the SSH path — add the
+   pubkey at Settings → SSH and GPG keys → New SSH **signing** key if it is
+   not registered yet.
 3. `release.yml` rebuilds and validates, checks that the package matches the
 <!-- coderabbit-ai-generated:v1 -->
 <!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
