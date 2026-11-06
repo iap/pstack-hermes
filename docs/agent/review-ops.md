@@ -23,10 +23,12 @@ clean state before merge. The port contract outranks every bot.
 
 - **Qodo reviews the open PR automatically.** It reviews when a PR is opened,
   reopened, or marked ready. Treat that as the Qodo review for the PR: triage its
-  findings, but do not wait for a fresh Qodo verdict after a fix push and do not
-  post `/agentic_review` in the automatic setup. A manual trigger is only for a
-  confirmed manual-only configuration. CodeRabbit is the SHA-bound per-head gate
-  below.
+  findings, but do not post `/agentic_review` in the automatic setup. A manual
+  trigger is only for a confirmed manual-only configuration. Qodo re-reviews are a
+  *reply trigger*, not a push trigger: a re-review happens when a follow-up
+  addresses Qodo (`@qodo …`), and it can raise new findings — triage those in the
+  same round. Never treat a Qodo verdict as a current-head ship gate: that role
+  belongs to CodeRabbit below.
 - **CodeRabbit is manual in this repo.** `.coderabbit.yaml` sets
   `auto_review.enabled: false`, so a push never starts it. Request
   `@coderabbitai full review` for the first pass and again after any rebase,
@@ -61,9 +63,13 @@ it if paused, then wait. Repeating the command also buries the evidence the next
 reader needs under duplicate ask-and-ack comments.
 
 Round loop:
-1. Open the PR and wait for Qodo's initial automatic review.
+1. Open the PR and wait for Qodo's initial automatic review. Bounded only: poll
+   with backoff for a few minutes to ~15–20; if it never arrives, ledger `Qodo:
+   no review yet` and proceed (no findings, gate unaffected). Never wait
+   indefinitely; never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   Do not wait for Qodo to re-review a later head.
+   Do not wait for Qodo to re-review a later head: re-reviews happen only when
+   a follow-up addresses Qodo, and any new findings join this round's triage.
 3. Request the appropriate CodeRabbit review on the current head. Use
    `full review` for the first pass, a rebase, a force-push, or a large diff;
    use `review` only for a small fix push in the same round. Confirm the
@@ -76,7 +82,10 @@ Round loop:
 
 Wait for Qodo's initial review and CodeRabbit's current-head verdict - poll with
 backoff. Do not assume clean because no comment arrived within an arbitrary
-minute, and do not treat a pre-push "clean" comment as current.
+minute, and do not treat a pre-push "clean" comment as current. The Qodo wait is
+bounded: after several backoff polls (~15–20 min) with no verdict, ledger `Qodo:
+no review yet` and proceed; the verdict to actually wait for is CodeRabbit's, at
+the current head.
 
 ## Triage matrix
 
@@ -176,7 +185,10 @@ rationale.
   `@qodo false positive: …`, `@qodo this is intentional: …`, etc. Qodo classifies
   the dismissal (chat labels observed 2026-11-05 from Qodo's chat doc: False
   positive / Rejected / Deferred / Intentional; portal may show Fix later / Not
-  specified) and, for ordinary findings, resolves + collapses the thread. When a
+  specified) and, for ordinary findings, resolves + collapses the thread. Each
+  `@qodo` follow-up can also trigger a re-review that raises new findings;
+  triage those in the same round (trigger gate: Qodo *triaged*, not resolved
+  UI state; merge gate: ALL Bot 1 + Bot 2 threads resolved). When a
   cross-repo conflict is dismissed because its relationship is wrong or outdated,
   Qodo keeps the thread open so the relationship link remains visible. Untagged
   replies are treated as reviewer discussion and left alone. Use only Qodo's

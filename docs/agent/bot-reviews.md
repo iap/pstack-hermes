@@ -10,7 +10,11 @@ short form and must stay consistent with this file.
 
 1. **Qodo [bot]** reviews the open PR automatically (on open / reopen / ready-for-review).
    Do **not** trigger Qodo manually. Triage its findings first; do not wait for a fresh
-   Qodo verdict after a fix push.
+   Qodo verdict after a fix push — Qodo re-reviews are a *reply trigger*, not a push
+   trigger: a re-review happens when a follow-up reply addresses Qodo
+   (`@qodo …` in-thread, e.g. `@qodo I pushed fixes, can you review again?`), and
+   the re-review can carry **new** findings. Expect it after addressing Qodo on a fix,
+   and triage whatever it raises the same way (same resolve-all gate).
 2. **CodeRabbit** is manual (`.coderabbit.yaml` sets `auto_review.enabled: false`).
    Trigger `@coderabbitai full review` only after Qodo findings are triaged
    (fixed or answered with evidence) on this head.
@@ -25,6 +29,16 @@ short form and must stay consistent with this file.
 - CodeRabbit check is **not** `skipping` and not `pending`.
 
 Green CI alone is insufficient. `skipping` = never requested (not clean). `pending` = not clean.
+
+Two distinct gates — do not confuse them:
+
+- **Trigger gate (start the CodeRabbit review):** Qodo *triaged* — every Qodo finding
+  is fixed or answered with evidence and dismissal triggers posted. Bot-1 resolved UI
+  state is **not** a precondition (cross-repo-conflict dismissals stay open by design —
+  see resolution mechanics).
+- **Merge gate (ship):** ALL findings from both bots resolved — Bot 1 *and* Bot 2
+  threads closed via their own triggers, CodeRabbit clean on the current head, CI
+  green, local gates pass.
 
 ## SHA-bound verdicts
 
@@ -46,9 +60,14 @@ One request per head SHA. Do not re-send because a verdict is slow.
 
 ## Round loop
 
-1. Open PR; wait for Qodo's initial automatic review.
+1. Open PR; wait for Qodo's initial automatic review. Bounded wait only (poll with
+   backoff, a few minutes to ~15–20 min): if it never arrives, ledger `Qodo: no review
+   yet` and proceed — no findings means the gate is unaffected. Never wait
+   indefinitely, and never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   Do not wait for Qodo to re-review a later head.
+   Do not wait for Qodo to re-review a later head; a re-review only happens when a
+   follow-up addresses Qodo, and any new findings it raises join this round's
+   triage.
 3. Request CodeRabbit on the current head (`full review` first pass / rebase /
    force-push / large diff; `review` for small fix push). Confirm `commit.oid == headRefOid`.
 4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request; Qodo does
@@ -94,7 +113,8 @@ Rules:
   with evidence text makes CodeRabbit treat the whole thing as chat and skip the
   resolve. Use it only after every CodeRabbit finding is fixed or answered.
 - For Qodo, address it in **every** follow-up message in the thread, including
-  re-reviews (`@qodo I pushed fixes, can you review again?`).
+  re-reviews (`@qodo I pushed fixes, can you review again?`). A re-review can
+  raise new findings — triage them the same way, in the same resolve-all gate.
 - Outdated threads (lines changed by a later commit) no longer describe current
   code. A commit mismatch identifies staleness but is not a prerequisite for
   confirming whether the finding applies — compare the finding against the code at
