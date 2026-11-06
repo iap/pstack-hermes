@@ -64,6 +64,13 @@ jobs:
           trap 'rm -rf "$work"' EXIT
 
           HEAD="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)" || { echo "::error::gh pr view failed"; exit 1; }
+          # Same-repo PRs only, enforced in-script too: workflow_dispatch carries
+          # no pull_request payload, so the job-level guard cannot see forks.
+          head_repo="$(gh api "repos/$OWNER/$REPO/pulls/$PR" --jq .head.repo.full_name 2>/dev/null || true)"
+          if [ "$head_repo" != "$GH_REPO" ]; then
+            echo "::error::PR #$PR does not come from $GH_REPO (head repo: ${head_repo:-none/deleted fork}); refusing to comment"
+            exit 1
+          fi
 
           # Check rollup. `gh pr checks` exits non-zero when any check fails,
           # but still prints valid JSON to stdout; only trust stdout if it
@@ -103,7 +110,8 @@ jobs:
           query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){latestReviews(first:100){nodes{author{login} commit{oid} submittedAt}}}}}
           GRAPHQL
           )"
-          if qodo_gl="$(gh api graphql -f query="$qodo_gl_query" -F owner="$OWNER" -F repo="$REPO" -F pr="$PR" 2>"$work/qodo.err")"; then
+          qodo_gl=""
+          if qodo_gl="$(gh api graphql -f query="$qodo_gl_query" -F owner="$OWNER" -F repo="$REPO" -F pr="$PR" 2>"$work/qodo.err")" && jq -e '.data.repository.pullRequest.latestReviews.nodes | type == "array"' >/dev/null 2>&1 <<<"$qodo_gl"; then
             qodo_node="$(jq -c '[.data.repository.pullRequest.latestReviews.nodes[] | select(.author.login == "qodo-code-review" or .author.login == "qodo-code-review[bot]")] | sort_by(.submittedAt) | last // empty' <<<"$qodo_gl")"
             if [ -n "$qodo_node" ]; then
               qodo_at="$(jq -r .submittedAt <<<"$qodo_node")"
@@ -114,7 +122,8 @@ jobs:
             fi
           else
             cat "$work/qodo.err" >&2
-            qodo_at="unavailable (review query failed; see log)"
+            echo "$qodo_gl" >&2
+            qodo_at="unavailable (review query failed or malformed response; see log)"
             qodo_sha="n/a"
           fi
 
