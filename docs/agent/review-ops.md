@@ -43,7 +43,9 @@ clean state before merge. The port contract outranks every bot.
     stops reviewing, while its check run stays live and idle. Six fix commits
     into a single round was enough to trigger it here. Send
     `@coderabbitai resume`, then `@coderabbitai review`; a paused review never
-    times out, so waiting for it is not a strategy. The threshold is CodeRabbit's
+    times out, so waiting for it is not a strategy. One `resume` + `review` pair
+    per round; a second consecutive pause in the same round escalates to the
+    maintainer instead of another trigger. The threshold is CodeRabbit's
     `auto_pause_after_reviewed_commits`; this repo does not set it, so the vendor
     default applies. Its own pause notice and its published schema disagree on
     the key's nesting (`reviews.auto_pause_after_reviewed_commits` vs

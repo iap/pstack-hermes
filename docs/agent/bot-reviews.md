@@ -38,7 +38,9 @@ commit and is never treated as a current-head verdict.
 - `in_progress` that never moves — **paused**, not slow. After a run of new commits
   CodeRabbit posts a "Reviews paused" note and stops. Send `@coderabbitai resume`,
   then `@coderabbitai review`. A paused review never times out. Prefer fewer, larger
-  fix pushes over one commit per finding.
+  fix pushes over one commit per finding. One `resume` + `review` pair per round; a
+  second consecutive pause in the same round is a stop-and-ask-the-maintainer
+  escalation, not another trigger.
 
 One request per head SHA. Do not re-send because a verdict is slow.
 

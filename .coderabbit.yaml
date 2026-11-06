@@ -1,6 +1,9 @@
-# CodeRabbit configuration
-# Disable the "Review skipped" status message since auto-reviews
-# are managed via the CodeRabbit UI, not auto-triggered on PRs.
+# CodeRabbit configuration - manual-only review model.
+# review_status: false suppresses the "Review skipped" status message;
+# auto_review.enabled: false means a push never starts a review.
+# Reviews are requested via PR comments only: @coderabbitai full review
+# (first pass / rebase / force-push / large diff) or @coderabbitai review
+# (small fix push). One request per head SHA. See docs/agent/bot-reviews.md.
 reviews:
   review_status: false
   auto_review:
