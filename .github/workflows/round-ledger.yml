@@ -40,6 +40,8 @@ jobs:
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
+      # No checkout in this job; gh resolves the repo from the remote otherwise.
+      GH_REPO: ${{ github.repository }}
       DISPATCH_PR: ${{ inputs.pr }}
       EVENT_PR: ${{ github.event.pull_request.number }}
       OWNER: ${{ github.repository_owner }}
