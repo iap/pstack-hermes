@@ -188,7 +188,8 @@ rationale.
   specified) and, for ordinary findings, resolves + collapses the thread. Each
   `@qodo` follow-up can also trigger a re-review that raises new findings;
   triage those in the same round (trigger gate: Qodo *triaged*, not resolved
-  UI state; merge gate: ALL Bot 1 + Bot 2 threads resolved). When a
+  UI state; merge gate: ALL Bot 1 + Bot 2 threads resolved, with the cross-repo
+  exception closed by GitHub-side resolution — see bot-reviews.md). When a
   cross-repo conflict is dismissed because its relationship is wrong or outdated,
   Qodo keeps the thread open so the relationship link remains visible. Untagged
   replies are treated as reviewer discussion and left alone. Use only Qodo's

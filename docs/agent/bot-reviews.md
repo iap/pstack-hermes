@@ -38,7 +38,11 @@ Two distinct gates — do not confuse them:
   see resolution mechanics).
 - **Merge gate (ship):** ALL findings from both bots resolved — Bot 1 *and* Bot 2
   threads closed via their own triggers, CodeRabbit clean on the current head, CI
-  green, local gates pass.
+  green, local gates pass. A Qodo cross-repo-conflict dismissal is *answered* but
+  stays open by Qodo's design; GitHub resolution (the maintainer's button /
+  `resolveReviewThread`) closes that thread, satisfying the gate — until the
+  maintainer resolves it, it stays an explicit open ledger item. If GitHub-side
+  resolution is unavailable, escalate as an issue; do not merge around it.
 
 ## SHA-bound verdicts
 
