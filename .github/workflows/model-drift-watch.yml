@@ -63,8 +63,8 @@ jobs:
             echo '```'
             echo ""
             echo "Verify replacements against the catalog, update"
-            echo "\`tools/assets/model-panel.json\`, rebuild the package"
-            echo "(\`tools/convert.py\` per CONTRIBUTING.md), and re-run the pipeline."
+            echo "\`tools/assets/model-panel.json\` and \`config/models.json\`"
+            echo "directly, run tools/validate.py, and re-run the pipeline."
             echo ""
             echo "Prose-only default slugs (backtick-quoted in skill markdown, not in"
             echo "OpenRouter vendor/model format) are listed under PROSE lines above."
