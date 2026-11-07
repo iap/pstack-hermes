@@ -105,7 +105,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Path | Kind |
 |---|---|
 | `tools/`, `tools/assets/` | hand-written source of package truth |
-| `scripts/`, `package.json`, `bun.lock` | hand-written tooling (`@iap/poteto`) |
+| `scripts/`, `package.json`, `bun.lock` | hand-written tooling (`@iap/poteto-mode`) |
 | `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `NOTICE.md` | hand-written docs |
 | `.github/` | hand-written CI; action pins are bumped by dependabot, not by hand |
 | `patches/` | historical reference only ([docs/PATCHES.md](docs/PATCHES.md)) |

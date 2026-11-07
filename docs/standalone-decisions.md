@@ -32,10 +32,10 @@ Bump the version in the same PR as the change that justifies it. `CHANGELOG.md` 
 > [!WARNING]
 > Before the first standalone bump, update or retire the `NOTICE.md` ↔ `plugin.json` version check in `tools/check_pins.py` — left as-is, CI fails the standalone bump because the upstream notice still reads `0.15.5`. That update lands in the drop PR (see §7): the first standalone bump happens in or after the drop PR, so §2 and §7 share one timeline.
 
-## 3. Poteto tooling — `@iap/poteto`, extracted to root
+## 3. Poteto tooling — `@iap/poteto-mode`, extracted to root
 
 > [!IMPORTANT]
-> Confirmed: the extracted tooling package is named `@iap/poteto` and lives at the repository root (`package.json`, `bun.lock`, and `scripts/`).
+> Confirmed: the extracted tooling package is named `@iap/poteto-mode` and lives at the repository root (`package.json`, `bun.lock`, and `scripts/`).
 
 Rationale: the repo root keeps the Node tooling discoverable as a standard `package.json` workspace; the scoped `@iap/` name is the maintainer's org scope. `skills/poteto-mode/scripts/` is deleted on extraction; `SKILL.md` references the new root-relative path (`scripts/`).
 
