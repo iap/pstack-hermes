@@ -11,7 +11,6 @@ Boxes that cannot be verified were deleted, not softened.
 Instructions live in HTML comments and never render in the PR form.
 Full gate list mirrors the CONTRIBUTING "Pull requests" section.
 Attribution is standing policy in CONTRIBUTING.md - no per-PR checkbox.
-The ```yaml provenance``` block is machine-read by tools/pr_checklist.py.
 -->
 # Pull request
 

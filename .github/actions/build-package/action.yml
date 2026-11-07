@@ -2,7 +2,7 @@ name: Build pstack package
 description: >-
   Shared build prologue for every workflow that produces the pstack package:
   validate and scanner-gate. The upstream converter was retired in the
-  standalone refactor (issue #156); the package under `${{ inputs.package-path }}`
+  standalone refactor (issue #156); the package at the package-path input
   is the checked-out tree.
 
 # WHY A COMPOSITE ACTION AND NOT A REUSABLE WORKFLOW
@@ -14,13 +14,12 @@ description: >-
 # this shape without duplicating those steps into the called file. A composite
 # action composes into the middle of a job and is the correct tool here.
 # The usual reason to prefer a reusable workflow - secrets - does not apply: this
-# prologue clones upstream anonymously and never reads the `secrets` context.
+# prologue never reads the `secrets` context.
 # Reference: https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
 
 # PERMISSIONS: a composite action cannot declare `permissions:` - that is a
 # workflow/job-level concept. Callers MUST set `permissions: contents: read`
-# themselves. The clone step is anonymous (no credentials) and the caller's
-# checkout should use persist-credentials: false.
+# themselves, and the caller's checkout should use persist-credentials: false.
 
 inputs:
   package-path:
