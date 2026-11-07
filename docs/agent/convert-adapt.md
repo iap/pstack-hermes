@@ -1,16 +1,18 @@
-# Convert, adapt, verify
+# Adapt and verify (standalone)
 
-Single home for changing the port. Layout paths:
-[layout.md](layout.md). Re-pin: [upstream-drift.md](upstream-drift.md).
+Single home for changing the package. Layout paths:
+[layout.md](layout.md). Standalone decisions:
+[standalone-decisions.md](../standalone-decisions.md). The upstream
+converter (`tools/convert.py`) was retired in #156; there is no rebuild
+or re-pin step. Full instruction audit: #159.
 
 ## Work loop
 
 ```sh
 uv sync
-# 1. Edit tools/, tools/assets/, docs/, …
-# 2. Rebuild (default --out = repo root):
-uv run --frozen tools/convert.py --source <pstack-clone>
-# 3. Must exit 0:
+# 1. Edit the package surfaces directly (plugin.json, skills/, config/,
+#    assets/, README.md, LICENSE), plus tools/, docs/, …
+# 2. Must exit 0:
 uv run --frozen tools/validate.py
 uv run --frozen pytest -q
 uv run --frozen ruff check tools
@@ -19,37 +21,19 @@ uv run --frozen python tools/check_docs.py
 
 Then:
 
-1. Converter / maps / assets changed → adaptation issue linked to
-   [#94](https://github.com/iap/pstack-hermes/issues/94) with a **reviewer
-   check**; PR includes rebuilt package (`rebuilt from pin <sha>`).
-2. Install-relevant → [Verify](#verify).
-3. Re-pin only via [upstream-drift.md](upstream-drift.md).
+1. Package-shaped → [Verify](#verify).
+2. Scope changes → link the tracking issue (#156 sub-issues; docs audit
+   #159, poteto extraction #158).
 
 Poteto checkers: see [CONTRIBUTING Setup](../../CONTRIBUTING.md#setup)
-(`bun run test` / `typecheck` under `skills/poteto-mode/scripts`).
-
-## Converter transform
-
-1. Edit map/pass in `tools/convert.py` (`T8_MAP`, `DELEGATION_MAP`, `st.fixes`, …).
-2. Rebuild — dead anchors fail on purpose.
-3. Adaptation issue → [#94](https://github.com/iap/pstack-hermes/issues/94).
-4. Checkable scope → unit test (`tools/tests/test_t11_scope.py` pattern).
-5. Validate + suite; PR with `rebuilt from pin <sha>`.
-
-| Want | Edit | Not |
-|---|---|---|
-| Model panel | `tools/assets/model-panel.json` | `config/models.json` |
-| hermesbot | `tools/assets/hermesbot/SKILL.md` | `skills/hermesbot/` |
-
-Panel slug shape / model-drift assumptions: weekly
-`model-drift-watch` + `tools/slug_drift.py` (see CONTRIBUTING Actions policy).
+(`bun run test` / `typecheck` under `skills/poteto-mode/scripts`;
+root `scripts/` after #158 lands).
 
 ## Hermes vocabulary
 
-Speak **hermes** in converter output, docs, and tooling. Enforced by
-`tools/bans.py` + `HERMES_ADAPTATION_BANS` in `validate.py`
-([#94](https://github.com/iap/pstack-hermes/issues/94) §2). Single mapping
-home: [hermes-vocabulary.md](../hermes-vocabulary.md).
+Speak **hermes** in package output, docs, and tooling. Enforced by
+`tools/bans.py` + `HERMES_ADAPTATION_BANS` in `validate.py`.
+Single mapping home: [hermes-vocabulary.md](../hermes-vocabulary.md).
 
 | Use | Banned alias |
 |---|---|
@@ -60,21 +44,18 @@ home: [hermes-vocabulary.md](../hermes-vocabulary.md).
 | `goal.md` in agent store | armed Cursor `/goal` |
 | `hermesbot` | `grokbot` / `make-bot-ui` / Tailscale bot |
 | `skill_manage` (local/tap only) | Cursor `create-skill`; never stock plugin mutation |
-| panel ← `tools/assets/model-panel.json` | hand-tuned shipped `config/models.json` |
+| panel ← `config/models.json` | hand-tuned shipped `config/models.json` |
 
 ## Verify
 
 Prove the **built package** on hermes — not Cursor IDE dual-load.
 
-1. Rebuild (when package-shaped) + `validate.py` — always.
+1. `validate.py` on the edited tree — always.
 2. Doctor: branch `hermes plugins doctor "$PWD" --ci`; installed
    `hermes plugins doctor pstack --ci` **outside** this repo.
 3. Optional: load `poteto-mode` per [USING.md](../USING.md). Clean doctor +
    stock package failure → hermes harness issue, not a silent skill rewrite.
-4. Publish (CI): `master` maintains append-only `dist`; converted_at-only may
-   skip; `source_commit` / converter hash changes still publish.
+4. Publish (CI): `master` maintains append-only `dist`.
 
-Convert is atomic and `SOURCE_DATE_EPOCH`-reproducible; unmatched transform
-anchors fail the build (update or prune maps — never ignore). Validate runs
-static → repo YAML → gold manifest → gold load, including the hermes
-adaptation contract and model-panel consistency.
+Validate runs static → repo YAML → gold manifest → gold load, including
+the hermes adaptation contract and model-panel consistency.

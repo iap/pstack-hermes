@@ -31,9 +31,9 @@ Everything below follows from that rule.
 
 ## Do not
 
-- Treat the package surfaces (`plugin.json`, `skills/`, `config/`, `assets/`,
-  `README.md`, `LICENSE`) as anything other than hand-written source.
-  Edit them directly; there is no converter template or rebuild.
+- Do not run a converter or rebuild step to produce the package surfaces.
+  Edit `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
+  `LICENSE` directly.
 - Rewrite hermes primitives back into Cursor vocabulary (`delegate_task`,
   `clarify`, `session_search`, `hermes cron`, `hermesbot`). Single mapping
   home: [docs/hermes-vocabulary.md](docs/hermes-vocabulary.md) (issue #157).
@@ -52,7 +52,7 @@ Everything below follows from that rule.
 | If you need to… | Read |
 |---|---|
 | Know which paths are generated vs hand-written | [docs/agent/layout.md](docs/agent/layout.md) |
-| Change converter maps/assets/bans, rebuild, verify | [docs/agent/convert-adapt.md](docs/agent/convert-adapt.md) |
+| Adapt package surfaces, bans, verify | [docs/agent/convert-adapt.md](docs/agent/convert-adapt.md) |
 | Standalone decisions (identity, versioning, provenance) | [docs/standalone-decisions.md](docs/standalone-decisions.md) |
 | Scope and parallel-work discipline | [docs/agent/dev-ops.md](docs/agent/dev-ops.md) |
 | Reply to CodeRabbit / Qodo findings | [docs/agent/review-ops.md](docs/agent/review-ops.md) |
@@ -94,7 +94,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Area | Decision |
 |---|---|
 | Stack provider | Graphite (`gt`) default when available; GitHub (`gh`) fallback; `local` (git-native) explicit only; GitLab (`glab`) halted |
-| Package identity | Plugin/repo name `pstack`; upstream version follows the pin (`plugin.json`); keep the `iap/pstack-hermes` repository — never create or rename one for an install alias (#100); update mechanics live in the package README |
+| Package identity | Plugin/repo name `pstack`; keep the `iap/pstack-hermes` repository — never create or rename one for an install alias (#100); update mechanics live in the package README |
 | Versioning | `plugin.json` version is locally owned since the standalone refactor (#156) |
 | Releases | Tooling releases recorded in `CHANGELOG.md`; never move an existing tag |
 | Planning | GitHub issues, native sub-issues and milestones own plans; `docs/` holds instructions only |
