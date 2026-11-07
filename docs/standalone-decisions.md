@@ -17,7 +17,9 @@ Rationale: renaming the package now would churn every install, doc reference, an
 ## 2. `plugin.json` version — locally owned
 
 > [!IMPORTANT]
-> Version `0.15.5` is the last upstream version. From the first standalone release, `plugin.json` `version` is owned by this repo.
+> Version `0.15.5` is the last upstream version. From the drop PR onward, `plugin.json` `version` is owned by this repo.
+
+**Effective when the converter is dropped.** Until then, `tools/convert.py` regenerates the root `plugin.json` from the upstream manifest on every run, so a hand-bumped version is reverted on the next rebuild and the reproducibility gate fails. The first standalone bump therefore lands in or after the drop PR — never before.
 
 Policy:
 
@@ -28,7 +30,7 @@ Policy:
 Bump the version in the same PR as the change that justifies it. `CHANGELOG.md` records the mapping (version → change) for every bump.
 
 > [!WARNING]
-> Before the first standalone bump, update or retire the `NOTICE.md` ↔ `plugin.json` version check in `tools/check_pins.py` — left as-is, CI fails the standalone bump because the upstream notice still reads `0.15.5`.
+> Before the first standalone bump, update or retire the `NOTICE.md` ↔ `plugin.json` version check in `tools/check_pins.py` — left as-is, CI fails the standalone bump because the upstream notice still reads `0.15.5`. That update lands in the drop PR (see §7): the first standalone bump happens in or after the drop PR, so §2 and §7 share one timeline.
 
 ## 3. Poteto tooling — `@iap/poteto`, extracted to `tools/poteto/`
 
