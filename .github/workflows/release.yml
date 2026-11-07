@@ -128,11 +128,9 @@ jobs:
           set -euo pipefail
           git checkout -f "$PEELED_SHA"
 
-      # release.yml previously carried its own copy of the build prologue AND was
-      # missing the "Verify pinned SHA" step that ci.yml
-      # had, so a release could be cut from a pin that silently failed to
-      # resolve. The shared action gives every caller the verified-pin behaviour.
-      - name: Build package from pin
+      # Shared build prologue: every caller validates the same checked-out
+      # tree, so a release cannot be cut from a divergent copy of the steps.
+      - name: Build package
         uses: ./.github/actions/build-package
 
       - name: Verify release source and published package

@@ -39,7 +39,7 @@ jobs:
 
       # Consumer-side regression check (see tools/dist_checkout_check.py). The build
       # job above validates the source package on disk, where files are LF
-      # because the converter wrote them that way. Nothing here constructs a git
+      # as committed. Nothing here constructs a git
       # checkout of the dist tree, so a line-ending or binary-asset regression in the
       # published artifacts would ship uncaught. This stages the package exactly as an
       # install clone of the dist branch receives it (core.autocrlf=true).
@@ -47,20 +47,16 @@ jobs:
         shell: bash
         run: uv run --frozen tools/dist_checkout_check.py --package . --source-tree
 
-      # A stale build must never leave scratch siblings behind in the working
-      # tree; if one appears, the tree is not clean and the gate above is suspect.
-      # A rebuild legitimately rewrites .build-provenance.txt (it re-stamps
-      # converted_at), and BOTH hash gates exclude that file by design - it
-      # carries a timestamp. Asserting on it would fail every run. Everything
-      # else must be untouched: a hand-edited package file, or a leftover
-      # pstack.tmp-build / pstack.prev-build scratch dir, still fails here.
+      # A build must never modify tracked files; if one changes, the tree
+      # is not clean and the gate above is suspect. A leftover
+      # pstack.tmp-build / pstack.prev-build scratch dir still fails here.
       - name: Assert no tracked file changed by the build
         shell: bash
         run: |
           set -euo pipefail
-          dirty="$(git status --porcelain -- . ':(exclude).build-provenance.txt')"
+          dirty="$(git status --porcelain -- .)"
           if [ -n "$dirty" ]; then
-            echo "::error::the build modified tracked files other than the provenance stamp"
+            echo "::error::the build modified tracked files"
             echo "$dirty"
             exit 1
           fi
@@ -74,7 +70,6 @@ jobs:
             plugin.json
             README.md
             LICENSE
-            .build-provenance.txt
             skills/
             config/
             assets/
@@ -105,7 +100,7 @@ jobs:
             exit 1
           fi
           tree_hash() {
-            ( cd "$1" && find . -type f ! -name ".build-provenance.txt" -print0 \
+            ( cd "$1" && find . -type f -print0 \
                 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 )
           }
           h1="$(tree_hash "${legs[0]}")"
@@ -113,9 +108,9 @@ jobs:
           echo "tree A: $h1"
           echo "tree B: $h2"
           if [ "$h1" != "$h2" ]; then
-            echo "::error::platform builds diverge - converter is NOT byte-deterministic"
-            diff <(cd "${legs[0]}" && find . -type f ! -name ".build-provenance.txt" | sort) \
-                 <(cd "${legs[1]}" && find . -type f ! -name ".build-provenance.txt" | sort) || true
+            echo "::error::platform builds diverge - checked-out package is NOT byte-identical across OSes"
+            diff <(cd "${legs[0]}" && find . -type f | sort) \
+                 <(cd "${legs[1]}" && find . -type f | sort) || true
             exit 1
           fi
           echo "cross-platform determinism: OK"
@@ -219,8 +214,7 @@ jobs:
           set -euo pipefail
           gh pr view "$PR_NUMBER" --json body --jq .body > "$RUNNER_TEMP/pr-body.md"
           rc=0
-          uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" \
-            --provenance .build-provenance.txt || rc=$?
+          uv run --frozen python tools/pr_checklist.py "$RUNNER_TEMP/pr-body.md" || rc=$?
           echo "pr-checklist exit: $rc (0 = consistent, 1 = contradiction)"
           if [ "$rc" -ne 0 ]; then
             echo "::warning::pr-checklist found a contradiction. This job is ADVISORY - it reports, it does not block. The enforcing gate is the build job."

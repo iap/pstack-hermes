@@ -24,7 +24,7 @@ jobs:
 
       # Shared build prologue - same action ci.yml and release.yml use, so the
       # published tree can never be built by a divergent copy of the steps.
-      - name: Build package from pin
+      - name: Build package
         uses: ./.github/actions/build-package
 
       - name: Sync dist branch (same repo, append-only)
