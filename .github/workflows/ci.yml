@@ -73,6 +73,9 @@ jobs:
             skills/
             config/
             assets/
+            package.json
+            bun.lock
+            scripts/
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
           # the artifact is a debugging aid, not a release artifact.
