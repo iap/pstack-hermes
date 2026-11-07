@@ -48,9 +48,11 @@ clean state before merge. The port contract outranks every bot.
     times out, so waiting for it is not a strategy. One `resume` + `review` pair
     per head SHA; a second consecutive pause on that same head SHA escalates to
     the maintainer instead of another trigger. A skipped check after a posted
-    request is a rate limit, not a paused tail: retry after about one hour —
-    exactly one retry per head SHA; a second skip due to rate limiting escalates
-    to the maintainer. The threshold is CodeRabbit's
+    request is a rate limit, not a paused tail: first verify the cause from the
+    request response and check-run lifecycle (seat or installation problems also
+    skip); retry once after about one hour for rate limiting or once the cause
+    is fixed — exactly one retry per head SHA; a second skip escalates to the
+    maintainer. The threshold is CodeRabbit's
     `auto_pause_after_reviewed_commits`; this repo does not set it, so the vendor
     default applies. Its own pause notice and its published schema disagree on
     the key's nesting (`reviews.auto_pause_after_reviewed_commits` vs
@@ -80,7 +82,8 @@ Round loop:
    verdict's `commit.oid` equals `headRefOid`.
 4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Qodo
    does not re-run automatically (only on `@qodo`-addressed replies). Return
-   to step 3.
+   to step 2 to triage new Qodo findings before step 3. Do not repeat a
+   bounded wait already completed for a re-review.
 5. Merge only when CodeRabbit is clean on the current head, every Qodo finding
    is fixed or answered, every thread is resolved, CI is green, and the local
    gates pass. Confirm the CodeRabbit check is not `skipping`.

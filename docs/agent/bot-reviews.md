@@ -55,10 +55,13 @@ commit and is never treated as a current-head verdict.
 
 ## "No verdict" states (CodeRabbit)
 
-- `skipping` — never requested. If a request is posted and then skipped due to rate
-  limiting, retry the appropriate review command after about one hour — then it is
-  a fresh request on the same head, not a loop. Exactly one retry per head SHA;
-  a second skip due to rate limiting escalates to the maintainer.
+- `skipping` — never requested. If a request is posted and then skipped, first
+  verify the cause from the request response and check-run lifecycle: a skip after
+  a request does not by itself prove rate limiting (seat or installation problems
+  also skip). Then recover once: for rate limiting, retry the appropriate review
+  command after about one hour — then it is a fresh request on the same head, not
+  a loop; for seat or installation problems, retry once the cause is fixed.
+  Exactly one retry per head SHA; a second skip escalates to the maintainer.
 - `in_progress` that never moves — **paused**, not slow. After a run of new commits
   CodeRabbit posts a "Reviews paused" note and stops. Send `@coderabbitai resume`,
   then `@coderabbitai review`. A paused review never times out. Prefer fewer, larger
@@ -86,7 +89,9 @@ another trigger.
 3. Request CodeRabbit on the current head (`full review` first pass / rebase /
    force-push / large diff; `review` for small fix push). Confirm `commit.oid == headRefOid`.
 4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Qodo does
-   not re-run automatically (only on `@qodo`-addressed replies). Return to step 3.
+   not re-run automatically (only on `@qodo`-addressed replies). Return to step 2
+   to triage any new Qodo findings before step 3. Do not repeat a bounded wait
+   already completed for a re-review.
 5. Merge only when all gate conditions hold.
 
 ## Triage matrix (adjudication)
