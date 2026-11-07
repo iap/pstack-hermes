@@ -3,11 +3,13 @@
 # auto_review.enabled: false means a push never starts a review.
 # Reviews are requested via PR comments only: @coderabbitai full review
 # (first pass / rebase / force-push / large diff) or @coderabbitai review
-# (small fix push). One request per head SHA -- the single exception is a
-# PAUSED check (an in-progress run that never moves while its note says the
-# review is paused): one @coderabbitai resume + @coderabbitai review pair
-# per round recovers it; a second consecutive pause escalates to the
-# maintainer. A merely slow verdict is never re-requested.
+# (small fix push). One request per head SHA; exceptions are recoverable
+# states only: a paused check (an in-progress run that never moves
+# while its note says the review is paused) gets ONE @coderabbitai resume +
+# @coderabbitai review pair per head SHA, then escalates on a second
+# consecutive pause on that same head; a skipped check after a posted
+# request due to rate limiting is retried after about one hour. A merely
+# slow verdict is never re-requested.
 # See docs/agent/bot-reviews.md.
 reviews:
   review_status: false

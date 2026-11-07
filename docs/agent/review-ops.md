@@ -46,8 +46,10 @@ clean state before merge. The port contract outranks every bot.
     into a single round was enough to trigger it here. Send
     `@coderabbitai resume`, then `@coderabbitai review`; a paused review never
     times out, so waiting for it is not a strategy. One `resume` + `review` pair
-    per round; a second consecutive pause in the same round escalates to the
-    maintainer instead of another trigger. The threshold is CodeRabbit's
+    per head SHA; a second consecutive pause on that same head SHA escalates to
+    the maintainer instead of another trigger. A skipped check after a posted
+    request is a rate limit, not a paused tail: retry after about one hour.
+    The threshold is CodeRabbit's
     `auto_pause_after_reviewed_commits`; this repo does not set it, so the vendor
     default applies. Its own pause notice and its published schema disagree on
     the key's nesting (`reviews.auto_pause_after_reviewed_commits` vs
@@ -189,7 +191,9 @@ rationale.
   `@qodo` follow-up can also trigger a re-review that raises new findings;
   triage those in the same round (trigger gate: Qodo *triaged*, not resolved
   UI state; merge gate: ALL Bot 1 + Bot 2 threads resolved, with the cross-repo
-  exception closed by GitHub-side resolution — see bot-reviews.md). When a
+  exception closed by GitHub-side resolution — see bot-reviews.md). The
+  `resume`/`review` recovery budget is **per head SHA** — an unrelated later
+  pause on a new head starts a new budget, it is not a repeat failure. When a
   cross-repo conflict is dismissed because its relationship is wrong or outdated,
   Qodo keeps the thread open so the relationship link remains visible. Untagged
   replies are treated as reviewer discussion and left alone. Use only Qodo's

@@ -52,19 +52,22 @@ commit and is never treated as a current-head verdict.
 
 ## "No verdict" states (CodeRabbit)
 
-- `skipping` — never requested.
+- `skipping` — never requested. If a request is posted and then skipped due to rate
+  limiting, retry the appropriate review command after about one hour — then it is
+  a fresh request on the same head, not a loop.
 - `in_progress` that never moves — **paused**, not slow. After a run of new commits
   CodeRabbit posts a "Reviews paused" note and stops. Send `@coderabbitai resume`,
   then `@coderabbitai review`. A paused review never times out. Prefer fewer, larger
-  fix pushes over one commit per finding. One `resume` + `review` pair per round; a
-  second consecutive pause in the same round is a stop-and-ask-the-maintainer
-  escalation, not another trigger.
+  fix pushes over one commit per finding. One `resume` + `review` pair per head SHA;
+  a second consecutive pause on that same head SHA escalates to the maintainer,
+  not another trigger.
 
 One request per head SHA. Do not re-send because a verdict is slow. The
 single exception: a check that is *paused* (its in-progress run never moves
 while CodeRabbit posts a "Reviews paused" note) is recovered by ONE
-`@coderabbitai resume` + `@coderabbitai review` pair per round; a second
-consecutive pause escalates to the maintainer instead of another trigger.
+`@coderabbitai resume` + `@coderabbitai review` pair per head SHA; a second
+consecutive pause on that same head SHA escalates to the maintainer instead of
+another trigger.
 
 ## Round loop
 
