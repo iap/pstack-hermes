@@ -44,7 +44,7 @@ Single mapping home: [hermes-vocabulary.md](../hermes-vocabulary.md).
 | `goal.md` in agent store | armed Cursor `/goal` |
 | `hermesbot` | `grokbot` / `make-bot-ui` / Tailscale bot |
 | `skill_manage` (local/tap only) | Cursor `create-skill`; never stock plugin mutation |
-| panel ← `config/models.json` | hand-tuned shipped `config/models.json` |
+| panel ← `tools/assets/model-panel.json` | hand-tuned shipped `config/models.json` |
 
 ## Verify
 
