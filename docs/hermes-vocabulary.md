@@ -26,7 +26,7 @@ Tool names: `search_files` for `Glob`/`Grep`, `read_file` for `Read`.
 
 - `tools/bans.py` `DELEGATION_VOCAB_BANS` — the banned list, shared by `tools/validate.py` and `tools/scanner_gate.py` so the two can never drift. The Cursor transcript alias (`agent-transcripts`) is banned in Markdown only: the shipped `worktree-audit.sh` legitimately mentions that dir for a compatibility check.
 - `tools/validate.py` `HERMES_ADAPTATION_BANS` — the broader contract (persona blocks, stale runtime claims, transcript paths, cloud-worker wording, auto selectors).
-- Vocabulary gate: `uv run --frozen tools/scanner_gate.py --package . --vocab-only` (0 = clean, 1 = banned vocabulary present, 2 = path error).
+- Vocabulary gate: `uv run --frozen tools/scanner_gate.py --package . --vocab-only` (0 = clean, 1 = banned vocabulary present, 2 = path error). The flag checks the `DELEGATION_VOCAB_BANS` list and the transcript alias in Markdown only — it does not cover every alias in the table above (e.g. `create-skill`); run `tools/validate.py` for the broader contract checks.
 
 Security bans (`tailscale.com/install.sh`, `FOR_AGENTS.md`, `http://127.0.0.1:4173`) are defined in `tools/bans.py` and are not vocabulary; they are not listed here.
 
