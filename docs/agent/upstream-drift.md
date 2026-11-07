@@ -21,3 +21,9 @@ Package maintenance is now direct: edit `plugin.json`, `skills/`,
   code is ever ported again, it lands as a deliberate, reviewed change to
   the hand-written package, not a regenerated tree.
 - **Do not delete attribution.** `NOTICE.md` (MIT © Lauren Tan) stays.
+
+## Rollback
+
+To revert a landed package change, revert its PR. There is no rebuild
+from a pin to re-run: the package surfaces on `master` are the source,
+so a revert restores the prior hand-written tree exactly.
