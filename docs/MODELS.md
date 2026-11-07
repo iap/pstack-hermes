@@ -3,7 +3,15 @@
 pstack picks a model per role. Three layers, highest precedence first:
 
 1. **Your panel** — `pstack-models.json` beside the hermes `config.yaml`
-   (written by `setup-pstack`; survives plugin updates).
+   of the profile you configure (written by `setup-pstack`; survives
+   plugin updates). `/setup-pstack` first asks which profile: `default`
+   (the current profile, recommended — applies to the running session
+   now) or `poteto` (creates a new `poteto` profile via
+   `hermes profile create poteto --clone`, writes the panel under
+   `$HERMES_HOME/profiles/poteto/`, and applies after restarting with
+   `hermes -p poteto chat`). Each profile keeps its own panel, and
+   profiles are per-device: setup configures the local hermes install
+   only.
 2. **The shipped panel** — `config/models.json` inside the package. What a role
    uses until you configure it.
 3. **The method text** — skills name Cursor-family defaults
