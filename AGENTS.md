@@ -119,4 +119,6 @@ bun run typecheck   # deps + tsc --noEmit --strict
 Follow [docs/agent/review-ops.md](docs/agent/review-ops.md). Verify every
 finding against the contract and current code before changing behavior, reply
 in the same thread with evidence, and never resolve threads yourself.
+Gate order: Qodo first (auto), triage its findings, then CodeRabbit
+(`@coderabbitai full review` after a rebase, `review` for a small fix).
 <!-- /coderabbit-ai-generated:v1 -->
