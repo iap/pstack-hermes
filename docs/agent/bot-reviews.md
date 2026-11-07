@@ -13,11 +13,14 @@ short form and must stay consistent with this file.
    Qodo verdict after a fix push — Qodo re-reviews are a *reply trigger*, not a push
    trigger: a re-review happens when a follow-up reply addresses Qodo
    (`@qodo …` in-thread, e.g. `@qodo I pushed fixes, can you review again?`), and
-   the re-review can carry **new** findings. When a follow-up asks for a re-review,
-   open the same bounded wait for it as for the initial review (ledger it and
-   proceed if it never arrives), and triage whatever it raises the same way
-   (same resolve-all gate) **before** requesting CodeRabbit — the CodeRabbit
-   request follows the Qodo triage, never precedes it.
+   the re-review can carry **new** findings. Only a follow-up explicitly asking
+   for a re-review (e.g. `@qodo fixed:` with a re-review request) opens the
+   bounded wait for it as for the initial review (ledger it and proceed if it
+   never arrives); dismissal replies (`@qodo false positive:` / `intentional:` /
+   `rejected:`) never start a wait. At most two re-review cycles per head SHA;
+   a further re-review request on that head escalates to the maintainer. Triage
+   whatever it raises the same way (same resolve-all gate) **before** requesting
+   CodeRabbit — the CodeRabbit request follows the Qodo triage, never precedes it.
 2. **CodeRabbit** is manual (`.coderabbit.yaml` sets `auto_review.enabled: false`).
    Trigger `@coderabbitai full review` only after Qodo findings are triaged
    (fixed or answered with evidence) on this head.
@@ -55,7 +58,7 @@ commit and is never treated as a current-head verdict.
 
 ## "No verdict" states (CodeRabbit)
 
-- `skipping` — never requested. If a request is posted and then skipped, first
+- `skipping` — no verdict. If a request is posted and then skipped, first
   verify the cause from the request response and check-run lifecycle: a skip after
   a request does not by itself prove rate limiting (seat or installation problems
   also skip). Then recover once: for rate limiting, retry the appropriate review
@@ -83,9 +86,10 @@ another trigger.
    yet` and proceed — no findings means the gate is unaffected. Never wait
    indefinitely, and never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   If a follow-up addressed Qodo to ask for a re-review, wait bounded (same as
-   step 1) for that re-review and triage whatever it raises before step 3.
-   Do not wait for an unrequested re-review.
+   Only a follow-up explicitly asking for a re-review opens the bounded wait
+   (same as step 1); dismissal replies never do. Wait for a re-review that was
+   asked for, triage whatever it raises before step 3. At most two re-review
+   cycles per head SHA; a further re-review request on that head escalates.
 3. Request CodeRabbit on the current head (`full review` first pass / rebase /
    force-push / large diff; `review` for small fix push). Confirm `commit.oid == headRefOid`.
 4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Qodo does

@@ -26,9 +26,13 @@ clean state before merge. The port contract outranks every bot.
   findings, but do not post `/agentic_review` in the automatic setup. A manual
   trigger is only for a confirmed manual-only configuration. Qodo re-reviews are a
   *reply trigger*, not a push trigger: a re-review happens when a follow-up
-  addresses Qodo (`@qodo …`), and it can raise new findings — triage those in the
-  same round. Never treat a Qodo verdict as a current-head ship gate: that role
-  belongs to CodeRabbit below.
+  addresses Qodo (`@qodo …`), and it can raise new findings. Only a follow-up
+  that explicitly asks for a re-review (for example `@qodo fixed:` with a
+  re-review request) opens the bounded wait and triage; dismissal replies
+  (`@qodo false positive:` / `intentional:` / `rejected:`) never start a wait.
+  At most two re-review cycles per head SHA; a further re-review request on
+  that head escalates to the maintainer. Never treat a Qodo verdict as a
+  current-head ship gate: that role belongs to CodeRabbit below.
 - **CodeRabbit is manual in this repo.** `.coderabbit.yaml` sets
   `auto_review.enabled: false`, so a push never starts it. Request
   `@coderabbitai full review` for the first pass and again after any rebase,
@@ -39,7 +43,7 @@ clean state before merge. The port contract outranks every bot.
 
   Two "no verdict" states look identical in the UI and are not:
 
-  - `skipping` - never requested.
+  - `skipping` - no verdict.
   - `in_progress` that never moves - **the review is paused**, not slow. After a
     run of new commits on one branch CodeRabbit posts a "Reviews paused" note and
     stops reviewing, while its check run stays live and idle. Six fix commits
@@ -48,11 +52,11 @@ clean state before merge. The port contract outranks every bot.
     times out, so waiting for it is not a strategy. One `resume` + `review` pair
     per head SHA; a second consecutive pause on that same head SHA escalates to
     the maintainer instead of another trigger. A skipped check after a posted
-    request is a rate limit, not a paused tail: first verify the cause from the
-    request response and check-run lifecycle (seat or installation problems also
-    skip); retry once after about one hour for rate limiting or once the cause
-    is fixed — exactly one retry per head SHA; a second skip escalates to the
-    maintainer. The threshold is CodeRabbit's
+    request does not by itself prove rate limiting (verify the cause from the
+    request response and check-run lifecycle — seat or installation problems
+    also skip); retry once after about one hour for rate limiting or once the
+    cause is fixed — exactly one retry per head SHA; a second skip escalates
+    to the maintainer. The threshold is CodeRabbit's
     `auto_pause_after_reviewed_commits`; this repo does not set it, so the vendor
     default applies. Its own pause notice and its published schema disagree on
     the key's nesting (`reviews.auto_pause_after_reviewed_commits` vs
@@ -73,9 +77,12 @@ Round loop:
    no review yet` and proceed (no findings, gate unaffected). Never wait
    indefinitely; never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   If a follow-up addressed Qodo to ask for a re-review, wait bounded (same as
-   step 1) for that re-review and triage whatever it raises before step 3.
-   Do not wait for an unrequested re-review.
+   Only a follow-up that explicitly asks Qodo for a re-review (for example
+   `@qodo fixed:` with a re-review request) opens the bounded wait; dismissal
+   replies (`@qodo false positive:` / `intentional:` / `rejected:`) do not.
+   Wait bounded (same as step 1) for a re-review that was asked for, and triage
+   whatever it raises before step 3. At most two re-review cycles per head SHA;
+   a further re-review request on that head escalates to the maintainer.
 3. Request the appropriate CodeRabbit review on the current head. Use
    `full review` for the first pass, a rebase, a force-push, or a large diff;
    use `review` only for a small fix push in the same round. Confirm the
