@@ -35,7 +35,7 @@ Rationale: `tools/` keeps tooling discoverable next to the rest of the repo tool
 ## 4. README — hand-owned at the repo root
 
 > [!IMPORTANT]
-> `README.md` becomes a hand-written file. The converter's README template in `tools/convert.py` is deleted with the converter.
+> **Effective when the converter is dropped.** From the drop PR, `README.md` is a hand-written file and the converter's README template in `tools/convert.py` is deleted. Until then, the generated-output rule in `AGENTS.md` and `CLAUDE.md` stands unchanged; sub-issue #159 updates those files in step with the drop.
 
 The README owns install, verification summary, and naming-table sections. Keep the existing sections; remove any "generated from upstream" framing.
 
@@ -48,11 +48,13 @@ No license change. If the copyright-holder line wording needs alignment, that is
 
 ## 6. Provenance — rewritten standalone, then retired with the converter
 
-Decision:
+Decision (ordering matters):
 
-1. Rewrite `.build-provenance.txt` to a standalone provenance record (package name, version, built-from repo, final upstream SHA `c47b1284` recorded as historical context only).
-2. Delete the upstream fields (`source_url`, `source_commit`, `converter`) — they describe a build path that no longer exists.
-3. When the converter is dropped, remove `.build-provenance.txt` entirely if nothing reads it.
+1. **First, retire the gates that consume provenance fields.** `tools/pr_checklist.py`, `.github/PULL_REQUEST_TEMPLATE.md`, and the release provenance check in `.github/workflows/release.yml` still require `source_commit` and `converted_at` from `.build-provenance.txt`. Removing the fields before removing those checks breaks release and PR gating.
+2. **Then, delete the upstream fields** (`source_url`, `source_commit`, `converter`) and rewrite `.build-provenance.txt` as a standalone record (package name, version, built-from repo, final upstream SHA `c47b1284` as historical context only).
+3. **Then, when the converter is dropped, remove `.build-provenance.txt` entirely** if nothing reads it.
+
+Gates first, fields second, file last — never the reverse.
 
 Final upstream SHA `c47b1284` is also recorded in `CHANGELOG.md` so the history survives the file.
 
