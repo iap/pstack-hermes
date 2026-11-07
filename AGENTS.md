@@ -106,7 +106,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Path | Kind |
 |---|---|
 | `tools/`, `tools/assets/` | hand-written source of package truth |
-| `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | hand-written docs |
+| `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `NOTICE.md` | hand-written docs |
 | `README.md` template in `tools/convert.py` | hand-written source; `README.md` itself is generated |
 | `.github/` | hand-written CI; `UPSTREAM_PIN` stays in lock-step across the declarers listed by `tools/check_pins.py`; action pins are bumped by dependabot, not by hand |
 | `patches/` | historical reference only ([docs/PATCHES.md](docs/PATCHES.md)) |

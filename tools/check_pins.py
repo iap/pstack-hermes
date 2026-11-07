@@ -8,6 +8,10 @@ that CI never validated, and only a code review would notice. This gate makes
 the documented rule machine-checked and exists specifically to de-risk the
 re-pin procedure in docs/agent/upstream-drift.md.
 
+Also asserts NOTICE.md's hand-written upstream version matches plugin.json,
+so a re-pin that bumps the version without updating NOTICE.md fails CI
+instead of shipping a stale notice.
+
 Exit codes: 0 all declarations agree and are well-formed; 1 mismatch or
 malformed; 2 unreadable input.
 """
@@ -15,6 +19,7 @@ malformed; 2 unreadable input.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -38,6 +43,7 @@ DECL_RE = re.compile(r"^\s*UPSTREAM_PIN:\s*(\S+)\s*$", re.MULTILINE)
 HERMES_PIN_RE = re.compile(r"^\s*HERMES_PIN:\s*(\S+)", re.MULTILINE)
 HERMES_PIN_WORKFLOW = "validate-gold.yml"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+NOTICE_VERSION_RE = re.compile(r"^- Project: pstack v(\S+)\s*$", re.MULTILINE)
 
 
 def declarations(root: Path = ROOT) -> list[tuple[str, str]]:
@@ -170,6 +176,60 @@ def check_hermes_pin(root: Path = ROOT) -> tuple[int, list[str]]:
     return 0, report
 
 
+def check_notice_version(root: Path = ROOT) -> tuple[int, list[str]]:
+    """Verify NOTICE.md's hand-written upstream version matches plugin.json.
+
+    NOTICE.md is hand-written (the rebuild does not regenerate it), so a
+    re-pin that bumps the upstream version without editing NOTICE.md would
+    ship a stale notice. Fail closed if either file cannot be read.
+    """
+    report: list[str] = []
+    problems: list[str] = []
+
+    plugin_path = root / "plugin.json"
+    if not plugin_path.is_file():
+        problems.append("plugin.json missing; cannot verify NOTICE.md version")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    try:
+        plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        problems.append(f"cannot read plugin.json: {exc}")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    version = plugin.get("version") if isinstance(plugin, dict) else None
+    if not isinstance(version, str) or not version:
+        problems.append("plugin.json version missing or not a string")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+
+    notice_path = root / "NOTICE.md"
+    if not notice_path.is_file():
+        problems.append("NOTICE.md missing; cannot verify upstream version")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    try:
+        notice = notice_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        problems.append(f"cannot read NOTICE.md: {exc}")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    match = NOTICE_VERSION_RE.search(notice)
+    if not match:
+        problems.append("NOTICE.md does not declare 'Project: pstack v<version>'")
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    if match.group(1) != version:
+        problems.append(
+            f"NOTICE.md version {match.group(1)!r} does not match "
+            f"plugin.json version {version!r}"
+        )
+        report.extend(f"FAIL: {p}" for p in problems)
+        return 1, report
+    report.append(f"  NOTICE.md: pstack v{version} matches plugin.json")
+    return 0, report
+
+
 def check(root: Path = ROOT) -> tuple[int, list[str]]:
     """Run the check; return (exit_code, report lines)."""
     workflows_dir = root / ".github" / "workflows"
@@ -226,10 +286,16 @@ def main(argv: list[str] | None = None) -> int:
     hstream = sys.stderr if hcode else sys.stdout
     for line in hreport:
         print(line, file=hstream)
-    if code == 0 and hcode == 0:
+    # NOTICE.md upstream version vs plugin.json
+    ncode, nreport = check_notice_version(args.root)
+    nstream = sys.stderr if ncode else sys.stdout
+    for line in nreport:
+        print(line, file=nstream)
+    if code == 0 and hcode == 0 and ncode == 0:
         print("upstream pin: in lock-step across all workflows")
         print("hermes pin: verified")
-    return code or hcode
+        print("notice: upstream version matches plugin.json")
+    return code or hcode or ncode
 
 
 if __name__ == "__main__":
