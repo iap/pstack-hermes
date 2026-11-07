@@ -211,48 +211,6 @@ def check_layout_manifest(root: Path = ROOT) -> list[str]:
     return problems
 
 
-def _pin_required() -> tuple[str, ...]:
-    sys.path.insert(0, str(ROOT))
-    import check_pins  # noqa: PLC0415
-
-    return tuple(check_pins.REQUIRED_DECLARERS)
-
-
-def check_pin_declarers(root: Path = ROOT) -> list[str]:
-    try:
-        required = set(_pin_required())
-    except Exception as exc:  # noqa: BLE001 - a broken importer is a tool error
-        return [f"tools/check_pins.py: cannot read REQUIRED_DECLARERS ({exc})"]
-
-    problems: list[str] = []
-    docs = [
-        root / "AGENTS.md",
-        root / "CONTRIBUTING.md",
-        root / "docs" / "agent" / "upstream-drift.md",
-    ]
-    for doc in docs:
-        if not doc.is_file():
-            continue
-        rel = doc.relative_to(root).as_posix()
-        lines = _read(doc).splitlines()
-        seen: set[frozenset[str]] = set()
-        for index, line in enumerate(lines):
-            if "UPSTREAM_PIN" not in line:
-                continue
-            # The workflow list usually wraps onto the next two lines; keep the
-            # window tight so a neighbouring bullet (dependabot, actionlint)
-            # cannot contribute an unrelated workflow name.
-            window = "\n".join(lines[index : index + 4])
-            listed = frozenset(WORKFLOW_TOKEN_RE.findall(window))
-            if listed and listed != required and listed not in seen:
-                seen.add(listed)
-                problems.append(
-                    f"{rel}:{index + 1}: UPSTREAM_PIN paragraph lists {sorted(listed)}, "
-                    f"check_pins.REQUIRED_DECLARERS is {sorted(required)}"
-                )
-    return problems
-
-
 def check_stale_paths(root: Path = ROOT) -> list[str]:
     problems: list[str] = []
     for doc in _doc_paths(root):
@@ -325,7 +283,6 @@ def check_publish_sources(root: Path = ROOT) -> list[str]:
 CHECKS = (
     ("router links resolve", check_router_links),
     ("layout matches .gitattributes", check_layout_manifest),
-    ("UPSTREAM_PIN declarers match check_pins", check_pin_declarers),
     ("no stale package subdirectory paths", check_stale_paths),
     ("no stale subdirectory-install route", check_stale_install_route),
     ("publish-dist sources exist", check_publish_sources),

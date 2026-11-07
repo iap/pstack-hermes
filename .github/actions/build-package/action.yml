@@ -1,18 +1,16 @@
 name: Build pstack package
 description: >-
-  Shared build prologue for every workflow that produces the generated pstack/
-  package: pin the upstream clone, verify it resolved, convert, validate and
-  scanner-gate. Extracted from the step bodies that ci.yml, release.yml and
-  publish-dist.yml each carried their own copy of, so all three callers now
-  get the same fail-loud SHA verification.
+  Shared build prologue for every workflow that produces the pstack package:
+  validate and scanner-gate. The upstream converter was retired in the
+  standalone refactor (issue #156); the package under `${{ inputs.package-path }}`
+  is the checked-out tree.
 
 # WHY A COMPOSITE ACTION AND NOT A REUSABLE WORKFLOW
 # A reusable workflow (`uses: ./.github/workflows/build.yml`) would have to contain
 # the caller's ENTIRE job, because a `uses:` job cannot be followed by more steps
 # in that same job. All three callers continue past the shared prologue with
-# their own steps (ci: reproducibility gate + artifact upload; release: zip +
-# notes + gh release; publish: dist sync), so a reusable workflow cannot
-# express
+# their own steps (ci: artifact upload; release: zip + notes + gh release;
+# publish: dist sync), so a reusable workflow cannot express
 # this shape without duplicating those steps into the called file. A composite
 # action composes into the middle of a job and is the correct tool here.
 # The usual reason to prefer a reusable workflow - secrets - does not apply: this
@@ -25,74 +23,24 @@ description: >-
 # checkout should use persist-credentials: false.
 
 inputs:
-  upstream-pin:
-    description: Full 40-char commit SHA of cursor/plugins to build from.
-    required: true
   package-path:
-    description: Package directory to build, relative to the workspace.
+    description: Package directory to validate, relative to the workspace.
     required: false
     default: .
-  upstream-url:
-    description: Upstream git remote to clone.
-    required: false
-    default: https://github.com/cursor/plugins.git
-
-outputs:
-  upstream-clone-path:
-    description: Path to the checked-out upstream pstack source tree.
-    value: ${{ steps.locate.outputs.upstream_clone_path }}
 
 runs:
   using: composite
   steps:
-    - name: Record SOURCE_DATE_EPOCH
+    - name: Stage package path
       shell: bash
-      run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+      env:
+        PACKAGE_PATH: ${{ inputs.package-path }}
+      run: echo "package staged at $PACKAGE_PATH"
 
     - name: Set up uv
       uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10
       with:
         enable-cache: true
-
-    - name: Clone upstream pstack at pin
-      shell: bash
-      env:
-        UPSTREAM_URL: ${{ inputs.upstream-url }}
-        UPSTREAM_PIN: ${{ inputs.upstream-pin }}
-      run: |
-        set -euo pipefail
-        target="$RUNNER_TEMP/cursor-plugins"
-        rm -rf "$target"
-        git clone --no-checkout "$UPSTREAM_URL" "$target"
-        git -C "$target" fetch origin "$UPSTREAM_PIN"
-        git -C "$target" checkout -q "$UPSTREAM_PIN"
-
-    - name: Verify pinned SHA
-      shell: bash
-      env:
-        UPSTREAM_PIN: ${{ inputs.upstream-pin }}
-      run: |
-        set -euo pipefail
-        target="$RUNNER_TEMP/cursor-plugins"
-        got="$(git -C "$target" rev-parse HEAD)"
-        if [ "$got" != "$UPSTREAM_PIN" ]; then
-          echo "::error::SHA mismatch: got $got, want $UPSTREAM_PIN"
-          exit 1
-        fi
-        echo "pinned upstream SHA verified: $got"
-
-    - id: locate
-      shell: bash
-      run: |
-        set -euo pipefail
-        echo "upstream_clone_path=$RUNNER_TEMP/cursor-plugins/pstack" >> "$GITHUB_OUTPUT"
-
-    - name: Convert
-      shell: bash
-      env:
-        UPSTREAM_CLONE: ${{ steps.locate.outputs.upstream_clone_path }}
-        PACKAGE_PATH: ${{ inputs.package-path }}
-      run: uv run --frozen tools/convert.py --source "$UPSTREAM_CLONE" --out "$PACKAGE_PATH"
 
     - name: Validate
       shell: bash

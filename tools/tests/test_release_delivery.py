@@ -19,18 +19,16 @@ def git(repo, *args):
 
 
 @pytest.mark.parametrize('payload_changed', [False, True])
-def test_publish_ignores_only_provenance(tmp_path, payload_changed):
+def test_publish_skips_only_identical_tree(tmp_path, payload_changed):
     git(tmp_path, 'init', '-q')
     git(tmp_path, 'config', 'user.name', 'Fixture')
     git(tmp_path, 'config', 'user.email', 'fixture@example.invalid')
-    (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: old\n')
     (tmp_path / 'plugin.json').write_text('payload')
     git(tmp_path, 'add', '.')
     git(tmp_path, 'commit', '-qm', 'baseline')
-    (tmp_path / '.build-provenance.txt').write_text('source_commit: abc123\nconverted_at: new\n')
     if payload_changed:
         (tmp_path / 'plugin.json').write_text('changed')
-    git(tmp_path, 'add', '.')
+        git(tmp_path, 'add', '.')
     workflow = yaml.safe_load((ROOT / '.github/workflows/publish-dist.yml').read_text())
     script = workflow['jobs']['publish']['steps'][-1]['run']
     condition = next(line.strip()[3:-6] for line in script.splitlines()
@@ -39,15 +37,11 @@ def test_publish_ignores_only_provenance(tmp_path, payload_changed):
     assert result.returncode == (1 if payload_changed else 0)
 
 
-@pytest.mark.parametrize(('payload_changed', 'provenance_change', 'expected'), [
-    (False, 'timestamp', 0),
-    (True, 'timestamp', 1),
-    (False, 'source', 1),
-    (False, 'converter', 1),
-    (False, 'missing', 1),
-    (False, 'no-timestamp', 1),
+@pytest.mark.parametrize(('payload_changed', 'expected'), [
+    (False, 0),
+    (True, 1),
 ])
-def test_release_requires_matching_payload(tmp_path, payload_changed, provenance_change, expected):
+def test_release_requires_matching_payload(tmp_path, payload_changed, expected):
     remote = tmp_path / 'remote'
     remote.mkdir()
     git(remote, 'init', '-q', '-b', 'master')
@@ -61,29 +55,10 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, provenance
     (remote / 'skills' / 'demo' / 'SKILL.md').write_text('skill')
     (remote / 'config').mkdir()
     (remote / 'config' / 'models.json').write_text('{}')
-    (remote / '.build-provenance.txt').write_text(
-        'source_commit: abc123\nconverter: sha-a\nconverted_at: source\n'
-    )
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'source')
     git(remote, 'checkout', '--orphan', 'dist')
-    # The orphan checkout keeps the source tree in the index and working tree, so
-    # the package files are already present. Drop only the provenance file and let
-    # the cases below write it (or omit it for 'missing').
-    git(remote, 'rm', '-q', '-f', '.build-provenance.txt')
     (remote / 'plugin.json').write_text('changed' if payload_changed else 'payload')
-    if provenance_change == 'missing':
-        pass
-    elif provenance_change == 'no-timestamp':
-        (remote / '.build-provenance.txt').write_text(
-            'source_commit: abc123\nconverter: sha-a\n'
-        )
-    else:
-        source = 'def456' if provenance_change == 'source' else 'abc123'
-        converter = 'sha-b' if provenance_change == 'converter' else 'sha-a'
-        (remote / '.build-provenance.txt').write_text(
-            f'source_commit: {source}\nconverter: {converter}\nconverted_at: dist\n'
-        )
     (remote / '.gitattributes').write_text('* text=auto eol=lf')
     git(remote, 'add', '.')
     git(remote, 'commit', '-qm', 'package')

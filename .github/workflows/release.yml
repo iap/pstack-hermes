@@ -29,9 +29,6 @@ on:
 permissions:
   contents: write
 
-env:
-  UPSTREAM_PIN: c47b12849e43f18d5c374c7069c744cc55b0ea00
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -137,8 +134,6 @@ jobs:
       # resolve. The shared action gives every caller the verified-pin behaviour.
       - name: Build package from pin
         uses: ./.github/actions/build-package
-        with:
-          upstream-pin: ${{ env.UPSTREAM_PIN }}
 
       - name: Verify release source and published package
         shell: bash
@@ -153,26 +148,16 @@ jobs:
           git archive "$package_sha" | tar -x -C "$published"
           # Ignore dist-only compatibility metadata when comparing the package.
           rm -rf "$published/.github" "$published/.gitattributes"
-          # The timestamp is volatile; all other provenance fields must match.
-          test -f "$published/.build-provenance.txt"
-          test -f .build-provenance.txt
-          grep -q '^converted_at: ' "$published/.build-provenance.txt"
-          grep -q '^converted_at: ' .build-provenance.txt
-          sed '/^converted_at: /d' "$published/.build-provenance.txt" > "$RUNNER_TEMP/dist-provenance"
-          sed '/^converted_at: /d' .build-provenance.txt > "$RUNNER_TEMP/build-provenance"
-          diff -u "$RUNNER_TEMP/dist-provenance" "$RUNNER_TEMP/build-provenance"
-          rm -f "$published/.build-provenance.txt"
           mkdir -p "$RUNNER_TEMP/release-built"
-          cp -a plugin.json skills config README.md LICENSE .build-provenance.txt "$RUNNER_TEMP/release-built"
+          cp -a plugin.json skills config README.md LICENSE "$RUNNER_TEMP/release-built"
           if [ -d assets ]; then cp -a assets "$RUNNER_TEMP/release-built/"; fi
-          rm -f "$RUNNER_TEMP/release-built/.build-provenance.txt"
           diff -qr "$RUNNER_TEMP/release-built" "$published"
           echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
           echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
 
       - name: Package plugin
         run: |
-          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE .build-provenance.txt; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE .build-provenance.txt; fi
+          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE; fi
           sha256sum pstack-"${TAG_NAME}".zip > SHA256SUMS
         env:
           TAG_NAME: ${{ inputs.tag }}

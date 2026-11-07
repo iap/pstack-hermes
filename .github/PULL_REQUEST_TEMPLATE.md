@@ -25,16 +25,7 @@ The ```yaml provenance``` block is machine-read by tools/pr_checklist.py.
 
 ## Affected surface
 - [ ] tooling (`tools/`, CI, docs)
-- [ ] generated package (`plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `LICENSE`) — **requires a rebuild from the current pin**
-
-## Provenance — required if a generated surface changed
-<!-- tools/pr_checklist.py compares source_commit below to the tree's
-     .build-provenance.txt. Copy the exact values from your rebuilt package.
-     converter is optional; source_commit is the one that must be right. -->
-```yaml
-source_commit: <40-char SHA from .build-provenance.txt>
-converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
-```
+- [ ] package (`plugin.json`, `skills/`, `config/`, `assets/`, `README.md`, `LICENSE`)
 
 ## Verification
 <!-- Paste the command output. A checked box with no output below it is flagged
@@ -47,7 +38,7 @@ converter: convert.py (sha256[:16]=<first 16 of your convert.py hash>)
       ```
       <output>
       ```
-- [ ] package rebuilt from the pin and `git status` shows only the intended generated diff
+- [ ] package rebuilt (validate exits 0) and `git status` shows only the intended diff
       ```
       <git status --porcelain output, or "n/a - no package change">
       ```

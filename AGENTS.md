@@ -1,10 +1,9 @@
 # AGENTS.md
 
 > [!IMPORTANT]
-> This repository is **pstack-hermes** — the unofficial community port of
-> Cursor's *pstack* agent method to the **Hermes Agent** platform
-> (`NousResearch/hermes-agent`). The runtime target is **hermes**. Cursor is
-> upstream attribution only — never the implementation or verification path.
+> This repository is **pstack-hermes** — a standalone Hermes Agent package
+> (historical port of Cursor's *pstack* agent method, now detached from
+> upstream; see [docs/standalone-decisions.md](docs/standalone-decisions.md)).
 
 This file is the always-on contract: read it, then open **one** row of the
 router. Humans contributing start at [CONTRIBUTING.md](CONTRIBUTING.md); end
