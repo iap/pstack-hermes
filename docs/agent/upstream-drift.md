@@ -48,6 +48,10 @@ Any of these means upstream moved past the pin (or the pin is inconsistent):
    that apply must pass.
 6. **Re-check package docs.** If the change touches what Differences or Known
    limitations describe, update the README template in `convert.py` and rebuild.
+   If the upstream version, copyright line, or license changes, also update the
+   matching fields in `NOTICE.md` by hand. The rebuild does not regenerate it;
+   `tools/check_pins.py` fails CI if the `NOTICE.md` version does not match
+   `plugin.json`.
 7. **Update `UPSTREAM_PIN` everywhere it is declared.** It is repeated
    independently in **three** workflows — `ci.yml`, `release.yml`,
    `publish-dist.yml` — and all three must move together. The converter holds
