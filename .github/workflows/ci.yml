@@ -19,9 +19,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  UPSTREAM_PIN: c47b12849e43f18d5c374c7069c744cc55b0ea00
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -35,15 +32,10 @@ jobs:
         with:
           persist-credentials: false
 
-      # Shared build prologue (SOURCE_DATE_EPOCH, uv, upstream clone at the pin,
-      # SHA verification, Convert, Validate, Scanner gate). The action cannot set
-      # `permissions:` itself - that is job/workflow level - so this job's
-      # workflow-level `contents: read` above is what authorises the clone.
-      - name: Build package from pin
+      # Shared build prologue (validate + scanner gate on the checked-out tree).
+      - name: Build package
         id: build
         uses: ./.github/actions/build-package
-        with:
-          upstream-pin: ${{ env.UPSTREAM_PIN }}
 
       # Consumer-side regression check (see tools/dist_checkout_check.py). The build
       # job above validates the source package on disk, where files are LF
@@ -54,82 +46,6 @@ jobs:
       - name: Dist checkout is LF-only under autocrlf
         shell: bash
         run: uv run --frozen tools/dist_checkout_check.py --package . --source-tree
-
-      # The gate the previous implementation got wrong: it hashed
-      # $GITHUB_WORKSPACE/pstack *after* the build step had already replaced that
-      # directory, so it compared build1 against build2 and could never detect a
-      # hand-edited or stale committed package. This hashes the committed blobs
-      # straight out of the git object store, then compares them against a fresh
-      # build from the pin.
-      - name: Verify committed package matches a fresh build from the pin
-        shell: bash
-        env:
-          UPSTREAM_CLONE: ${{ steps.build.outputs.upstream-clone-path }}
-          PACKAGE_PATH: .
-        run: |
-          set -euo pipefail
-          # Package files only (repo root may also contain build tooling)
-          PACKAGE_FILES=(
-            "plugin.json"
-            "README.md"
-            "LICENSE"
-            ".build-provenance.txt"
-          )
-          hash_git_tree() {
-            local root="$1"
-            {
-              for f in "${PACKAGE_FILES[@]}"; do
-                if git -C "$root" ls-files --error-unmatch "$f" >/dev/null 2>&1; then
-                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
-                fi
-              done
-              if git -C "$root" ls-files --error-unmatch skills >/dev/null 2>&1; then
-                git -C "$root" ls-tree -r --name-only HEAD -- skills | grep -v '/$' | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
-                done
-              fi
-              if git -C "$root" ls-files --error-unmatch config >/dev/null 2>&1; then
-                git -C "$root" ls-tree -r --name-only HEAD -- config | grep -v '/$' | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
-                done
-              fi
-              if git -C "$root" ls-files --error-unmatch assets >/dev/null 2>&1; then
-                git -C "$root" ls-tree -r --name-only HEAD -- assets | grep -v '/$' | while IFS= read -r f; do
-                  printf '%s  %s\n' "$(git -C "$root" show "HEAD:$f" | sha256sum | cut -d' ' -f1)" "$f"
-                done
-              fi
-            } | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
-          }
-          hash_dir_tree() {
-            local root="$1"
-            (
-              cd "$root" && {
-                for f in plugin.json README.md LICENSE; do
-                  if [ -f "$f" ]; then
-                    printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
-                  fi
-                done
-                for d in skills config assets; do
-                  if [ -d "$d" ]; then
-                    find "$d" -type f -print | sed 's|^\./||' | while IFS= read -r f; do
-                      printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"
-                    done
-                  fi
-                done
-              }
-            ) | grep -v '  \.build-provenance\.txt$' | LC_ALL=C sort -k2 | sha256sum | cut -d' ' -f1
-          }
-          committed="$(hash_git_tree "$PACKAGE_PATH")"
-          rebuilt_dir="$RUNNER_TEMP/pstack-rebuilt"
-          uv run --frozen tools/convert.py --source "$UPSTREAM_CLONE" --out "$rebuilt_dir"
-          rebuilt="$(hash_dir_tree "$rebuilt_dir")"
-          echo "committed: $committed"
-          echo "rebuilt:   $rebuilt"
-          if [ "$committed" != "$rebuilt" ]; then
-            echo "::error::committed $PACKAGE_PATH/ is not reproducible from pin $UPSTREAM_PIN - hand edits, a stale package, or a missing rebuild"
-            exit 1
-          fi
-          echo "reproducible build: OK (committed package is byte-identical to a fresh build from the pin)"
 
       # A stale build must never leave scratch siblings behind in the working
       # tree; if one appears, the tree is not clean and the gate above is suspect.

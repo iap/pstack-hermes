@@ -42,10 +42,34 @@ ATTRS_NAME = ".gitattributes"
 ATTRS_SOURCE = SCRIPT_DIR / "assets" / "dist.gitattributes"
 
 
-# Reuse the converter's single definition of "this file is text" so the checkout
+# Reuse the single definition of "this file is text" so the checkout
 # check and the build-time encoding gate agree on the file set.
 sys.path.insert(0, str(SCRIPT_DIR))
-from convert import TEXT_EXTS  # noqa: E402
+TEXT_EXTS = {
+    ".md",
+    ".markdown",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".js",
+    ".cjs",
+    ".py",
+    ".sh",
+    ".bash",
+    ".ps1",
+    ".html",
+    ".css",
+    ".csv",
+    ".tsv",
+    ".lock",
+    ".cfg",
+    ".ini",
+}
 
 TEXT_NAMES = {ATTRS_NAME, ".gitignore", ".build-provenance.txt"}
 

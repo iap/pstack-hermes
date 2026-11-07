@@ -72,35 +72,6 @@ def test_layout_manifest_matches(tmp_path):
     assert check_docs.check_layout_manifest(tmp_path) == []
 
 
-def test_pin_declarers_match_check_pins(tmp_path):
-    _write(
-        tmp_path / "CONTRIBUTING.md",
-        "- **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,\n"
-        "  `release.yml` and `publish-dist.yml`; one rule.\n",
-    )
-    assert check_docs.check_pin_declarers(tmp_path) == []
-
-
-def test_removed_workflow_in_pin_list_fails(tmp_path):
-    _write(
-        tmp_path / "CONTRIBUTING.md",
-        "- **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,\n"
-        "  `release.yml`, `publish-dist.yml` and `upstream-drift-watch.yml`.\n",
-    )
-    problems = check_docs.check_pin_declarers(tmp_path)
-    assert any("upstream-drift-watch.yml" in item for item in problems)
-
-
-def test_neighbouring_bullet_does_not_leak_into_pin_list(tmp_path):
-    _write(
-        tmp_path / "CONTRIBUTING.md",
-        "- **Dependabot.** `dependabot.yml` keeps pins current.\n\n"
-        "- **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,\n"
-        "  `release.yml` and `publish-dist.yml`.\n",
-    )
-    assert check_docs.check_pin_declarers(tmp_path) == []
-
-
 def test_stale_subdirectory_path_fails(tmp_path):
     _write(tmp_path / "AGENTS.md", "cd pstack/skills/poteto-mode/scripts\n")
     problems = check_docs.check_stale_paths(tmp_path)
