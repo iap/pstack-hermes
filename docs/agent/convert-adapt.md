@@ -48,7 +48,8 @@ Panel slug shape / model-drift assumptions: weekly
 
 Speak **hermes** in converter output, docs, and tooling. Enforced by
 `tools/bans.py` + `HERMES_ADAPTATION_BANS` in `validate.py`
-([#94](https://github.com/iap/pstack-hermes/issues/94) §2).
+([#94](https://github.com/iap/pstack-hermes/issues/94) §2). Single mapping
+home: [hermes-vocabulary.md](../hermes-vocabulary.md).
 
 | Use | Banned alias |
 |---|---|
