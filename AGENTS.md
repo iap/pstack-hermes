@@ -84,8 +84,7 @@ Install-relevant changes (manifest, skill discovery, package layout) also run
 Poteto-mode checkers (CI runs these):
 
 ```sh
-cd skills/poteto-mode/scripts
-bun run test        # deps + bun test orch watch-pr
+bun run test        # deps + bun test scripts/orch scripts/watch-pr
 bun run typecheck   # deps + tsc --noEmit --strict
 ```
 
@@ -106,6 +105,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Path | Kind |
 |---|---|
 | `tools/`, `tools/assets/` | hand-written source of package truth |
+| `scripts/`, `package.json`, `bun.lock` | hand-written tooling (`@iap/poteto`) |
 | `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `NOTICE.md` | hand-written docs |
 | `.github/` | hand-written CI; action pins are bumped by dependabot, not by hand |
 | `patches/` | historical reference only ([docs/PATCHES.md](docs/PATCHES.md)) |

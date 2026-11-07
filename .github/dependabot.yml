@@ -83,3 +83,20 @@ updates:
       uv-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+
+  # package.json + bun.lock (the poteto runtime tooling at the root).
+  - package-ecosystem: "bun"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-patch-days: 3
+    labels: ["tooling"]
+    groups:
+      bun-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

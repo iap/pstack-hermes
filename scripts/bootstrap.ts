@@ -3,7 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const scriptsDirectory = import.meta.dir;
-const nodeModulesDirectory = join(scriptsDirectory, "node_modules");
+const packageRoot = join(scriptsDirectory, "..");
+const nodeModulesDirectory = join(packageRoot, "node_modules");
 const commanderPackagePath = join(
   nodeModulesDirectory,
   "commander",
@@ -16,9 +17,9 @@ const installKeyPath = join(
 
 function currentInstallKey(): string {
   return createHash("sha256")
-    .update(readFileSync(join(scriptsDirectory, "package.json")))
+    .update(readFileSync(join(packageRoot, "package.json")))
     .update("\0")
-    .update(readFileSync(join(scriptsDirectory, "bun.lock")))
+    .update(readFileSync(join(packageRoot, "bun.lock")))
     .digest("hex");
 }
 
@@ -34,7 +35,7 @@ export function ensureDependenciesInstalled(): void {
 
   const result = Bun.spawnSync(
     [process.execPath, "install", "--frozen-lockfile"],
-    { cwd: scriptsDirectory }
+    { cwd: packageRoot }
   );
   if (result.exitCode !== 0) {
     process.stdout.write(result.stdout);

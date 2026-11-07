@@ -174,16 +174,13 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
       - name: Install script dependencies
-        working-directory: skills/poteto-mode/scripts
         run: bun install --frozen-lockfile
 
       - name: Unit tests (poteto-mode scripts)
-        working-directory: skills/poteto-mode/scripts
-        run: bun test orch watch-pr
+        run: bun test scripts/orch scripts/watch-pr
 
       - name: Typecheck (poteto-mode scripts)
-        working-directory: skills/poteto-mode/scripts
-        run: bunx tsc --project watch-pr/tsconfig.json --noEmit --strict
+        run: bunx tsc --project scripts/watch-pr/tsconfig.json --noEmit --strict
 
   pr-checklist:
     # Advisory: reports whether the PR's machine-checkable claims hold. It never

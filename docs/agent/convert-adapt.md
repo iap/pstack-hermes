@@ -26,8 +26,7 @@ Then:
    #159, poteto extraction #158).
 
 Poteto checkers: see [CONTRIBUTING Setup](../../CONTRIBUTING.md#setup)
-(`bun run test` / `typecheck` under `skills/poteto-mode/scripts`;
-root `scripts/` after #158 lands).
+(`bun run test` / `typecheck` from the root, under `scripts/`).
 
 ## Hermes vocabulary
 

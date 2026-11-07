@@ -52,8 +52,7 @@ The poteto-mode checker scripts additionally need
 [Bun](https://bun.sh) (CI runs the same suite):
 
 ```sh
-cd skills/poteto-mode/scripts
-bun run test                              # deps + `bun test orch watch-pr`
+bun run test                              # deps + `bun test scripts/orch scripts/watch-pr`
 bun run typecheck                         # deps + tsc --noEmit --strict
 ```
 
