@@ -87,7 +87,7 @@ a hermes defect that reproduces with the plugin disabled →
 - `skills/hermesbot/` — hermes-native control-surface skill on the gateway
   webhook (`X-Webhook-Signature-V2` HMAC) plus `hermes send` / `hermes peer`;
   fills the excluded `make-bot-ui` slot.
-- Skill scripts (e.g. `skills/poteto-mode/scripts/`) ship verbatim; the loader
+- Skill scripts (e.g. `scripts/`) ship verbatim; the loader
   never executes them, but skills instruct the agent to run them (`bun`, `gh`).
 
 Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner

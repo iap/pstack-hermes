@@ -43,10 +43,12 @@ ROOT_TOOLING_DIRS: frozenset[str] = frozenset({"tools", "docs", ".github", ".git
 # Top-level entries that constitute the installed Hermes package (issue #128).
 # Scanning is allowlist-based: only files under these entries are package content.
 # Everything else in a checkout (tools/, docs/, .github/, scratch dumps, ...) is
-# repo tooling and must not be scanned as if it were package content.
+# repo tooling and must not be scanned as if it were package content. Root
+# tooling (`scripts/`, `package.json`, `bun.lock` for @iap/poteto-mode) ships in the
+# dist payload too, so it is scanned as well; node_modules stays excluded.
 PACKAGE_TOP_LEVEL: frozenset[str] = frozenset({
     "plugin.json", "README.md", "LICENSE", ".build-provenance.txt",
-    "skills", "config", "assets",
+    "skills", "config", "assets", "scripts", "package.json", "bun.lock",
 })
 
 

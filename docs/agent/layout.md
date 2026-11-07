@@ -13,6 +13,7 @@ git history preserves the final converted state.
 | `README.md` | hand-written | Edit directly. |
 | `LICENSE` | hand-written | MIT with upstream attribution (© Lauren Tan). Edit directly. |
 | `tools/`, `tools/assets/` | hand-written | Validator, bans, scanner, assets source. |
+| `scripts/`, `package.json`, `bun.lock` | hand-written | Runtime tooling (`@iap/poteto-mode`); run from the root. |
 | `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | hand-written | Docs and contract. |
 | `NOTICE.md` | hand-written | Attribution / third-party notices. |
 

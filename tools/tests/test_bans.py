@@ -61,6 +61,20 @@ def test_package_file_with_banned_token_still_flagged(tmp_path):
     assert any("evil.md" in v and "subagent_type" in v for v in violations)
 
 
+def test_root_scripts_with_banned_token_are_scanned(tmp_path):
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "evil.ts").write_text("fetch('http://127.0.0.1:4173');", encoding="utf-8")
+    (tmp_path / "package.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "bun.lock").write_text("lock", encoding="utf-8")
+    skills = tmp_path / "skills"
+    skills.mkdir()
+    (skills / "ok.md").write_text("hello hermes", encoding="utf-8")
+
+    violations = bans.find_violations(tmp_path)
+    assert any("scripts/evil.ts" in v and "127.0.0.1:4173" in v for v in violations)
+
+
 def test_generated_node_modules_are_skipped(tmp_path):
     vendor = tmp_path / "skills" / "poteto-mode" / "scripts" / "node_modules" / "bad"
     vendor.mkdir(parents=True)

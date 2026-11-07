@@ -26,8 +26,7 @@ Then:
    #159, poteto extraction #158).
 
 Poteto checkers: see [CONTRIBUTING Setup](../../CONTRIBUTING.md#setup)
-(`bun run test` / `typecheck` under `skills/poteto-mode/scripts`;
-root `scripts/` after #158 lands).
+(`bun run test` / `typecheck` from the root, under `scripts/`).
 
 ## Hermes vocabulary
 
@@ -44,7 +43,7 @@ Single mapping home: [hermes-vocabulary.md](../hermes-vocabulary.md).
 | `goal.md` in agent store | armed Cursor `/goal` |
 | `hermesbot` | `grokbot` / `make-bot-ui` / Tailscale bot |
 | `skill_manage` (local/tap only) | Cursor `create-skill`; never stock plugin mutation |
-| panel ← `tools/assets/model-panel.json` | hand-tuned shipped `config/models.json` |
+| panel ← `config/models.json` | hand-tuned shipped `config/models.json` |
 
 ## Verify
 
