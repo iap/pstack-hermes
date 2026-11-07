@@ -12,6 +12,8 @@ Decisions locked before the standalone refactor touches code. Each entry states 
 
 Rationale: renaming the package now would churn every install, doc reference, and the `dist` channel for zero user benefit. Revisit only if the project later wants to field its own brand — at that point both `plugin.json` and the `dist` channel move together.
 
+**Manifest URLs.** `plugin.json` `homepage` and `repository` still point at `cursor/plugins`. Decision: keep them as upstream attribution until the brand decision lands; change them only in the brand PR, never as a drive-by.
+
 ## 2. `plugin.json` version — locally owned
 
 > [!IMPORTANT]
@@ -25,12 +27,17 @@ Policy:
 
 Bump the version in the same PR as the change that justifies it. `CHANGELOG.md` records the mapping (version → change) for every bump.
 
+> [!WARNING]
+> Before the first standalone bump, update or retire the `NOTICE.md` ↔ `plugin.json` version check in `tools/check_pins.py` — left as-is, CI fails the standalone bump because the upstream notice still reads `0.15.5`.
+
 ## 3. Poteto tooling — `@iap/poteto`, extracted to `tools/poteto/`
 
 > [!IMPORTANT]
 > Confirmed: the extracted tooling package is named `@iap/poteto` and lives at `tools/poteto/`.
 
 Rationale: `tools/` keeps tooling discoverable next to the rest of the repo tooling; the scoped `@iap/` name is the maintainer's org scope. `skills/poteto-mode/scripts/` is deleted on extraction; `SKILL.md` references the new root-relative path.
+
+**Distribution (required, part of the extraction PR).** The `dist` channel and release ZIP include `skills/` but not `tools/`. Installed-package users depend on the shipped `orch` executable (Orchestrate playbook) and `watch-pr` launcher. The extraction PR must therefore route the tooling into distribution too — e.g. extend the dist publisher / release ZIP to copy `tools/poteto/` into the package, or keep a vendored copy under `skills/`. "Source lives at `tools/poteto/`" alone ships a broken install.
 
 ## 4. README — hand-owned at the repo root
 
@@ -51,7 +58,7 @@ No license change. If the copyright-holder line wording needs alignment, that is
 Decision (ordering matters):
 
 1. **First, retire the gates that consume provenance fields.** `tools/pr_checklist.py`, `.github/PULL_REQUEST_TEMPLATE.md`, and the release provenance check in `.github/workflows/release.yml` still require `source_commit` and `converted_at` from `.build-provenance.txt`. Removing the fields before removing those checks breaks release and PR gating.
-2. **Then, delete the upstream fields** (`source_url`, `source_commit`, `converter`) and rewrite `.build-provenance.txt` as a standalone record (package name, version, built-from repo, final upstream SHA `c47b1284` as historical context only).
+2. **Then, delete the upstream fields** (`source_url`, `source_commit`, `converter`) and rewrite `.build-provenance.txt` as a standalone record (package name, version, built-from repo, final upstream SHA `c47b1284` as historical context only) — **only in the drop PR, at the moment the converter is removed.** Before that point a converter rebuild regenerates the file with upstream fields, so any earlier rewrite is clobbered and could let release/dist publish a stale or upstream-flavored record.
 3. **Then, when the converter is dropped, remove `.build-provenance.txt` entirely** if nothing reads it.
 
 Gates first, fields second, file last — never the reverse.
@@ -61,6 +68,8 @@ Final upstream SHA `c47b1284` is also recorded in `CHANGELOG.md` so the history 
 ## 7. Releases — unchanged dispatch
 
 Signed-tag → `release.yml` from `master` → append-only `dist` channel stays as-is. The only change is that no step in the release path needs the upstream pin: remove `UPSTREAM_PIN` declarations and the reproducibility gate during the drop PR.
+
+**Pin checker (required, part of the drop plan).** CI runs `tools/check_pins.py`, which fails when the `UPSTREAM_PIN` declarations are absent. The drop PR must therefore update `tools/check_pins.py` in the same change — remove the upstream lockstep check so the standalone change does not block CI, while preserving the checker's separate Hermes pin and notice checks as appropriate.
 
 ## 8. Workflow — `gt` stack for development
 
