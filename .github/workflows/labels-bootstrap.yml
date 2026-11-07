@@ -27,7 +27,11 @@ jobs:
           set -euo pipefail
           ensure() {
             local name="$1" color="$2" desc="$3"
-            if gh label list --json name --jq '.[].name' | grep -qxF "$name"; then
+            # --limit 1000: gh default is 30, which would hide existing labels
+            # past the window and abort the run on `create` under set -e.
+            # grep consumes all input (> /dev/null) so the producer cannot
+            # SIGPIPE under pipefail when the match exits early.
+            if gh label list --limit 1000 --json name --jq '.[].name' | grep -xF "$name" >/dev/null; then
               gh label edit "$name" --color "$color" --description "$desc" >/dev/null
               echo "updated: $name"
             else
@@ -45,3 +49,9 @@ jobs:
           ensure "port"               "E4E669" "Cursor -> hermes port work"
           ensure "bug"                "D73A4A" "Something is broken"
           ensure "enhancement"        "A2EEEF" "New feature or request"
+          ensure "os:windows"         "0078D4" "Windows identity: only the Windows agent/app works this issue"
+          ensure "os:linux"           "E95420" "Linux identity: only the Linux agent/app works this issue"
+          ensure "os:macos"           "6E40C9" "macOS identity: only the macOS agent/app works this issue"
+          ensure "assist:windows-confirm" "93C5FD" "Request Windows-agent confirmation on another Windows device"
+          ensure "assist:linux-confirm"   "FDBA74" "Request Linux-agent confirmation on another Linux device"
+          ensure "assist:macos-confirm"   "C4B5FD" "Request macOS-agent confirmation on another macOS device"
