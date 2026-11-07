@@ -12,8 +12,9 @@
 Package maintenance is now direct: edit `plugin.json`, `skills/`,
 `config/`, `assets/`, `README.md`, `LICENSE` and validate with
 `tools/validate.py`. Model-slug drift is a separate weekly job
-(`model-drift-watch` / `tools/slug_drift.py`); it updates
-`tools/assets/model-panel.json` and `config/models.json` directly.
+(`model-drift-watch` / `tools/slug_drift.py`): the job only opens a
+tracking issue; maintainers update `tools/assets/model-panel.json` and
+mirror the roles into `config/models.json` themselves.
 
 ## Do not
 
