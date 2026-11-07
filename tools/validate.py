@@ -42,7 +42,35 @@ from bans import (  # noqa: E402
     is_generated_dependency_path,
     is_package_path,
 )
-from convert import MANIFEST_NAME_RE, SCHEMA_URL, SKILL_NAME_RE, TEXT_EXTS  # noqa: E402
+
+SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+MANIFEST_NAME_RE = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+TEXT_EXTS = {
+    ".md",
+    ".markdown",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".js",
+    ".cjs",
+    ".py",
+    ".sh",
+    ".bash",
+    ".ps1",
+    ".html",
+    ".css",
+    ".csv",
+    ".tsv",
+    ".lock",
+    ".cfg",
+    ".ini",
+}
 
 
 def _hermes_home_default() -> str:
@@ -332,7 +360,6 @@ def check_encoding(pkg: Path, rep: Report) -> None:
 
 def check_layout(pkg: Path, rep: Report) -> None:
     for rel, label in [("README.md", "README.md"),
-                       (".build-provenance.txt", ".build-provenance.txt"),
                        ("plugin.json", "plugin.json")]:
         if (pkg / rel).exists():
             rep.ok(f"present: {label}")
@@ -355,7 +382,7 @@ def check_phase1(pkg: Path, rep: Report) -> None:
     """Phase-1 hygiene checks: R1 index generation, F16 lane-shape invariant, F10-F12 portability."""
     # R1: the shipped index must equal what the leaves generate
     try:
-        from convert import build_principles_index  # noqa: PLC0415
+        from principles_index import build_principles_index  # noqa: PLC0415
         generated, drift = build_principles_index(pkg / "skills")
         if drift:
             rep.fail(f"principles index generation reported: {drift}")
