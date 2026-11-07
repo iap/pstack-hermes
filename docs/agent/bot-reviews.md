@@ -60,7 +60,11 @@ commit and is never treated as a current-head verdict.
   second consecutive pause in the same round is a stop-and-ask-the-maintainer
   escalation, not another trigger.
 
-One request per head SHA. Do not re-send because a verdict is slow.
+One request per head SHA. Do not re-send because a verdict is slow. The
+single exception: a check that is *paused* (its in-progress run never moves
+while CodeRabbit posts a "Reviews paused" note) is recovered by ONE
+`@coderabbitai resume` + `@coderabbitai review` pair per round; a second
+consecutive pause escalates to the maintainer instead of another trigger.
 
 ## Round loop
 
