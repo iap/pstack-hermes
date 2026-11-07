@@ -84,6 +84,22 @@ def iter_text_files(pkg: Path) -> Iterator[tuple[str, str]]:
         yield p.relative_to(pkg).as_posix(), text
 
 
+def find_vocab_violations(pkg: Path) -> list[str]:
+    """Return one human-readable line per banned delegation-vocabulary hit.
+
+    Vocabulary-only subset of `find_violations`, used by the
+    `scanner_gate.py --vocab-only` regression gate (issue #157).
+    """
+    bad: list[str] = []
+    for rel, text in iter_text_files(pkg):
+        if rel.startswith(VOCAB_EXEMPT_PREFIXES):
+            continue
+        for needle in DELEGATION_VOCAB_BANS:
+            if needle in text:
+                bad.append(f"{rel}: {needle} [delegation vocab, hermes-facing]")
+    return bad
+
+
 def find_violations(pkg: Path) -> list[str]:
     """Return one human-readable line per banned construct found in pkg."""
     bad: list[str] = []
@@ -91,8 +107,5 @@ def find_violations(pkg: Path) -> list[str]:
         for needle, why in SECURITY_BANS:
             if needle in text:
                 bad.append(f"{rel}: {needle} ({why}) [security, package-wide]")
-        if not rel.startswith(VOCAB_EXEMPT_PREFIXES):
-            for needle in DELEGATION_VOCAB_BANS:
-                if needle in text:
-                    bad.append(f"{rel}: {needle} [delegation vocab, hermes-facing]")
+    bad.extend(find_vocab_violations(pkg))
     return bad
