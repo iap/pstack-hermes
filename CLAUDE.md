@@ -2,13 +2,10 @@
 
 ## Claude Code notes
 
-- Before editing any file, check the "Where to edit" table in AGENTS.md. If the
-  path is generated (root `skills/`, `config/`, `assets/`, `README.md`,
-  `plugin.json`, `LICENSE`, `.build-provenance.txt`), stop and change
-  `tools/` or `tools/assets/` instead, then rebuild.
-- Never run a rebuild without first confirming the upstream clone is at the
-  SHA declared in `UPSTREAM_PIN`. The only exception is a re-pin, which follows
-  the step order in `docs/agent/upstream-drift.md`.
+- Before editing any file, check the "Where to edit" table in AGENTS.md.
+  The package surfaces (`plugin.json`, `skills/`, `config/`, `assets/`,
+  `README.md`, `LICENSE`) are hand-written source — edit them directly.
+  There is no converter, rebuild, or upstream pin (#156).
 - Run the full Verify block from AGENTS.md before saying a task is done.
   If `bun` or `hermes` is unavailable locally, say so explicitly and name which
   checks you skipped. Do not claim they passed.

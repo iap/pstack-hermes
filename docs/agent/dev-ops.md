@@ -10,9 +10,9 @@ Layout paths: [layout.md](layout.md). Review loop: [review-ops.md](review-ops.md
 - **No drive-by changes.** No renames, reformatting, comment cleanup,
   dependency bumps, or unrelated refactors in a focused PR — they make review
   and revert harder.
-- **Generated tree is expected output.** A converter change legitimately
-  rewrites the package; that is in scope and the PR says `rebuilt from pin
-  <sha>` (see [layout.md](layout.md)). Do not hand-edit generated files.
+- **Package surfaces are hand-written source.** `plugin.json`, `skills/`,
+  `config/`, `assets/`, `README.md`, `LICENSE` are edited directly (see
+  [layout.md](layout.md)); there is no converter or rebuild step.
 - **Out-of-scope finding → issue or separate PR.** Link it; do not silently
   widen the diff.
 - **Never touch** attribution, or re-add the excluded `benny` /
@@ -38,7 +38,6 @@ Keep **one writer per file**:
 Do **not** parallelize:
 
 - rebase / force-push / branch switching;
-- package rebuilds (`tools/convert.py --out` writes the tree);
 - `CHANGELOG.md` and shared config (`.github/`, `tools/check_*.py` lists);
 - anything that touches the same file.
 
@@ -53,8 +52,8 @@ uv run --frozen ruff check tools
 uv run --frozen python tools/check_docs.py
 ```
 
-Docs-only changes need no rebuild; package-shaped changes rebuild first (see
-[AGENTS.md](../../AGENTS.md)). Run the gate after integration, not per subagent.
+Run the gate after integration, not per subagent (see
+[AGENTS.md](../../AGENTS.md)).
 
 ## Review handoff
 
