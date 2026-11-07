@@ -27,7 +27,9 @@ jobs:
           set -euo pipefail
           ensure() {
             local name="$1" color="$2" desc="$3"
-            if gh label list --json name --jq '.[].name' | grep -qxF "$name"; then
+            # --limit 1000: gh default is 30, which would hide existing labels
+            # past the window and abort the run on `create` under set -e.
+            if gh label list --limit 1000 --json name --jq '.[].name' | grep -qxF "$name"; then
               gh label edit "$name" --color "$color" --description "$desc" >/dev/null
               echo "updated: $name"
             else
