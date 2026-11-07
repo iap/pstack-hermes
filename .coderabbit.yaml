@@ -8,8 +8,9 @@
 # while its note says the review is paused) gets ONE @coderabbitai resume +
 # @coderabbitai review pair per head SHA, then escalates on a second
 # consecutive pause on that same head; a skipped check after a posted
-# request due to rate limiting is retried after about one hour. A merely
-# slow verdict is never re-requested.
+# request due to rate limiting is retried after about one hour — exactly one
+# retry per head SHA, then escalates. A merely slow verdict is never
+# re-requested.
 # See docs/agent/bot-reviews.md.
 reviews:
   review_status: false

@@ -48,8 +48,9 @@ clean state before merge. The port contract outranks every bot.
     times out, so waiting for it is not a strategy. One `resume` + `review` pair
     per head SHA; a second consecutive pause on that same head SHA escalates to
     the maintainer instead of another trigger. A skipped check after a posted
-    request is a rate limit, not a paused tail: retry after about one hour.
-    The threshold is CodeRabbit's
+    request is a rate limit, not a paused tail: retry after about one hour —
+    exactly one retry per head SHA; a second skip due to rate limiting escalates
+    to the maintainer. The threshold is CodeRabbit's
     `auto_pause_after_reviewed_commits`; this repo does not set it, so the vendor
     default applies. Its own pause notice and its published schema disagree on
     the key's nesting (`reviews.auto_pause_after_reviewed_commits` vs
@@ -70,14 +71,16 @@ Round loop:
    no review yet` and proceed (no findings, gate unaffected). Never wait
    indefinitely; never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   Do not wait for Qodo to re-review a later head: re-reviews happen only when
-   a follow-up addresses Qodo, and any new findings join this round's triage.
+   If a follow-up addressed Qodo to ask for a re-review, wait bounded (same as
+   step 1) for that re-review and triage whatever it raises before step 3.
+   Do not wait for an unrequested re-review.
 3. Request the appropriate CodeRabbit review on the current head. Use
    `full review` for the first pass, a rebase, a force-push, or a large diff;
    use `review` only for a small fix push in the same round. Confirm the
    verdict's `commit.oid` equals `headRefOid`.
-4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request; Qodo
-   does not re-run. Return to step 3.
+4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Qodo
+   does not re-run automatically (only on `@qodo`-addressed replies). Return
+   to step 3.
 5. Merge only when CodeRabbit is clean on the current head, every Qodo finding
    is fixed or answered, every thread is resolved, CI is green, and the local
    gates pass. Confirm the CodeRabbit check is not `skipping`.

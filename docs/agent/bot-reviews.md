@@ -13,8 +13,11 @@ short form and must stay consistent with this file.
    Qodo verdict after a fix push — Qodo re-reviews are a *reply trigger*, not a push
    trigger: a re-review happens when a follow-up reply addresses Qodo
    (`@qodo …` in-thread, e.g. `@qodo I pushed fixes, can you review again?`), and
-   the re-review can carry **new** findings. Expect it after addressing Qodo on a fix,
-   and triage whatever it raises the same way (same resolve-all gate).
+   the re-review can carry **new** findings. When a follow-up asks for a re-review,
+   open the same bounded wait for it as for the initial review (ledger it and
+   proceed if it never arrives), and triage whatever it raises the same way
+   (same resolve-all gate) **before** requesting CodeRabbit — the CodeRabbit
+   request follows the Qodo triage, never precedes it.
 2. **CodeRabbit** is manual (`.coderabbit.yaml` sets `auto_review.enabled: false`).
    Trigger `@coderabbitai full review` only after Qodo findings are triaged
    (fixed or answered with evidence) on this head.
@@ -54,7 +57,8 @@ commit and is never treated as a current-head verdict.
 
 - `skipping` — never requested. If a request is posted and then skipped due to rate
   limiting, retry the appropriate review command after about one hour — then it is
-  a fresh request on the same head, not a loop.
+  a fresh request on the same head, not a loop. Exactly one retry per head SHA;
+  a second skip due to rate limiting escalates to the maintainer.
 - `in_progress` that never moves — **paused**, not slow. After a run of new commits
   CodeRabbit posts a "Reviews paused" note and stops. Send `@coderabbitai resume`,
   then `@coderabbitai review`. A paused review never times out. Prefer fewer, larger
@@ -76,13 +80,13 @@ another trigger.
    yet` and proceed — no findings means the gate is unaffected. Never wait
    indefinitely, and never trigger Qodo to force a review.
 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-   Do not wait for Qodo to re-review a later head; a re-review only happens when a
-   follow-up addresses Qodo, and any new findings it raises join this round's
-   triage.
+   If a follow-up addressed Qodo to ask for a re-review, wait bounded (same as
+   step 1) for that re-review and triage whatever it raises before step 3.
+   Do not wait for an unrequested re-review.
 3. Request CodeRabbit on the current head (`full review` first pass / rebase /
    force-push / large diff; `review` for small fix push). Confirm `commit.oid == headRefOid`.
-4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request; Qodo does
-   not re-run. Return to step 3.
+4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Qodo does
+   not re-run automatically (only on `@qodo`-addressed replies). Return to step 3.
 5. Merge only when all gate conditions hold.
 
 ## Triage matrix (adjudication)
