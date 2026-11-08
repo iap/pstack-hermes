@@ -41,6 +41,13 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 
 ## Update
 
+> [!WARNING]
+> Existing installs with a locally generated untracked `package-lock.json`:
+> back it up and remove it from the installed plugin directory before
+> updating (confirm untracked status with `git -C <plugin-dir> ls-files
+> --error-unmatch package-lock.json`), so the updater does not stash-restore
+> it over the now-tracked file and strand other local edits.
+
 ```sh
 hermes plugins update pstack
 ```
@@ -120,6 +127,16 @@ CHANGELOG.md records the shipped changes.
 
 ## Known limitations (documented, not drift)
 
+- Node tooling ships dual lockfiles (`bun.lock` + `package-lock.json`) so
+  hermes' `npm ci` sidecar works on install and update (#169). Bun bumps
+  must regenerate both locks; CI fails a desynced pair. Existing installs
+  with a locally generated untracked `package-lock.json`: back it up, then
+  remove it from the installed plugin directory before updating (confirm it
+  is untracked there first with `git -C <plugin-dir> ls-files
+  --error-unmatch package-lock.json`, which fails when the file is not
+  tracked; `git status --porcelain` alone cannot distinguish ignored from
+  tracked-clean), so the updater does not stash-restore it over the
+  now-tracked file and strand other local edits.
 - `deslop`, `control-ui`, `control-cli` are named by playbooks but ship
   outside this package; a verdict without its demanded live lane is
   incomplete, not clean. (`no-comments`, `unslop`, `technical-writing` ship.)

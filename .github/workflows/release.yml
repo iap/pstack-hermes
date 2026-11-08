@@ -128,6 +128,18 @@ jobs:
           set -euo pipefail
           git checkout -f "$PEELED_SHA"
 
+      # Dual-lock gate from the trusted master revision (#169): the build
+      # action below comes from the tagged tree, which may predate the
+      # dual-lock steps. Run the master-side checker against the tagged
+      # tree's locks before packaging, so an old tag cannot ship desynced
+      # locks. check_dual_lock.py is stdlib-only, so python3 suffices.
+      - name: Dual locks agree on tagged tree (master-side check)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show origin/master:tools/check_dual_lock.py > "$RUNNER_TEMP/check_dual_lock.py"
+          python3 "$RUNNER_TEMP/check_dual_lock.py" --root .
+
       # Shared build prologue: every caller validates the same checked-out
       # tree, so a release cannot be cut from a divergent copy of the steps.
       - name: Build package
@@ -147,7 +159,7 @@ jobs:
           # Ignore dist-only compatibility metadata when comparing the package.
           rm -rf "$published/.github" "$published/.gitattributes"
           mkdir -p "$RUNNER_TEMP/release-built"
-          cp -a plugin.json skills config README.md LICENSE package.json bun.lock scripts "$RUNNER_TEMP/release-built"
+          cp -a plugin.json skills config README.md LICENSE package.json bun.lock package-lock.json scripts "$RUNNER_TEMP/release-built"
           if [ -d assets ]; then cp -a assets "$RUNNER_TEMP/release-built/"; fi
           diff -qr "$RUNNER_TEMP/release-built" "$published"
           echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
@@ -155,7 +167,7 @@ jobs:
 
       - name: Package plugin
         run: |
-          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE package.json bun.lock scripts/; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE package.json bun.lock scripts/; fi
+          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE package.json bun.lock package-lock.json scripts/; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE package.json bun.lock package-lock.json scripts/; fi
           sha256sum pstack-"${TAG_NAME}".zip > SHA256SUMS
         env:
           TAG_NAME: ${{ inputs.tag }}

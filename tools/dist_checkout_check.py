@@ -127,6 +127,7 @@ SOURCE_TREE_PATHS = (
     "LICENSE",
     "package.json",
     "bun.lock",
+    "package-lock.json",
     "scripts",
     ".build-provenance.txt",
 )

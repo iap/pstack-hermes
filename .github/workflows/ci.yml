@@ -75,6 +75,7 @@ jobs:
             assets/
             package.json
             bun.lock
+            package-lock.json
             scripts/
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;

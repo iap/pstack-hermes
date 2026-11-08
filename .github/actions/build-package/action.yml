@@ -52,3 +52,15 @@ runs:
       env:
         PACKAGE_PATH: ${{ inputs.package-path }}
       run: uv run --frozen tools/scanner_gate.py --package "$PACKAGE_PATH"
+
+    # Dual-lock gate (#169): hermes installs Node deps via npm ci, so the
+    # shipped package-lock.json must match package.json and carry the same
+    # resolved versions as bun.lock. Lives here so every publication path
+    # (ci, publish-dist, release) gates on it, not just lint-and-tests.
+    - name: Dual lockfile matches package.json (npm ci dry-run)
+      shell: bash
+      run: npm ci --dry-run --ignore-scripts
+
+    - name: Dual locks agree (bun vs npm versions)
+      shell: bash
+      run: uv run --frozen python tools/check_dual_lock.py
