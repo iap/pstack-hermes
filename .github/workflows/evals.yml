@@ -1,0 +1,29 @@
+# Golden-task evals (#194): weekly + manual, never a per-PR gate.
+# Requires a configured hermes home with provider access; the runner
+# seeds its isolated home from the runner's active hermes config.
+name: evals
+
+on:
+  schedule:
+    - cron: "17 7 * * 1" # weekly, Monday 07:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10
+        with:
+          enable-cache: true
+
+      - name: Run golden-task evals
+        run: uv run --frozen python tools/evals/run.py
