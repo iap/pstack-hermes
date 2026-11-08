@@ -332,7 +332,7 @@ adjudicates findings, and its output is informational, never a merge gate.
 
 | Bot nudge | Contract response |
 |---|---|
-| Hand-edit generated `skills/` / `config/` / package README to "fix" prose | Rebuild from converter / assets instead |
+| Hand-edit `skills/` / `config/` / package README outside the package surfaces' scope | Edit the package surfaces directly (hand-written source since #156) |
 | Reintroduce Cursor tool names for "clarity" | Banned — use hermes vocabulary |
 | Clean up / modernize attribution or re-add excluded `benny` / `make-bot-ui` | Leave as-is (scanner / publisher contract) |
 | Implement GitLab stack provider because docs mention `glab` | Halted |

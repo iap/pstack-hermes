@@ -31,8 +31,8 @@ Report it here.
 | `make-bot-ui` and `automations/benny` are missing | Excluded deliberately: their installer / copy-instruction patterns hard-block the community-source install scanner. The make-bot-ui slot is filled by the hermes-native `hermesbot` skill. |
 | Skills say `delegate_task`, `clarify`, `session_search`, `hermes cron`, or `goal.md` where Cursor docs say Task / AskQuestion / transcript files / `/loop` / `/goal` | Port adaptation passes (T6–T12). The Cursor originals do not exist on hermes. |
 | `config/models.json` panel and `inherit-parent` defaults | Port-local configuration written by `setup-pstack`. A bad or unresolvable model slug here is a local configuration problem. |
-| The package no longer matches upstream pstack file-for-file | Expected. See the differences contract in the package README and the machine-generated fix register in `.build-provenance.txt`. |
-| Plan-checker marker, ban list, validator, anchor-audit behavior | This repository's own tooling (`tools/`) — report here. |
+| The package no longer matches upstream pstack file-for-file | Expected. See the differences contract in the package README and the pass ledger in CHANGELOG.md. |
+| Plan-checker marker, ban list, validator behavior | This repository's own tooling (`tools/`) — report here. |
 
 ### Where to report what
 
@@ -55,7 +55,7 @@ will escalate genuine upstream defects with a minimal reproduction.
 
 ## Scope notes
 
-- The shipped package (generated surfaces at the repo root) performs no network calls, no telemetry,
+- The shipped package (hand-written surfaces at the repo root) performs no network calls, no telemetry,
   and no code execution beyond the scripts documented in each skill.
 - The install-scanner contract (community-source safety verdict) is enforced
   in CI; the banned-construct list lives in `tools/bans.py` — the single

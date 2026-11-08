@@ -3,6 +3,12 @@
 Decisions locked before the standalone refactor touches code. Each entry states the decision, why, and what it unblocks. These are inputs to sub-issues #157 (vocabulary), #158 (poteto extract), and #159 (agent instructions).
 
 > [!NOTE]
+> Status: the converter drop landed (#164, #166). Sections below marked
+> "effective when the converter is dropped" are now in force; historical
+> "until then" framing in §2/§4/§6 describes the pre-drop state and is
+> kept as the decision record, not current instructions.
+
+> [!NOTE]
 > This file is hand-written and durable. Later PRs point here instead of re-litigating these calls.
 
 ## 1. Package identity — name stays `pstack`

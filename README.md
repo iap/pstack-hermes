@@ -101,7 +101,7 @@ Hermes-native only; for real Cursor-side work install upstream pstack.
 |---|---|
 | manifest | root `plugin.json` injected: exact agent-plugins-v1 `$schema`, 9-field whitelist |
 | frontmatter | `poteto-mode` name fixed to kebab-case (loader requirement) |
-| R1 | poteto-mode principles index regenerated from the 23 leaves |
+| R1 | poteto-mode principles index kept in sync with the 23 leaves (validate.py R1) |
 | F16 | retired at c47b1284: upstream ships a slug-agnostic lane regex |
 | F10–F12 | `worktree-audit.sh` portable (GNU/BSD), space-safe |
 | F-publish | `benny` + `make-bot-ui` excluded (scanner verdicts); `hermesbot` fills the slot; 3 localhost literals neutralized |
@@ -114,10 +114,9 @@ Hermes-native only; for real Cursor-side work install upstream pstack.
 | T15 | `orch frontier set` provider selection: `auto` / `graphite` / `github` |
 | G1 | delegation escape hatch: in-thread surgical edits with mandatory delegate review |
 
-Text is otherwise unchanged; the machine-generated fix register in
-`.build-provenance.txt` is the authoritative per-build record, and the full
-ledger with reviewer checks lives in the dev repo
-(https://github.com/iap/pstack-hermes/issues/94).
+Text is otherwise unchanged; the pass ledger with reviewer checks lives in
+the dev repo (https://github.com/iap/pstack-hermes/issues/94) and
+CHANGELOG.md.
 
 ## Known limitations (documented, not drift)
 

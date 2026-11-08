@@ -134,7 +134,7 @@ jobs:
       # Cheapest first: a grep over four files, then the workflow linter,
       # then the composite-action shell gate (actionlint does not descend
       # into .github/actions - see tools/check_action_shell.py).
-      - name: Upstream pin is in lock-step across workflows
+      - name: Hermes pin is in lock-step across workflows
         run: uv run --frozen python tools/check_pins.py
 
       - name: Dependabot config is valid
@@ -142,7 +142,7 @@ jobs:
 
       # Docs carry the contract agents follow; they drifted once during the
       # root-layout migration. Cheap grep-style gate (see tools/check_docs.py).
-      - name: Hand-written docs match the package layout and pin policy
+      - name: Hand-written docs match the package layout
         run: uv run --frozen python tools/check_docs.py
 
       - name: Lint workflows (actionlint + shellcheck)
