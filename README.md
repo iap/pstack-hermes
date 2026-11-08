@@ -41,6 +41,13 @@ enter the prompt index with 60-char descriptions and lose the namespace.
 
 ## Update
 
+> [!WARNING]
+> Existing installs with a locally generated untracked `package-lock.json`:
+> back it up and remove it from the installed plugin directory before
+> updating (confirm untracked status with `git -C <plugin-dir> ls-files
+> --error-unmatch package-lock.json`), so the updater does not stash-restore
+> it over the now-tracked file and strand other local edits.
+
 ```sh
 hermes plugins update pstack
 ```
