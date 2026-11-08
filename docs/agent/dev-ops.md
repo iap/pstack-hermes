@@ -46,7 +46,7 @@ Stop spawning when the remaining work is one file or one command.
 ## Verify
 
 ```sh
-uv sync
+uv sync --frozen
 uv run --frozen tools/validate.py
 uv run --frozen pytest -q
 uv run --frozen ruff check tools
