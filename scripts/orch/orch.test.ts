@@ -146,6 +146,7 @@ if (args === "--no-interactive log short --stack --reverse") {
   await writeFile(join(bin, "gt"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
   await writeFile(join(bin, "gt.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gt"), 0o755);
+  await chmod(join(bin, "gt.cmd"), 0o755);
 
   const originalPath = process.env.PATH;
   process.env.PATH = `${bin}${delimiter}${originalPath ?? ""}`;
