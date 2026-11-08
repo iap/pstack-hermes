@@ -37,7 +37,7 @@ Attribution is standing policy in CONTRIBUTING.md - no per-PR checkbox.
       ```
       <output>
       ```
-- [ ] package rebuilt (validate exits 0) and `git status` shows only the intended diff
+- [ ] package validated (validate exits 0) and `git status` shows only the intended diff
       ```
       <git status --porcelain output, or "n/a - no package change">
       ```

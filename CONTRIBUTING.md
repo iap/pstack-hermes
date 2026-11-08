@@ -27,13 +27,13 @@ the contract is strict — read this once and the CI will never surprise you.
 |---|---|
 | [AGENTS.md](AGENTS.md) | triage (this repo vs hermes vs upstream), work loop, hermes verify, vocabulary |
 | [README.md](README.md) | project identity, install, verification summary, naming table |
-| [adaptation register](https://github.com/iap/pstack-hermes/issues/94) | the ledger: every conversion pass and its reviewer check |
+| [docs/standalone-decisions.md](docs/standalone-decisions.md) | standalone decisions (identity, versioning, provenance) |
 
 | [docs/PATCHES.md](docs/PATCHES.md) | historical hermes-fork patches (reference only; not required to install) |
 
-One-sentence model of the repo: **`tools/convert.py` generates the plugin package
-from the upstream source; `tools/validate.py` and CI keep that output honest;
-everything hand-written exists to serve that pipeline.**
+One-sentence model of the repo: **the plugin package at the root is
+hand-written source; `tools/validate.py` and CI keep it honest.** The upstream
+converter was retired in #156 — there is no rebuild step.
 
 ## Setup
 
@@ -58,14 +58,10 @@ bun run typecheck                         # deps + tsc --noEmit --strict
 
 ## The pipeline
 
-1. **Convert** — `tools/convert.py` rebuilds the package at the repository
-   root from any pstack clone (or a fresh upstream clone at the pinned SHA).
-   Builds are byte-reproducible under `SOURCE_DATE_EPOCH`; out-of-tree builds
-   stage in a temp sibling, but `--out` at the repo root rewrites entries in
-   place (see [rollback](docs/agent/upstream-drift.md#rollback)). Every transform anchor in the
-   T8/T9/T10/T11/delegation maps is audited: an anchor that matches nothing in
-   the upstream build fails the build loudly (upstream drift must be resolved
-   by updating or pruning the map, never ignored).
+1. **Edit** — change the package surfaces (`plugin.json`, `skills/`,
+   `config/`, `assets/`, `README.md`, `LICENSE`) directly at the repository
+   root. The final upstream SHA `c47b1284` survives as historical context in
+   `CHANGELOG.md`; git history preserves the retired converter.
 2. **Validate** — `tools/validate.py` runs the four-stage ladder (static →
    repo YAML → gold manifest → gold load). The static stage includes the
    **hermes adaptation contract** (no inert `persona:` blocks, no stale
@@ -84,7 +80,7 @@ bun run typecheck                         # deps + tsc --noEmit --strict
    --ci` from outside the repo. The bare name is ambiguous when run inside the
    checkout.
 4. **Publish** — pushes to `master` build and validate the append-only
-   `dist` compatibility channel. Only converted_at-only changes are skipped; changes to source_commit or the converter hash still publish.
+   `dist` compatibility channel. Only no-package-change pushes are skipped.
    Existing unpinned installs can continue fast-forward updates.
    `master` is the intended default branch; drift schedules, labeler and
    Dependabot run directly there. No default-branch scheduler shim is needed.
@@ -96,9 +92,8 @@ bun run typecheck                         # deps + tsc --noEmit --strict
   tree).
 
 - `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
-  `.build-provenance.txt` are **generated content** at the repository root —
-  never hand-edit; change the converter and rebuild. Provenance
-  (`.build-provenance.txt`) must record the pinned upstream SHA at all times.
+  `LICENSE` are **hand-written source** at the repository root — edit them
+  directly, then validate.
 - **Banned constructs** are defined once in `tools/bans.py` (6 delegation tokens: `subagent_type`, `generalPurpose`, `AskQuestion`, `` `Task` ``, `run_in_background`, `environment: "cloud"`, plus 3 security needles: `tailscale.com/install.sh`, `FOR_AGENTS.md`, `http://127.0.0.1:4173`) and the hermes adaptation bans in `tools/validate.py`. Enforced by `tools/validate.py` and the CI scanner gate (`tools/scanner_gate.py`). Inline legacy model slugs in skill prose (e.g. a superseded default kept as fallback documentation) are intentional fallback documentation, not banned.
 - Encoding: LF-only, no BOM (`.gitattributes` enforces; validate.py fails on
   drift).
@@ -136,13 +131,9 @@ one has already caught (or would have caught) a real defect here.
   `owner/repo` is added there - deliberately, so introducing an action is a
   decision rather than an accident. Dependabot keeps already-allowed pins
   current as usual.
-- **`UPSTREAM_PIN` moves in lock-step.** It is declared in `ci.yml`,
-  `release.yml` and `publish-dist.yml`; `tools/check_pins.py` fails CI when any
-  of the three is missing, duplicated, malformed, or out of step. Follow
-  [docs/agent/upstream-drift.md](docs/agent/upstream-drift.md).
 - **`HERMES_PIN` is the hermes-agent commit pinned by `validate-gold.yml`.**
   It is a full lowercase 40-char SHA, declared exactly once, and moved
-  deliberately like `UPSTREAM_PIN` (treat a bump as an upstream re-pin).
+  deliberately (treat a bump as a re-pin).
 - **Workflows must pass `actionlint`** (with `shellcheck`) - the `Lint
   workflows` CI step, runnable locally as `uv run --frozen actionlint`.
 - **Action inputs must be declared by the action they target.** `tools/`
@@ -168,51 +159,46 @@ one has already caught (or would have caught) a real defect here.
 
 ## Common tasks
 
-### Add or change a converter transform
+### Add or change a package surface
 
-1. Edit the map or pass in `tools/convert.py` (maps like `T8_MAP`,
-   `DELEGATION_MAP`; passes register in `st.fixes`).
-2. Rebuild: uv run --frozen tools/convert.py --source <pstack-clone>
-   — a dead anchor fails here on purpose.
-3. Create an adaptation issue linked to the [preserved register](https://github.com/iap/pstack-hermes/issues/94),
-   recording the pass, scope, source of truth and **reviewer check**.
-4. If the pass has a checkable scope, add a unit test
-   (`tools/tests/test_t11_scope.py` is the pattern).
+1. Edit the surface directly (`plugin.json`, `skills/`, `config/`, `assets/`,
+   `README.md`, `LICENSE`).
+2. Create a tracking issue recording the scope and **reviewer check**.
+3. If the change has a checkable scope, add a unit test
+   (`tools/tests/` holds the patterns).
+4. Bump `plugin.json` version and add a `CHANGELOG.md` entry in the same
+   PR (standalone versioning policy in
+   [docs/standalone-decisions.md](docs/standalone-decisions.md)).
 5. `uv run --frozen tools/validate.py` and the full local suite, then PR with
-   the rebuilt tree and `rebuilt from pin <sha>` in the body.
+   the edited tree.
 
-### Re-pin upstream
+### Standalone maintenance
 
-Follow [docs/agent/upstream-drift.md](docs/agent/upstream-drift.md)
-verbatim. The one rule people forget: `UPSTREAM_PIN` is declared independently
-in **three workflows** — `ci.yml`, `release.yml`, `publish-dist.yml` — and all
-three must move in the same PR. Update maps,
-never the package. (The build prologue itself now lives once, in the
-`.github/actions/build-package` composite action, so `ci.yml`, `release.yml` and
-`publish-dist.yml` pass the pin to it as an input rather than each repeating
-the clone/verify/convert steps. `tools/check_pins.py` now enforces the
-lock-step rule in CI, so a missed file fails fast instead of at release time.)
+There is no upstream re-pin. See
+[docs/standalone-decisions.md](docs/standalone-decisions.md).
+The build prologue lives once, in the `.github/actions/build-package`
+composite action, shared by `ci.yml`, `release.yml` and
+`publish-dist.yml`.
 
 ### Change the model panel
 
-Edit `tools/assets/model-panel.json` (never the shipped
-`config/models.json` — Stage-D copies it in and `validate.py` checks
-they match). Rebuild, then confirm the weekly
+Edit `tools/assets/model-panel.json` (the single owner), derive the
+shipped copy with `cp tools/assets/model-panel.json config/models.json`
+(Stage-D checks they match), then confirm the weekly
 [model-drift-watch](.github/workflows/model-drift-watch.yml) assumptions still
 hold: slugs are provider-qualified `vendor/model[:variant]`, array roles hold
 no duplicate concrete slugs, and per-role value shapes (string vs array)
-match the converter's expectations. Prose-only slug mentions are
+match the panel shapes. Prose-only slug mentions are
 informational (`tools/slug_drift.py --prose`).
 
 ### Update hermesbot
 
-Edit `tools/assets/hermesbot/SKILL.md` — the shipped
-`skills/hermesbot/` copy is converter output. Rebuild and validate.
+Edit `skills/hermesbot/SKILL.md` directly. Validate.
 
 ### Release
 
 1. Merge the release changes to `master`, including the `CHANGELOG.md`
-   section for the `v0.4.x` tooling version. Package version stays upstream's.
+   section for the version. `plugin.json` version is locally owned since #156.
 2. Wait for `publish-dist` to succeed. Create a **signed, annotated** `v*`
    tag on that source commit and push it. The release is then **dispatched
    from `master` (`release` workflow → `Run workflow` → tag `vX.Y.Z`)**, not
@@ -244,10 +230,10 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
    GitHub only accepts keys registered for signing for the SSH path — add the
    pubkey at Settings → SSH and GPG keys → New SSH **signing** key if it is
    not registered yet.
-3. The dispatched `release.yml` rebuilds and validates, checks that the package matches the
+3. The dispatched `release.yml` validates, checks that the package matches the
 <!-- coderabbit-ai-generated:v1 -->
 <!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
-   published `dist` commit, including provenance except `converted_at`, and
+   published `dist` commit, and
    creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
    package install command.
 <!-- /coderabbit-ai-generated:v1 -->
@@ -260,9 +246,8 @@ Edit `tools/assets/hermesbot/SKILL.md` — the shipped
 Create issues for proposals, implementation plans and adaptation decisions.
 Each includes motivation, scope, acceptance criteria and reviewer checks.
 Split independent work into native sub-issues and use milestones for outcomes.
-A converter PR links its adaptation issue and includes the generated package;
-retain the [existing contracts](https://github.com/iap/pstack-hermes/issues/94).
-Do not keep parallel plans or adaptation ledgers in `docs/`.
+Link the tracking issue in the PR. Do not keep parallel plans or
+adaptation ledgers in `docs/`.
 
 ## Pull requests
 
@@ -281,19 +266,15 @@ Qodo config: optional repo-level Qodo/PR-Agent config may live at `.pr_agent.tom
 > **Draft content first.**
 > Write draft messages/content in a separate location (local file, branch, or draft PR) before publishing or pushing to the public git provider. Keep it technical, short, and essential — only on-scope context relations. Cross-check and verify the content to ensure no false positive/negative on the post messages (good or bad for public and human/bot reviewer). If posting as an open/draft PR, add a note for the reviewer so they can read it clearly.
 
-The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: convert clean, validate
+The [PR template](.github/PULL_REQUEST_TEMPLATE.md) requires: validate
 exit 0, doctor exit 0 (install-relevant), banned-construct scan, the
-poteto-mode Bun suite (`bun run test` / `bun run typecheck`), provenance
-consistency. A PR that changes a generated surface (`skills/`, `config/`,
-`assets/`, `README.md`, `LICENSE`, `plugin.json`) must say `rebuilt from pin <sha>` in its
-body and name the converter change behind the rebuild — that tree is build
-output, and reviewers read it as output. The [PR template](.github/PULL_REQUEST_TEMPLATE.md)
-carries the matching "Generated package" fields. CI runs all of it plus the pinned-SHA re-check, unit tests, lint,
-and a weekly [model-drift-watch](.github/workflows/model-drift-watch.yml)
-re-verifies every configured model slug against the provider catalog
-(`tools/slug_drift.py`). Upstream drift is caught by the anchor audit and the
-reproducibility gate, not a scheduled watcher (see
-[docs/agent/upstream-drift.md](docs/agent/upstream-drift.md)). PRs are
+poteto-mode Bun suite (`bun run test` / `bun run typecheck`). A PR that
+changes a package surface (`skills/`, `config/`, `assets/`, `README.md`,
+`LICENSE`, `plugin.json`) describes the change in its body like any other
+source change. CI runs all of it plus unit tests, lint, and a weekly
+[model-drift-watch](.github/workflows/model-drift-watch.yml) re-verifies
+every configured model slug against the provider catalog
+(`tools/slug_drift.py`). PRs are
 auto-labeled by path (labels are created once via the `labels-bootstrap`
 workflow after the repo goes public).
 
@@ -335,13 +316,9 @@ template, issue bodies). They carry more weight than a plain `> Note.` block.
   commit messages — they stay plain text. Say it in the subject line or the
   body as normal prose. The `type(scope): summary` convention already carries
   the what/why; add a second line for the why if it doesn't fit.
-- **The generated package.** `skills/`, `config/`, `assets/`, `README.md`,
-  `LICENSE` and
-  `plugin.json` are rebuilt by `tools/convert.py` from upstream and are never
-  hand-edited. Don't add a
-  callout convention there as a hand-edit rule — it would be wiped on the next
-  build. If alerts belong in package prose, that's a converter change (and an
-  upstream-drift consideration), not a CONTRIBUTING note.
+- **The package surfaces.** `skills/`, `config/`, `assets/`, `README.md`,
+  `LICENSE` and `plugin.json` are hand-written source. Follow the same
+  callout convention in package prose as in hand-written docs.
 
 
 <!-- /coderabbit-ai-generated:v1 -->
