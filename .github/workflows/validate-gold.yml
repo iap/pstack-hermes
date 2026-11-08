@@ -7,9 +7,10 @@
 # builds its environment, and runs validate.py --require-gold, which exits 3
 # rather than pretending the loader passed.
 #
-# NOT a required check yet, on purpose: promote it in the `Master` ruleset only
-# after it has been green across several unrelated PRs. A required check that
-# flakes on a network install is worse than an advisory one that never lies.
+# Required check (promoted after sustained green across unrelated PRs):
+# `validate-gold` is in the Master ruleset required_status_checks. A required
+# check that flakes on a network install is worse than an advisory one that
+# never lies, so keep the install pinned and the timeout honest.
 
 name: validate-gold
 
