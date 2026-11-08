@@ -1,0 +1,10 @@
+{
+  "id": "why-synthesis",
+  "skill": "why",
+  "prompt": "Why did the checkout timeouts start after the last deploy? Investigate with session_search and synthesize.",
+  "expect": {
+    "must_mention": ["session_search", "why"],
+    "must_not_mention": ["agent-transcripts", "AskQuestion"],
+    "gates": ["evidence"]
+  }
+}
