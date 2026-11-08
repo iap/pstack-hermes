@@ -16,9 +16,9 @@
 ## What you installed
 
 A **method package**: 47 instructions-for-the-agent skills (24 workflow/mode +
-23 `principle-*`) plus the converter/validator tooling that keeps them faithful
-to upstream. It is not a service, a daemon, or an autopilot — it changes how
-the agent works on a task you give it.
+23 `principle-*`) plus the validator tooling that keeps them honest. It is
+not a service, a daemon, or an autopilot — it changes how the agent works
+on a task you give it.
 
 ## Invocation model
 
@@ -74,8 +74,8 @@ incomplete when `gt` is unavailable rather than inventing a substitute.
 - **External prerequisites stay external.** Some playbooks name tooling this
   package does not ship (a deslop pass, live control-surface drivers) and some
   capabilities are approximated for hermes (see the package README's Known
-  limitations and [adaptation register](https://github.com/iap/pstack-hermes/issues/94)). When a demanded live lane
-  is unavailable, a verdict is *incomplete*, not clean.
+  limitations). When a demanded live lane is unavailable, a verdict is
+  *incomplete*, not clean.
 - **MCP-dependent skills adapt.** Research skills draw on whichever MCP servers
   your session has configured; unreachable sources are recorded as null
   findings, not invented.
@@ -94,13 +94,13 @@ Pick by what you want to change — one of three durable routes:
 <!-- coderabbit-ai-generated-section:v1:f7796bf073b3cb892a03dc1f85eddabec8170321dfd83d08586e78647488dcb1 -->
 | Tweak a line or two (temporary) | Edit installed `SKILL.md` in place, restart gateway | Back up edits outside the plugin first. Git updates re-apply local edits (conflicts stay in `git stash`); reinstalls replace shipped skills, so in-place edits are not durable. |
 <!-- /coderabbit-ai-generated:v1 -->
-| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes --enable`. Root layout: the generated package lives at the repository root (not a `pstack/` subdirectory). Merge upstream when you choose. |
+| Own several changed skills, versioned | **Fork** this repo, install from your fork | `hermes plugins install <you>/pstack-hermes --enable`. Root layout: the package lives at the repository root (not a `pstack/` subdirectory). |
 | New skills beside stock pstack | **Skill tap** or local `~/.hermes/skills/` | `hermes skills tap add <you>/skills-repo`, then install; or `skill_manage` / `/learn` into **local** skills / your tap. Stock pstack stays stock. |
 
-Structural changes that must survive upstream re-pins (new adaptations,
+Structural changes that must survive plugin updates (new adaptations,
 model-panel defaults, exclusions) belong in a fork of the development repo
-(`pstack-hermes`), via the converter — see its CONTRIBUTING.md. Broadly
-useful fixes are welcome as PRs there.
+(`pstack-hermes`) — see its CONTRIBUTING.md. Broadly useful fixes are
+welcome as PRs there.
 
 > [!WARNING]
 > **Anti-pattern:** using Hermes learning / `skill_manage` to "fix" or evolve
@@ -124,8 +124,8 @@ that reproduces without this port → `cursor/plugins`.
 
 ## See also
 
-- [adaptation register](https://github.com/iap/pstack-hermes/issues/94) — port ledger
-- [agent/README.md](agent/README.md) — agent deep ops (includes re-pin)
+- [standalone-decisions.md](standalone-decisions.md) — standalone decisions
+- [agent/README.md](agent/README.md) — agent deep ops
 - [PATCHES.md](PATCHES.md) — historical hermes-fork patches
 - [AGENTS.md](../AGENTS.md) — always-on repo contract for contributors
 

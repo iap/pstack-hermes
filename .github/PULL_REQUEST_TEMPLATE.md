@@ -19,8 +19,8 @@ Attribution is standing policy in CONTRIBUTING.md - no per-PR checkbox.
 
 ## Tracking
 
-<!-- Link the issue, parent/sub-issue and milestone. Converter changes require
-     an adaptation issue with scope and reviewer checks. -->
+<!-- Link the issue, parent/sub-issue and milestone. Package-surface changes
+     require a tracking issue with scope and reviewer checks. -->
 
 ## Affected surface
 - [ ] tooling (`tools/`, CI, docs)
