@@ -8,8 +8,9 @@ subdirectory that no longer exists. This tool checks the facts that actually
 broke:
 
 1. Router links in `AGENTS.md` / `docs/agent/README.md` resolve.
-2. `docs/agent/layout.md` classifies hand-written paths the same way
-   `.gitattributes` does.
+2. `docs/agent/layout.md` and `.gitattributes` agree in both directions:
+   generated/copied rows must be marked generated, hand-written rows must
+   not be, and every generated marker must appear in layout.md.
 3. Hand-written docs (plus `README.md`) carry no stale
    package-subdirectory paths (`pstack/skills/`, `pstack/config/`,
    `$PWD/pstack`, ...).
