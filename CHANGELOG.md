@@ -2,6 +2,18 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
+## [0.16.0] - 2026-11-08
+
+First standalone release. The upstream converter is retired (#156): the
+package at the repo root is hand-written source, edited directly. Poteto
+tooling moved to root `scripts/` as `@iap/poteto-mode` (#158), orch fakes
+are cross-platform with a Windows CI leg (#163), `setup-pstack` offers a
+`default` vs new `poteto` profile at step 0 (#170), and the shipped package
+carries a dual lockfile (`bun.lock` + `package-lock.json`) so hermes'
+`npm ci` sidecar works on install and update (#169). Instruction docs were
+rewritten standalone (#159), and the Master ruleset now requires
+`validate-gold` with matrix-pinned poteto check names (#183, #185).
+
 ## [Unreleased]
 
 ### Added
