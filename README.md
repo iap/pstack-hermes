@@ -87,7 +87,7 @@ a hermes defect that reproduces with the plugin disabled →
 
 ## What hermes loads
 
-- **47 skills** (24 workflow/mode +
+- **49 skills** (26 workflow/mode +
   23 `principle-*`), single-level `skills/<dir>/SKILL.md`,
   discovered via the root `plugin.json` (agent-plugins-v1 manifest,
   9 whitelisted fields).
@@ -96,6 +96,13 @@ a hermes defect that reproduces with the plugin disabled →
   fills the excluded `make-bot-ui` slot.
 - Skill scripts (e.g. `scripts/`) ship verbatim; the loader
   never executes them, but skills instruct the agent to run them (`bun`, `gh`).
+
+- `skills/hermes-vocabulary/` — disambiguation table (hermes ↔ Cursor terms),
+  single home for `delegate_task`, `clarify`, `hermes cron`, `goal.md`, etc.
+- `skills/hermes-troubleshooting/` — routes Hermes-host trouble to the
+  `hermes-guide` diagnosing skills when `iap/hermes-guide` is installed
+  (`diagnosing-triage` → `diagnosing-*`); otherwise points at
+  `hermes plugins doctor` and the Hermes guide.
 
 Not shipped: `automations/benny/` and `skills/make-bot-ui/` (install-scanner
 verdicts — persistence / privilege escalation; `--force` cannot override) and
