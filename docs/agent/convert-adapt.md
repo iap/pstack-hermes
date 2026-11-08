@@ -9,13 +9,13 @@ or re-pin step. Full instruction audit: #159.
 ## Work loop
 
 ```sh
-uv sync --locked
 # 1. Edit the package surfaces directly (plugin.json, skills/, config/,
 #    assets/, README.md, LICENSE), plus tools/, docs/, …
-# 2. Must exit 0:
-uv run --frozen tools/validate.py
-uv run --frozen pytest -q
-uv run --frozen ruff check tools
+# 2. Must exit 0 (chained: a failed sync stops the gate):
+uv sync --locked && \
+uv run --frozen tools/validate.py && \
+uv run --frozen pytest -q && \
+uv run --frozen ruff check tools && \
 uv run --frozen python tools/check_docs.py
 ```
 

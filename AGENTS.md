@@ -66,10 +66,10 @@ a focused file under `docs/agent/`. Do not grow this file.
 ## Verify
 
 ```sh
-uv sync --locked
-uv run --frozen tools/validate.py
-uv run --frozen pytest -q
-uv run --frozen ruff check tools
+uv sync --locked && \
+uv run --frozen tools/validate.py && \
+uv run --frozen pytest -q && \
+uv run --frozen ruff check tools && \
 uv run --frozen python tools/check_docs.py
 ```
 
