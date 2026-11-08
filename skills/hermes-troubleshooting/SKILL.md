@@ -26,7 +26,10 @@ The plugin registers exactly one router skill — `hermes-guide:start` (in
 Load `hermes-guide:start` first (via `skill_view` id
 `agent-plugin-hermes-guide-<digest>:start`, or `/hermes-guide:start` in a live
 session). It routes to `hermes guide` and the correct `diagnosing-*` playbook
-once the tap is present.
+once the tap is present. To make a playbook loadable: after `hermes skills tap add
+iap/hermes-guide`, also run `hermes skills install iap/hermes-guide/skills/diagnosing-triage`
+(and the selected symptom-specific `diagnosing-*` skill). Adding the tap alone
+does not install the playbooks.
 
 Headless (`hermes -z` / one-shot): name the target skill explicitly, e.g.
 `hermes -z "Use the diagnosing-path skill: …"` — skill auto-discovery does not
