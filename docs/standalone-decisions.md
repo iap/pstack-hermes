@@ -5,8 +5,10 @@ Decisions locked before the standalone refactor touches code. Each entry states 
 > [!NOTE]
 > Status: the converter drop landed (#164, #166). Sections below marked
 > "effective when the converter is dropped" are now in force; historical
-> "until then" framing in §2/§4/§6 describes the pre-drop state and is
-> kept as the decision record, not current instructions.
+> "until then" framing in §2/§3/§4/§6/§7 describes the pre-drop state and
+> is kept as the decision record, not current instructions. §3's
+> distribution gap is closed: publish-dist and release include
+> `package.json`, `bun.lock`, and `scripts/`.
 
 > [!NOTE]
 > This file is hand-written and durable. Later PRs point here instead of re-litigating these calls.
