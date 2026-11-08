@@ -16,11 +16,17 @@ and tells the user where to install it when it is not.
 
 Run `hermes doctor` first and record its output. A passing doctor is one
 data point, not a proof of health — if the reported runtime symptom persists
-(gateway, TUI, MCP, cron, voice, or other scope), continue to step 1.
+(gateway, TUI, MCP, cron, voice, or other scope), continue to step 1. If
+every `hermes` command hangs or fails to start, the Guide router itself
+documents the no-baseline route — name that case and do not spin on the
+preflight.
 
-## 1. If `hermes-guide` is installed
+## 1. If `hermes-guide` is installed (and enabled)
 
-The plugin registers exactly one router skill — `hermes-guide:start` (in
+Check the plugin is enabled (`hermes plugins list` shows `enabled`). A catalog
+install leaves it disabled until `hermes plugins enable hermes-guide`; in that
+disabled state `hermes-guide:start` and `hermes guide` are unavailable, so ask
+the user to enable the plugin before routing. The plugin registers exactly one router skill — `hermes-guide:start` (in
 `.hermes/plugins/hermes-guide/plugin-skills/start/SKILL.md`). Its
 `diagnosing-*` playbooks live in the separate tap, not in that plugin file.
 Load `hermes-guide:start` first (via `skill_view` id
@@ -51,6 +57,11 @@ the plugin is the source of truth.
 - Only hand off after the report shows a host-level symptom that survives
   `hermes doctor`, or `hermes guide` reports `broken`/`unknown`. Returning to
   poteto-mode routing while the symptom still reproduces is a mis-triage.
+- Ownership test: ask whether the defect reproduces with pstack disabled. If
+  it still does (scanner, loader, manifest, scheduler, gateway, CLI handling
+  of valid plugin input), it belongs upstream (`NousResearch/hermes-agent`)
+  even though it surfaced only while this plugin was installed. If it does
+  not, file it here (`iap/pstack-hermes`).
 - If a diagnosis identifies a pstack-side defect (banned construct, missing
   skill, panel mismatch), file it here (`iap/pstack-hermes`) — not upstream.
   Hermes host defects that reproduce with pstack disabled belong to
