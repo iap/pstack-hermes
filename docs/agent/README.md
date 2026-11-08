@@ -6,7 +6,6 @@ Always-on contract: [AGENTS.md](../../AGENTS.md). Open **one** row below.
 |---|---|
 | Unsure which paths are hand-written | [layout.md](layout.md) |
 | Changing package surfaces, assets, bans, skill prose | [convert-adapt.md](convert-adapt.md) |
-| Standalone maintenance (retired upstream drift) | [upstream-drift.md](upstream-drift.md) |
 | Scope and parallel-work discipline | [dev-ops.md](dev-ops.md) |
 | Replying to bot review findings | [review-ops.md](review-ops.md) |
 | Bot review gate, flow, and policy (SSOT) | [bot-reviews.md](bot-reviews.md) |
