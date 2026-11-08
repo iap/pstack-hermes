@@ -194,7 +194,7 @@ jobs:
             if [ -n "$existing" ] && grep -qF '<!-- round-ledger:manual -->' "$existing"; then
               sed -n '/<!-- round-ledger:manual -->/,$p' "$existing" | tail -n +2 >> "$out"
             else
-              printf -- '- <bot> <file:line> — <verdict> (fix/reply/dismiss): <evidence>\n' >> "$out"
+              printf -- '- BOT FILE:LINE — VERDICT (fix/reply/dismiss): EVIDENCE\n' >> "$out"
             fi
           }
 
