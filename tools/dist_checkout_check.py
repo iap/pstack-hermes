@@ -125,6 +125,9 @@ SOURCE_TREE_PATHS = (
     "assets",
     "README.md",
     "LICENSE",
+    "package.json",
+    "bun.lock",
+    "scripts",
     ".build-provenance.txt",
 )
 

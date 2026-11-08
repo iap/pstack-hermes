@@ -401,8 +401,10 @@ def check_phase1(pkg: Path, rep: Report) -> None:
 
     # F16 (retired transform): the converter no longer rewrites these - the
     # checks assert the upstream c47b1284 shapes survive conversion.
-    cp = pkg / "skills" / "poteto-mode" / "scripts" / "check-plan.mjs"
-    if cp.is_file():
+    cp = pkg / "scripts" / "check-plan.mjs"
+    if not cp.is_file():
+        rep.fail("F16: scripts/check-plan.mjs missing at the extracted root location")
+    else:
         cp_text = cp.read_text(encoding="utf-8")
         lanes = ("const LANES = /Ten lanes on `(?=[^`<>]*[^\\s`<>])[^`<>]+`"
                  " at the PR head/;")
@@ -423,8 +425,10 @@ def check_phase1(pkg: Path, rep: Report) -> None:
             rep.fail("F16: multi-phase-plan lost the lane-shape sentence")
 
     # F10-F12: worktree-audit.sh must use portable helpers, no unguarded BSD forms
-    wa = pkg / "skills" / "poteto-mode" / "scripts" / "worktree-audit.sh"
-    if wa.is_file():
+    wa = pkg / "scripts" / "worktree-audit.sh"
+    if not wa.is_file():
+        rep.fail("F10-F12: scripts/worktree-audit.sh missing at the extracted root location")
+    else:
         wa_text = wa.read_text(encoding="utf-8")
         bad = [s for s in ("stat -f '%m %N'", 'date -r "$last_ts"', "awk '/^worktree /{print $2}") if s in wa_text]
         # The GNU/BSD date discriminator must be an output-comparing epoch probe:
