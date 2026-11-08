@@ -1,21 +1,37 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role and at what reasoning budget. Detects your available models and writes a per-role panel beside `config.yaml` in the hermes config directory, outside the plugin tree, so it survives plugin updates. Use for /setup-pstack, "configure pstack models", "pstack budget", or changing pstack's model choices.
+description: Configure which models pstack uses per role and at what reasoning budget, for the default profile or a new poteto profile. Detects your available models and writes a per-role panel beside `config.yaml` in the chosen profile's hermes home, outside the plugin tree, so it survives plugin updates. Use for /setup-pstack, "configure pstack models", "pstack budget", or changing pstack's model choices.
 ---
 
 # Setup pstack
 
-Write `pstack-models.json` in the hermes config directory (next to `config.yaml`: `~/.hermes/` on Linux, `%LOCALAPPDATA%\hermes\` on Windows) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls.
+Write `pstack-models.json` in the chosen profile's hermes home (next to that profile's `config.yaml` — always resolve it as the `Path` reported by `hermes profile show` for that profile, never by appending to `HERMES_HOME`, which points at the profile itself in a named-profile session) - **outside** the plugin directory. pstack replaces the installed package on every `plugins update`, so a panel written inside the plugin tree is silently discarded, while a file beside `config.yaml` survives reinstalls. Profiles are per-device: this skill configures the local hermes install only.
 
 ## Steps
 
+### 0. Choose the profile
+
+Ask first, via `clarify` in the TUI (plain text question outside it). Offer these two options, in this order:
+
+- `default — configure the current profile (recommended)`
+- `poteto — create a new profile named poteto and configure it`
+
+`default` is recommended: the panel applies to the running session immediately, with no new profile, gateway, or alias side effects. `poteto` is an isolated poteto-mode workspace (its own `SOUL.md`, skills, and budget), separate from default.
+
+- **default:** ask the user (via `clarify` in the TUI, plain text when it is unavailable) to confirm which profile this session is running under (bare `hermes profile` reports the sticky profile, not necessarily a `hermes -p` session's profile, so never infer it from that output), then resolve the target home as the `Path` from `hermes profile show <confirmed-profile>`. Continue with the steps below unchanged, operating on that confirmed profile.
+- **poteto, profile does not exist:** ask which existing profile to clone from (via `clarify` in the TUI, plain text when it is unavailable), over `hermes profile list` (the list marker shows the persistently active profile, not necessarily this session's profile, so do not infer the source from it; suggest the profile this TUI session was launched with, or `default`). Then run `hermes profile create poteto --clone-from <chosen-source>` (copies `config.yaml`, `.env`, `SOUL.md`, and skills; messaging bot tokens are left behind), then `hermes profile show poteto` and use its `Path` as the target home. The current session stays on the active profile, so say plainly that the panel applies once the user restarts under the new profile with `hermes -p poteto chat`. Do not offer `hermes profile use poteto` as an alternative: it only changes the default for future invocations and does not switch the running chat. Check skill discovery on the created profile before reporting skills missing: `hermes -p poteto skills list --enabled-only` shows exactly which skills will load for that profile across all routes. Only if `poteto-mode` is unavailable through all routes, tell the user to run `poteto setup` and install skills before expecting poteto-mode playbooks.
+- **poteto, profile already exists:** never delete or recreate it silently, and do not reuse it unasked. Ask (via `clarify` in the TUI, plain text when it is unavailable): `use existing poteto profile (recommended)` or `stop — I will delete it for a fresh one`. On use-existing, target home is its `Path` from `hermes profile show poteto`. If the user wants a fresh poteto profile, stop: tell them to close this session first (deleting the profile you are running under removes its home and locally installed skills), delete it from another session (`hermes profile delete poteto`), and re-run this skill from a profile that has `setup-pstack`.
+- **Target profile readiness (either poteto case):** before writing any panel, verify by name that a panel consumer is discoverable in the target profile — primarily `poteto-mode`, via any supported route: filesystem skills (`hermes -p poteto skills list --enabled-only` lists filesystem skills only, not plugin-registered ones), plugin-registered skills (e.g. `pstack:poteto-mode` when pstack is installed as a plugin — check via `hermes -p poteto plugins list` that pstack is enabled **and** that the `pstack:poteto-mode` skill itself is enabled, since an enabled plugin can still have that skill disabled), or `skills.external_dirs` pointing at a pstack skill tree. Do not require `setup-pstack` itself in the target — the current session writes the panel without it. If `poteto-mode` is missing but another panel consumer (e.g. `why`) is discoverable, allow setup and warn that `poteto-mode` is missing. If the listing shows the consumer only with a `project` source, tell the user it is project-scoped and will not follow them to other directories until a profile-wide copy is installed. Stop only when no panel consumer is discoverable there at all, and tell the user to install/enable pstack in that profile first — do not write an orphan panel that no playbook will read.
+
+Every later step in this skill (load current state, write the config, confirm) operates on the target profile chosen here, not necessarily the active session's profile.
+
 ### 1. Detect available models
 
-Enumerate the model slugs available in this session (the configured providers' catalog); that is the dependable source. If you cannot detect any, ask the user via `clarify` to paste the slugs they have access to. Never write a real slug you have not confirmed is available. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic).
+Enumerate the model slugs available in the **target profile** (step 0), not just this session: when the target differs from the active session, detect under it (`hermes -p poteto ...` reads that profile's providers/credentials; its catalog is the dependable source). Catalog presence alone is not confirmed access: accept a real slug only when access under the target profile's credentials is established; otherwise ask the user via `clarify` to confirm access in that profile or choose `inherit-parent`. If you cannot detect any for the target, ask the user to paste the slugs they have access to in that profile. Never write a real slug you have not confirmed is available in the target profile — a slug valid in the active session may be unavailable after `hermes -p poteto chat` loads the target's configuration. `inherit-parent` is always valid even though it is not a detected slug (hermes has no Cursor-style `auto` selector; the parent chat model IS the inherit-parent semantic).
 
 ### 2. Load current state
 
-The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the hermes config directory, read it and treat its `budget` entry and its role values as the current choices. Otherwise start from these defaults. Do NOT try to recover an older in-package `config/models.json`: a plugin update replaces that file with the shipped default before this skill runs, so anything found there is the default rather than the user's saved choices, and copying it forward would silently discard their configuration. If they expected a configuration to still be there, tell them plainly that an update overwrote it and ask them to re-run setup-pstack. A line whose role is not in step 5 is from a retired role. Drop it.
+The default role-to-model mapping is the shape shown in step 5 below. If `pstack-models.json` already exists in the target profile's home (step 0), read it and treat its `budget` entry and its role values as the current choices. Otherwise start from these defaults. Do NOT try to recover an older in-package `config/models.json`: a plugin update replaces that file with the shipped default before this skill runs, so anything found there is the default rather than the user's saved choices, and copying it forward would silently discard their configuration. If they expected a configuration to still be there, tell them plainly that an update overwrote it and ask them to re-run setup-pstack. A line whose role is not in step 5 is from a retired role. Drop it.
 
 ### 3. Budget, map, and confirm
 
@@ -32,11 +48,11 @@ The default role-to-model mapping is the shape shown in step 5 below. If `pstack
 
 ### 4. Validate
 
-Every real slug written must be in the detected set; `inherit-parent` always passes. If a chosen real slug is not available, stop and ask again.
+Every real slug written must be in the eligible set: the detected slugs for the target profile, plus any slugs the user explicitly provided after detection (step 1) — add those user-provided slugs to the eligible set rather than rejecting them as undetected. `inherit-parent` always passes. If a chosen real slug is in neither set, stop and ask again.
 
 ### 5. Write the config
 
-Write `pstack-models.json` in the hermes config directory (next to `config.yaml`), never inside the plugin directory - a panel stored with the package is lost on the next `plugins update`. One entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+Write `pstack-models.json` in the target profile's home (step 0, next to that profile's `config.yaml`), never inside the plugin directory - a panel stored with the package is lost on the next `plugins update`. One entry per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
 
 ```json
 {
@@ -67,7 +83,7 @@ Panel roles (how critics, arena runners, arena cross-judge pool, architect runne
 
 ### 6. Confirm
 
-Tell the user the rule was written and that it applies to new sessions. Re-running this skill updates it.
+Tell the user the rule was written for the target profile (name it) and that it applies to new sessions under that profile. If the target is a `poteto` profile the current session is not running under, add the restart command (`hermes -p poteto chat`). Re-running this skill updates it.
 
 ### 7. Offer a verification skill (optional)
 
