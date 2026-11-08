@@ -142,9 +142,7 @@ if (args === "--no-interactive log short --stack --reverse") {
 }
 `
   );
-  await writeFile(join(bin, "gt"), `#!/usr/bin/env node
-import ${JSON.stringify(fake)};
-`);
+  await writeFile(join(bin, "gt"), `#!/bin/sh\nexec node ${JSON.stringify(fake)} "$@"\n`);
   await writeFile(join(bin, "gt.cmd"), `@echo off\nnode "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gt"), 0o755);
 
@@ -192,9 +190,7 @@ if (args === "pr list --state all --json number,headRefName,baseRefName,state --
 }
 `
   );
-  await writeFile(join(bin, "gh"), `#!/usr/bin/env node
-import ${JSON.stringify(fake)};
-`);
+  await writeFile(join(bin, "gh"), `#!/bin/sh\nexec node ${JSON.stringify(fake)} "$@"\n`);
   await writeFile(join(bin, "gh.cmd"), `@echo off\nnode "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gh"), 0o755);
 
