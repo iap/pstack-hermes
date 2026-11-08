@@ -172,8 +172,7 @@ one has already caught (or would have caught) a real defect here.
 ### Standalone maintenance
 
 There is no upstream re-pin. See
-[docs/agent/upstream-drift.md](docs/agent/upstream-drift.md) (retired
-pointer) and [docs/standalone-decisions.md](docs/standalone-decisions.md).
+[docs/standalone-decisions.md](docs/standalone-decisions.md).
 The build prologue lives once, in the `.github/actions/build-package`
 composite action, shared by `ci.yml`, `release.yml` and
 `publish-dist.yml`.
