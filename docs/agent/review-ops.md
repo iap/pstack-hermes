@@ -303,6 +303,9 @@ Right   <sha>: accepted. main counted import-failed as available, so a loader
 Keep **one** PR comment updated per round: head SHA, bot verdict(s), open
 findings, action (fix / reply / dismiss), status. It prevents re-triaging the
 same root cause across rounds and gives the maintainer a merge checklist.
+Write the triage rows (one per finding, `<bot> <file:line> — <verdict>:
+<evidence>`) in the same round you triage the threads; the seeded template
+row is a starting point, not a state to leave in place.
 
 `.github/workflows/round-ledger.yml` maintains the **machine block** of this
 comment automatically: head SHA, CI check rollup, CodeRabbit check bucket,
