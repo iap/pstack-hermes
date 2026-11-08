@@ -44,11 +44,14 @@ ROOT_TOOLING_DIRS: frozenset[str] = frozenset({"tools", "docs", ".github", ".git
 # Scanning is allowlist-based: only files under these entries are package content.
 # Everything else in a checkout (tools/, docs/, .github/, scratch dumps, ...) is
 # repo tooling and must not be scanned as if it were package content. Root
-# tooling (`scripts/`, `package.json`, `bun.lock` for @iap/poteto-mode) ships in the
-# dist payload too, so it is scanned as well; node_modules stays excluded.
+# tooling (`scripts/`, `package.json`, `bun.lock`, `package-lock.json` for
+# @iap/poteto-mode) ships in the dist payload too, so it is scanned as well;
+# node_modules stays excluded. package-lock.json is the npm-side dual lock
+# for hermes' npm ci sidecar (#169); bun.lock stays the bun source.
 PACKAGE_TOP_LEVEL: frozenset[str] = frozenset({
     "plugin.json", "README.md", "LICENSE", ".build-provenance.txt",
     "skills", "config", "assets", "scripts", "package.json", "bun.lock",
+    "package-lock.json",
 })
 
 

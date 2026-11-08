@@ -75,6 +75,7 @@ jobs:
             assets/
             package.json
             bun.lock
+            package-lock.json
             scripts/
           include-hidden-files: true
           # Short retention: verify-determinism consumes these within minutes;
@@ -161,6 +162,12 @@ jobs:
 
       - name: Lint (ruff)
         run: uv run --frozen ruff check tools
+
+      # Dual-lock gate (#169): hermes installs Node deps via npm ci, so the
+      # shipped package-lock.json must match package.json. A bun-only bump
+      # that desyncs them fails here instead of breaking plugin updates.
+      - name: Dual lockfile matches package.json (npm ci dry-run)
+        run: npm ci --dry-run --ignore-scripts
 
       - name: Unit tests (pytest)
         run: uv run --frozen pytest -q

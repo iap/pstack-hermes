@@ -120,6 +120,9 @@ CHANGELOG.md records the shipped changes.
 
 ## Known limitations (documented, not drift)
 
+- Node tooling ships dual lockfiles (`bun.lock` + `package-lock.json`) so
+  hermes' `npm ci` sidecar works on install and update (#169). Bun bumps
+  must regenerate both locks; CI fails a desynced pair.
 - `deslop`, `control-ui`, `control-cli` are named by playbooks but ship
   outside this package; a verdict without its demanded live lane is
   incomplete, not clean. (`no-comments`, `unslop`, `technical-writing` ship.)

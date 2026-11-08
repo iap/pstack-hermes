@@ -147,7 +147,7 @@ jobs:
           # Ignore dist-only compatibility metadata when comparing the package.
           rm -rf "$published/.github" "$published/.gitattributes"
           mkdir -p "$RUNNER_TEMP/release-built"
-          cp -a plugin.json skills config README.md LICENSE package.json bun.lock scripts "$RUNNER_TEMP/release-built"
+          cp -a plugin.json skills config README.md LICENSE package.json bun.lock package-lock.json scripts "$RUNNER_TEMP/release-built"
           if [ -d assets ]; then cp -a assets "$RUNNER_TEMP/release-built/"; fi
           diff -qr "$RUNNER_TEMP/release-built" "$published"
           echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
@@ -155,7 +155,7 @@ jobs:
 
       - name: Package plugin
         run: |
-          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE package.json bun.lock scripts/; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE package.json bun.lock scripts/; fi
+          if [ -d assets ]; then zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ assets/ README.md LICENSE package.json bun.lock package-lock.json scripts/; else zip -r pstack-"${TAG_NAME}".zip plugin.json skills/ config/ README.md LICENSE package.json bun.lock package-lock.json scripts/; fi
           sha256sum pstack-"${TAG_NAME}".zip > SHA256SUMS
         env:
           TAG_NAME: ${{ inputs.tag }}

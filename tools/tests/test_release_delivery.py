@@ -52,6 +52,7 @@ def test_release_requires_matching_payload(tmp_path, payload_changed, expected):
     (remote / 'LICENSE').write_text('license')
     (remote / 'package.json').write_text('{"name":"@iap/poteto-mode","private":true}')
     (remote / 'bun.lock').write_text('lock')
+    (remote / 'package-lock.json').write_text('{"name":"@iap/poteto-mode","lockfileVersion":3,"packages":{"":{"name":"@iap/poteto-mode","version":"0.0.0"}}}')
     (remote / 'scripts').mkdir()
     (remote / 'scripts' / 'orch.ts').write_text('orch')
     (remote / 'skills').mkdir()
