@@ -31,6 +31,11 @@ tooling:
       - any-glob-to-any-file: "pyproject.toml"
       - any-glob-to-any-file: "uv.lock"
       - any-glob-to-any-file: ".python-version"
+      - any-glob-to-any-file: "scripts/**"
+      - any-glob-to-any-file: "package.json"
+      - any-glob-to-any-file: "bun.lock"
+      - any-glob-to-any-file: "package-lock.json"
+      - any-glob-to-any-file: "keys/**"
 
 documentation:
   - changed-files:
