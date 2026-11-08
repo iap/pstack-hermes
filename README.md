@@ -115,7 +115,8 @@ Hermes-native only; for real Cursor-side work install upstream pstack.
 | G1 | delegation escape hatch: in-thread surgical edits with mandatory delegate review |
 
 Text is otherwise unchanged; the pass ledger with reviewer checks lives in
-issue #94, and CHANGELOG.md records the shipped changes.
+[issue #94](https://github.com/iap/pstack-hermes/issues/94), and
+CHANGELOG.md records the shipped changes.
 
 ## Known limitations (documented, not drift)
 
