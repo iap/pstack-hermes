@@ -49,8 +49,10 @@ distribution of this package.
   upstream pstack material. No separate copyright or license
   grant for the port additions is recorded in LICENSE.
 - Deliberate exclusions from the shipped package, per the install
-  scanner contract enforced by tools/validate.py (banned content via
-  tools/bans.py and tools/scanner_gate.py):
+  scanner contract: directory exclusions are enforced by
+  tools/validate.py (F-publish checks); banned content is enforced by
+  tools/scanner_gate.py in CI, sharing definitions with
+  tools/bans.py:
   automations/benny/ and skills/make-bot-ui/ are not shipped.
   The make-bot-ui slot is filled by the Hermes-native hermesbot
   skill (skills/hermesbot/SKILL.md).
