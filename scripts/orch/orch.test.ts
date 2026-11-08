@@ -141,9 +141,9 @@ if (args === "--no-interactive log short --stack --reverse") {
   process.exit(2);
 }
 `);
-  const fakeRel = "fake.mjs";
-  await writeFile(join(bin, "gt"), `#!/bin/sh\nexec bun "$(dirname "$0")/${fakeRel}" "$@"\n`);
-  await writeFile(join(bin, "gt.cmd"), `@echo off\nbun "%~dp0\\${fakeRel}" %*\n`);
+  const runtime = JSON.stringify(process.execPath);
+  await writeFile(join(bin, "gt"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
+  await writeFile(join(bin, "gt.cmd"), `@echo off\n${runtime} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gt"), 0o755);
 
   const originalPath = process.env.PATH;
@@ -188,9 +188,10 @@ if (args === "pr list --state all --json number,headRefName,baseRefName,state --
   console.error(\`unexpected gh arguments: \${args}\`);
   process.exit(2);
 }
-`);
-  await writeFile(join(bin, "gh"), `#!/bin/sh\nexec bun "$(dirname "$0")/fake.mjs" "$@"\n`);
-  await writeFile(join(bin, "gh.cmd"), `@echo off\nbun "%~dp0\\fake.mjs" %*\n`);
+`  );
+  const runtime = JSON.stringify(process.execPath);
+  await writeFile(join(bin, "gh"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
+  await writeFile(join(bin, "gh.cmd"), `@echo off\n${runtime} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gh"), 0o755);
 
   const originalPath = process.env.PATH;
