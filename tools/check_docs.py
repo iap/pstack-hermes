@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """Docs drift gate for the hand-written instructions.
 
-The package is generated, so `validate.py` keeps it honest. The *docs* have no
-such gate, and they have already drifted once: the root-layout migration left
-`AGENTS.md` and `CONTRIBUTING.md` describing a `pstack/` subdirectory that no
-longer exists. This tool checks the facts that actually broke:
+The package is hand-written source, so `validate.py` keeps it honest. The
+*docs* have no such gate, and they have already drifted once: the root-layout
+migration left `AGENTS.md` and `CONTRIBUTING.md` describing a `pstack/`
+subdirectory that no longer exists. This tool checks the facts that actually
+broke:
 
 1. Router links in `AGENTS.md` / `docs/agent/README.md` resolve.
-2. `docs/agent/layout.md` classifies generated vs hand-written paths the same
-   way `.gitattributes` does (this is how `README.md` was mislabelled).
-3. Every doc paragraph that lists `UPSTREAM_PIN` workflows lists exactly
-   `tools/check_pins.py::REQUIRED_DECLARERS`.
-4. Hand-written docs (plus the generated `README.md`) carry no stale
+2. `docs/agent/layout.md` classifies hand-written paths the same way
+   `.gitattributes` does.
+3. Hand-written docs (plus `README.md`) carry no stale
    package-subdirectory paths (`pstack/skills/`, `pstack/config/`,
    `$PWD/pstack`, ...).
-5. `publish-dist.yml` copies only paths that exist in the tree (the dropped
+4. `publish-dist.yml` copies only paths that exist in the tree (the dropped
    `after-install.md` would have failed every master publish).
-6. Install docs (`README.md`, `docs/USING.md`) do not resurrect the dead
+5. Install docs (`README.md`, `docs/USING.md`) do not resurrect the dead
    `master` subdirectory install route.
 
 Exit codes: 0 clean; 1 drift found; 2 unreadable input.
