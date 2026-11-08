@@ -15,7 +15,7 @@
 
 ## What you installed
 
-A **method package**: 47 instructions-for-the-agent skills (24 workflow/mode +
+A **method package**: 49 instructions-for-the-agent skills (26 workflow/mode +
 23 `principle-*`) plus the validator tooling that keeps them honest. It is
 not a service, a daemon, or an autopilot — it changes how the agent works
 on a task you give it.
@@ -71,6 +71,17 @@ incomplete when `gt` is unavailable rather than inventing a substitute.
 - **The agent follows playbooks, not the docs.** Your leverage is in the task
   statement and in the gates the playbooks impose (verification, decision
   trails) — not in re-reading instructions.
+
+## Hermes troubleshooting
+
+If Hermes itself misbehaves (gateway down, TUI slow, MCP not loading, or a
+diagnostic points at the host, not at this plugin), load `hermes-troubleshooting`.
+When `hermes-guide` is installed it routes — via `diagnosing-triage` — to the
+matching `diagnosing-*` skill (`diagnosing-path`, `diagnosing-gateway`,
+`diagnosing-runtime`, …). When it is not installed, install it with
+`hermes plugins install iap/hermes-guide --enable` (its `requires_hermes`
+floor applies), or use `hermes guide` directly. This avoids copying the
+upstream diagnosing suite into `pstack`.
 - **External prerequisites stay external.** Some playbooks name tooling this
   package does not ship (a deslop pass, live control-surface drivers) and some
   capabilities are approximated for hermes (see the package README's Known
