@@ -9,7 +9,7 @@ or re-pin step. Full instruction audit: #159.
 ## Work loop
 
 ```sh
-uv sync --frozen
+uv sync --locked
 # 1. Edit the package surfaces directly (plugin.json, skills/, config/,
 #    assets/, README.md, LICENSE), plus tools/, docs/, …
 # 2. Must exit 0:
