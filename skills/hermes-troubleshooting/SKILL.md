@@ -39,7 +39,9 @@ fire there.
 
 Ask the user to install `iap/hermes-guide` (`hermes plugins install iap/hermes-guide --enable`,
 `requires_hermes >=0.21`), plus its tap for the `diagnosing-*` playbooks
-(`hermes skills tap add iap/hermes-guide` — see the plugin docs). `hermes guide`
+(`hermes skills tap add iap/hermes-guide`, then `hermes skills install
+iap/hermes-guide/skills/diagnosing-triage` and the selected symptom-specific
+skill — adding the tap alone does not install playbooks; see §1). `hermes guide`
 is a Guide plugin command too, so do not suggest it until the plugin is
 installed and enabled. Do not copy the 22 diagnosing skills into this package —
 the plugin is the source of truth.

@@ -76,11 +76,12 @@ incomplete when `gt` is unavailable rather than inventing a substitute.
 
 If Hermes itself misbehaves (gateway down, TUI slow, MCP not loading, or a
 diagnostic points at the host, not at this plugin), load `hermes-troubleshooting`.
-When `hermes-guide` is installed it routes — via `diagnosing-triage` — to the
-matching `diagnosing-*` skill (`diagnosing-path`, `diagnosing-gateway`,
-`diagnosing-runtime`, …). When it is not installed, install it with
+When `hermes-guide` is installed it routes — via `hermes-guide:start` and
+`hermes guide` — to the matching `diagnosing-*` skill (`diagnosing-path`,
+`diagnosing-gateway`, `diagnosing-runtime`, …). When it is not installed, install it with
 `hermes plugins install iap/hermes-guide --enable` (its `requires_hermes`
-floor applies), or use `hermes guide` directly. This avoids copying the
+floor applies) plus its tap (`hermes skills tap add iap/hermes-guide` + `hermes skills install
+iap/hermes-guide/skills/diagnosing-triage`). This avoids copying the
 upstream diagnosing suite into `pstack`.
 - **External prerequisites stay external.** Some playbooks name tooling this
   package does not ship (a deslop pass, live control-surface drivers) and some
