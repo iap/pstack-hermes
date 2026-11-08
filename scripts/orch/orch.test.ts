@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import {
   NotFoundError,
   UserError,
@@ -117,39 +117,39 @@ async function withFakeGt<T>({
   const outputPath = join(directory, "gt-output.txt");
   await mkdir(bin);
   await writeFile(outputPath, output);
-  const gt = join(bin, "gt");
+  const repoReal = realpathSync(join(directory, "repo"));
+  const fake = join(bin, "fake.mjs");
   await writeFile(
-    gt,
-    `#!/usr/bin/env bash
-set -euo pipefail
-if [ "$(pwd -P)" != "${realpathSync(join(directory, "repo"))}" ]; then
-  printf 'gt ran outside the fixture repo: %s\\n' "$(pwd -P)" >&2
-  exit 2
-fi
-case "$*" in
-  "--no-interactive log short --stack --reverse")
-    cat "${outputPath}"
-    ;;
-  "--no-interactive info stack/merged")
-    printf 'stack/merged\\nPR #10 (Merged) merged change\\n'
-    ;;
-  "--no-interactive info stack/closed")
-    printf 'stack/closed\\nPR #13 (Closed) closed change\\n'
-    ;;
-  "--no-interactive info stack/open")
-    printf 'stack/open\\nPR #11 (Needs approvals) open change\\n'
-    ;;
-  *)
-    printf 'unexpected gt arguments: %s\\n' "$*" >&2
-    exit 2
-    ;;
-esac
-`
-  );
-  await chmod(gt, 0o755);
+    fake,
+    `import { readFileSync } from "node:fs";
+const args = process.argv.slice(2).join(" ");
+const cwd = process.cwd();
+if (cwd !== ${JSON.stringify(repoReal)}) {
+  console.error(\`gt ran outside the fixture repo: \${cwd}\`);
+  process.exit(2);
+}
+if (args === "--no-interactive log short --stack --reverse") {
+  process.stdout.write(readFileSync(${JSON.stringify(outputPath)}, "utf8"));
+} else if (args === "--no-interactive info stack/merged") {
+  process.stdout.write("stack/merged\\nPR #10 (Merged) merged change\\n");
+} else if (args === "--no-interactive info stack/closed") {
+  process.stdout.write("stack/closed\\nPR #13 (Closed) closed change\\n");
+} else if (args === "--no-interactive info stack/open") {
+  process.stdout.write("stack/open\\nPR #11 (Needs approvals) open change\\n");
+} else {
+  console.error(\`unexpected gt arguments: \${args}\`);
+  process.exit(2);
+}
+`);
+  const runtime = JSON.stringify(process.execPath);
+  const runtimeCmd = runtime.replace(/%/g, "%%");
+  await writeFile(join(bin, "gt"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
+  await writeFile(join(bin, "gt.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
+  await chmod(join(bin, "gt"), 0o755);
+  await chmod(join(bin, "gt.cmd"), 0o755);
 
   const originalPath = process.env.PATH;
-  process.env.PATH = `${bin}:${originalPath ?? ""}`;
+  process.env.PATH = `${bin}${delimiter}${originalPath ?? ""}`;
   try {
     return await operation(outputPath);
   } finally {
@@ -179,26 +179,27 @@ async function withFakeGh<T>({
   const outputPath = join(directory, "gh-prs.json");
   await mkdir(bin);
   await writeFile(outputPath, JSON.stringify(pullRequests));
-  const gh = join(bin, "gh");
+  const fake = join(bin, "fake.mjs");
   await writeFile(
-    gh,
-    `#!/usr/bin/env bash
-set -euo pipefail
-case "$*" in
-  "pr list --state all --json number,headRefName,baseRefName,state --limit 100")
-    cat "${outputPath}"
-    ;;
-  *)
-    printf 'unexpected gh arguments: %s\n' "$*" >&2
-    exit 2
-    ;;
-esac
-`
-  );
-  await chmod(gh, 0o755);
+    fake,
+    `import { readFileSync } from "node:fs";
+const args = process.argv.slice(2).join(" ");
+if (args === "pr list --state all --json number,headRefName,baseRefName,state --limit 100") {
+  process.stdout.write(readFileSync(${JSON.stringify(outputPath)}, "utf8"));
+} else {
+  console.error(\`unexpected gh arguments: \${args}\`);
+  process.exit(2);
+}
+`  );
+  const runtime = JSON.stringify(process.execPath);
+  const runtimeCmd = runtime.replace(/%/g, "%%");
+  await writeFile(join(bin, "gh"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
+  await writeFile(join(bin, "gh.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
+  await chmod(join(bin, "gh"), 0o755);
+  await chmod(join(bin, "gh.cmd"), 0o755);
 
   const originalPath = process.env.PATH;
-  process.env.PATH = `${bin}:${originalPath ?? ""}`;
+  process.env.PATH = `${bin}${delimiter}${originalPath ?? ""}`;
   try {
     return await operation();
   } finally {
@@ -385,7 +386,7 @@ describe("Store", () => {
 
   it("replaces a stale lock whose holder pid is dead", async () => {
     const { directory } = await initializedStore();
-    const exited = Bun.spawn(["true"]);
+    const exited = Bun.spawn([process.execPath, "-e", "process.exit(0)"]);
     await exited.exited;
     await writeFile(join(directory, ".orch.lock"), `${exited.pid}\n`);
 
