@@ -38,10 +38,10 @@ converter was retired in #156 — there is no rebuild step.
 ## Setup
 
 ```sh
-uv sync --locked                          # pinned CPython 3.11 + dev group (pyyaml, pytest, ruff)
-uv run --frozen tools/validate.py         # must exit 0 before you start
-uv run --frozen pytest -q                 # unit tests for the tooling
-uv run --frozen ruff check tools          # lint
+uv sync --locked && \\                     # pinned CPython 3.11 + dev group (pyyaml, pytest, ruff)
+uv run --frozen tools/validate.py && \\    # must exit 0 before you start
+uv run --frozen pytest -q && \\            # unit tests for the tooling
+uv run --frozen ruff check tools && \\     # lint
 uv run --frozen python tools/check_docs.py  # docs drift gate
 ```
 
