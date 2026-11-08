@@ -87,8 +87,8 @@ def run_case(case: dict, hermes: str = "hermes") -> tuple[str, list[str]]:
         env = {**os.environ, "HERMES_HOME": str(home)}
         try:
             seed_home(home, active_home if active_home.is_dir() else None)
-        except RuntimeError as exc:
-            return "error", [str(exc)]
+        except Exception as exc:  # malformed YAML, non-mapping config, bad skills shape
+            return "error", [f"seed error: {exc}"]
         try:
             proc = subprocess.run(
                 [hermes, "-z", case["prompt"], "--skills", case.get("skill", "")],
