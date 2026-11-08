@@ -166,7 +166,10 @@ one has already caught (or would have caught) a real defect here.
 2. Create a tracking issue recording the scope and **reviewer check**.
 3. If the change has a checkable scope, add a unit test
    (`tools/tests/` holds the patterns).
-4. `uv run --frozen tools/validate.py` and the full local suite, then PR with
+4. Bump `plugin.json` version and add a `CHANGELOG.md` entry in the same
+   PR (standalone versioning policy in
+   [docs/standalone-decisions.md](docs/standalone-decisions.md)).
+5. `uv run --frozen tools/validate.py` and the full local suite, then PR with
    the edited tree.
 
 ### Standalone maintenance
