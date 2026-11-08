@@ -51,7 +51,7 @@ Everything below follows from that rule.
 
 | If you need to… | Read |
 |---|---|
-| Know which paths are generated vs hand-written | [docs/agent/layout.md](docs/agent/layout.md) |
+| Know which paths are hand-written | [docs/agent/layout.md](docs/agent/layout.md) |
 | Adapt package surfaces, bans, verify | [docs/agent/convert-adapt.md](docs/agent/convert-adapt.md) |
 | Standalone decisions (identity, versioning, provenance) | [docs/standalone-decisions.md](docs/standalone-decisions.md) |
 | Scope and parallel-work discipline | [docs/agent/dev-ops.md](docs/agent/dev-ops.md) |
