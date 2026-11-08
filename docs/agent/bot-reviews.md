@@ -190,7 +190,7 @@ the author.
 
 | Bot nudge | Contract response |
 |---|---|
-| Hand-edit `skills/` / `config/` / package README outside the package surfaces' scope | Edit the package surfaces directly (hand-written source since #156) |
+| Hand-edit `skills/` / `config/` / package README outside the task scope | Land the edit as its own scoped change (surfaces are hand-written source since #156) |
 | Reintroduce Cursor tool names | Banned — use Hermes vocabulary |
 | Clean up / modernize attribution or re-add excluded `benny` / `make-bot-ui` | Leave as-is (scanner / publisher contract) |
 | Implement GitLab stack provider because docs mention `glab` | Halted |
