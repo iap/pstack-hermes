@@ -14,12 +14,13 @@ and tells the user where to install it when it is not.
 
 ## 0. Preflight
 
-Run `hermes doctor` first and record its output. A passing doctor is one
-data point, not a proof of health — if the reported runtime symptom persists
-(gateway, TUI, MCP, cron, voice, or other scope), continue to step 1. If
-every `hermes` command hangs or fails to start, the Guide router itself
-documents the no-baseline route — name that case and do not spin on the
-preflight.
+Run `hermes doctor` once (bounded — 60s) and record its output. A passing
+doctor is one data point, not a proof of health — if the reported runtime
+symptom persists (gateway, TUI, MCP, cron, voice, or other scope), continue
+to step 1. If `hermes doctor` fails or times out, name that fact and hand off
+to `hermes-guide:start` (or the install route when the plugin is missing)
+without spinning on the preflight — the Guide's no-baseline route covers the
+CLI-unreachable case.
 
 ## 1. If `hermes-guide` is installed (and enabled)
 

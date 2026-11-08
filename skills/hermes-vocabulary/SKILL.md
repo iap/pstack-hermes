@@ -29,7 +29,7 @@ described, not quoted, so this file itself stays ban-clean.
 | `goal.md` in agent store | armed Cursor `/goal` |
 | `hermesbot` | `grokbot` / `make-bot-ui` / Tailscale bot |
 | `skill_manage` (local/tap only) | Cursor skill-creation primitive |
-| panel from `tools/assets/model-panel.json` (source) | hand-tuned shipped `config/models.json` |
+| Customize the active panel via `setup-pstack` (profile panel beside `config.yaml`) | hand-tuned shipped `config/models.json` |
 
 Tool names: `search_files` for `Glob`/`Grep`, `read_file` for `Read`.
 
