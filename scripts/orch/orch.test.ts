@@ -196,6 +196,7 @@ if (args === "pr list --state all --json number,headRefName,baseRefName,state --
   await writeFile(join(bin, "gh"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
   await writeFile(join(bin, "gh.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gh"), 0o755);
+  await chmod(join(bin, "gh.cmd"), 0o755);
 
   const originalPath = process.env.PATH;
   process.env.PATH = `${bin}${delimiter}${originalPath ?? ""}`;
