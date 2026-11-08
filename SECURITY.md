@@ -31,7 +31,7 @@ Report it here.
 | `make-bot-ui` and `automations/benny` are missing | Excluded deliberately: their installer / copy-instruction patterns hard-block the community-source install scanner. The make-bot-ui slot is filled by the hermes-native `hermesbot` skill. |
 | Skills say `delegate_task`, `clarify`, `session_search`, `hermes cron`, or `goal.md` where Cursor docs say Task / AskQuestion / transcript files / `/loop` / `/goal` | Port adaptation passes (T6–T12). The Cursor originals do not exist on hermes. |
 | `config/models.json` panel and `inherit-parent` defaults | Port-local configuration written by `setup-pstack`. A bad or unresolvable model slug here is a local configuration problem. |
-| The package no longer matches upstream pstack file-for-file | Expected. See the differences contract in the package README and the pass ledger in CHANGELOG.md. |
+| The package no longer matches upstream pstack file-for-file | Expected. See the differences contract in the package README and the pass ledger with reviewer checks in issue #94. |
 | Plan-checker marker, ban list, validator behavior | This repository's own tooling (`tools/`) — report here. |
 
 ### Where to report what
