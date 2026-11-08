@@ -63,8 +63,8 @@ def seed_home(home: Path, active_home: Path | None) -> None:
                 shutil.copy2(src, home / name)
     try:
         import yaml
-    except ImportError:
-        return
+    except ImportError as exc:
+        raise RuntimeError("PyYAML is required to register checkout skills") from exc
     data = {}
     if config.is_file():
         data = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
@@ -84,8 +84,11 @@ def run_case(case: dict, hermes: str = "hermes") -> tuple[str, list[str]]:
         home = Path(td) / "home"
         project = Path(td) / "project"
         project.mkdir(parents=True)
-        seed_home(home, active_home if active_home.is_dir() else None)
         env = {**os.environ, "HERMES_HOME": str(home)}
+        try:
+            seed_home(home, active_home if active_home.is_dir() else None)
+        except RuntimeError as exc:
+            return "error", [str(exc)]
         try:
             proc = subprocess.run(
                 [hermes, "-z", case["prompt"], "--skills", case.get("skill", "")],
