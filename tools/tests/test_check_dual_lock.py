@@ -31,3 +31,19 @@ def test_dual_lock_mismatch(tmp_path):
     code, problems = check(tmp_path)
     assert code == 1
     assert any("commander" in line for line in problems)
+
+
+def test_dual_lock_scoped_package(tmp_path):
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {"@scope/pkg": "1.2.3"}}), encoding="utf-8"
+    )
+    (tmp_path / "bun.lock").write_text(
+        '"@scope/pkg": ["@scope/pkg@1.2.3", ""],\n', encoding="utf-8"
+    )
+    (tmp_path / "package-lock.json").write_text(
+        json.dumps({"packages": {"node_modules/@scope/pkg": {"version": "1.2.3"}}}),
+        encoding="utf-8",
+    )
+    code, problems = check(tmp_path)
+    assert code == 0
+    assert problems == []

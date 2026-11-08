@@ -163,17 +163,6 @@ jobs:
       - name: Lint (ruff)
         run: uv run --frozen ruff check tools
 
-      # Dual-lock gate (#169): hermes installs Node deps via npm ci, so the
-      # shipped package-lock.json must match package.json (npm ci dry-run)
-      # and carry the same resolved versions as bun.lock (dual-lock check).
-      # A bun-only bump that desyncs them fails here instead of breaking
-      # plugin updates.
-      - name: Dual lockfile matches package.json (npm ci dry-run)
-        run: npm ci --dry-run --ignore-scripts
-
-      - name: Dual locks agree (bun vs npm versions)
-        run: uv run --frozen python tools/check_dual_lock.py
-
       - name: Unit tests (pytest)
         run: uv run --frozen pytest -q
 

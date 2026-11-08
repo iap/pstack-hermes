@@ -38,8 +38,13 @@ def npm_versions(root: Path) -> dict[str, str]:
     lock = json.loads((root / "package-lock.json").read_text(encoding="utf-8"))
     out: dict[str, str] = {}
     for key, entry in lock.get("packages", {}).items():
-        if key.startswith("node_modules/") and "/" not in key[len("node_modules/"):]:
-            out[key[len("node_modules/"):]] = entry.get("version", "")
+        if not key.startswith("node_modules/"):
+            continue
+        name = key[len("node_modules/"):]
+        # Root entries are either "pkg" or "@scope/pkg" (one slash for a
+        # scoped name); nested node_modules entries carry more segments.
+        if name.count("/") <= (1 if name.startswith("@") else 0):
+            out[name] = entry.get("version", "")
     return out
 
 
