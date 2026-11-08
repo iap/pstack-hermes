@@ -17,10 +17,9 @@ and tells the user where to install it when it is not.
 Run `hermes doctor` once (bounded — 60s) and record its output. A passing
 doctor is one data point, not a proof of health — if the reported runtime
 symptom persists (gateway, TUI, MCP, cron, voice, or other scope), continue
-to step 1. If `hermes doctor` fails or times out, name that fact and hand off
-to `hermes-guide:start` (or the install route when the plugin is missing)
-without spinning on the preflight — the Guide's no-baseline route covers the
-CLI-unreachable case.
+to step 1. If `hermes doctor` fails or times out, ask the user to
+confirm / re-run it, and route from the reported symptom alone — do not
+keep re-running the same command through the local terminal without stdin.
 
 ## 1. If `hermes-guide` is installed (and enabled)
 
