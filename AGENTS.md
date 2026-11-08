@@ -56,6 +56,7 @@ Everything below follows from that rule.
 | Standalone decisions (identity, versioning, provenance) | [docs/standalone-decisions.md](docs/standalone-decisions.md) |
 | Scope and parallel-work discipline | [docs/agent/dev-ops.md](docs/agent/dev-ops.md) |
 | Reply to CodeRabbit / Qodo findings | [docs/agent/review-ops.md](docs/agent/review-ops.md) |
+| Bot review gate, flow, and policy (SSOT) | [docs/agent/bot-reviews.md](docs/agent/bot-reviews.md) |
 | Setup, CI/Actions policy, PR, release | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Invoke or configure the installed package | [docs/USING.md](docs/USING.md) |
 
@@ -65,10 +66,10 @@ a focused file under `docs/agent/`. Do not grow this file.
 ## Verify
 
 ```sh
-uv sync
-uv run --frozen tools/validate.py
-uv run --frozen pytest -q
-uv run --frozen ruff check tools
+uv sync --locked && \
+uv run --frozen tools/validate.py && \
+uv run --frozen pytest -q && \
+uv run --frozen ruff check tools && \
 uv run --frozen python tools/check_docs.py
 ```
 
@@ -81,7 +82,7 @@ Install-relevant changes (manifest, skill discovery, package layout) also run
 - branch-local tree, from the repo root: `hermes plugins doctor "$PWD" --ci`
 - installed package, from outside the repo: `hermes plugins doctor pstack --ci`
 
-Poteto-mode checkers (CI runs these):
+Poteto-mode checkers (CI runs these), from the repo root:
 
 ```sh
 bun run test        # deps + bun test scripts/orch scripts/watch-pr
