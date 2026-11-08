@@ -8,7 +8,7 @@
     "typecheck": "bun run deps && tsc --project scripts/watch-pr/tsconfig.json --noEmit --strict"
   },
   "dependencies": {
-    "commander": "14.0.0"
+    "commander": "15.0.0"
   },
   "devDependencies": {
     "bun-types": "latest",
