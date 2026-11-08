@@ -4,6 +4,18 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-08
+
+First standalone release. The upstream converter is retired (#156): the
+package at the repo root is hand-written source, edited directly. Poteto
+tooling moved to root `scripts/` as `@iap/poteto-mode` (#158), orch fakes
+are cross-platform with a Windows CI leg (#163), `setup-pstack` offers a
+`default` vs new `poteto` profile at step 0 (#170), and the shipped package
+carries a dual lockfile (`bun.lock` + `package-lock.json`) so hermes'
+`npm ci` sidecar works on install and update (#169). Instruction docs were
+rewritten standalone (#159), and the Master ruleset now requires
+`validate-gold` with matrix-pinned poteto check names (#183, #185).
+
 ### Added
 - `keys/allowed_signers` (SSH ed25519, principal `iap@users.noreply.github.com`): release-signature trust material, plus a fail-closed gate in `release.yml` — a `v*` tag must verify against the SSH allowed-signers list first, OpenPGP (keys registered on the owner's GitHub profile, fetched live at release time — no key material committed) second, or the release aborts before any packaging. Dispatch-from-master from the start of this round: the release workflow is `workflow_dispatch` on `master` with the tag as an input, so the gate never executes tag-controlled workflow code (see the `Fixed` entry below). Tags go forward-only: `v0.4.3` / `v0.5.0` remain unsigned lightweight tags. CONTRIBUTING documents cutting a signed tag and the repo-local signing defaults (no global config change).
 - `.github/workflows/round-ledger.yml` (prototype): maintains the bot machine block of the PR "Round ledger" comment — head SHA, CI check rollup (including the `skipping` bucket and an explicit `unavailable` state), CodeRabbit check bucket, latest Qodo review timestamp + parsed commit, paginated unresolved thread count — on `pull_request_target` (open/sync/reopen/ready) and `workflow_dispatch` (the repo's default GITHUB_TOKEN is read-only, so PR-comment mutations need the write-capable base-repo token with `pull-requests: write`, the same contract as `labeler.yml`; no PR code is checked out or executed). Preserves the manual triage rows below the `<!-- round-ledger:manual -->` marker verbatim (file-based splice, re-fetch + rebuild before PATCH to avoid clobbering concurrent maintainer edits); fork PRs are skipped; ledger and Qodo entries are bound to the bots' exact author identities; a comment-list failure aborts rather than duplicating the ledger. Bots post issue comments rather than reviews, so after bot verdicts land a manual refresh is `gh workflow run round-ledger.yml -f pr=<N>`. Informational only, never a merge gate.
