@@ -2,6 +2,8 @@
 
 All notable changes to the pstack-hermes port tooling will be documented in this file.
 
+## [Unreleased]
+
 ## [0.16.0] - 2026-11-08
 
 First standalone release. The upstream converter is retired (#156): the
@@ -13,8 +15,6 @@ carries a dual lockfile (`bun.lock` + `package-lock.json`) so hermes'
 `npm ci` sidecar works on install and update (#169). Instruction docs were
 rewritten standalone (#159), and the Master ruleset now requires
 `validate-gold` with matrix-pinned poteto check names (#183, #185).
-
-## [Unreleased]
 
 ### Added
 - `keys/allowed_signers` (SSH ed25519, principal `iap@users.noreply.github.com`): release-signature trust material, plus a fail-closed gate in `release.yml` — a `v*` tag must verify against the SSH allowed-signers list first, OpenPGP (keys registered on the owner's GitHub profile, fetched live at release time — no key material committed) second, or the release aborts before any packaging. Dispatch-from-master from the start of this round: the release workflow is `workflow_dispatch` on `master` with the tag as an input, so the gate never executes tag-controlled workflow code (see the `Fixed` entry below). Tags go forward-only: `v0.4.3` / `v0.5.0` remain unsigned lightweight tags. CONTRIBUTING documents cutting a signed tag and the repo-local signing defaults (no global config change).
