@@ -1,0 +1,10 @@
+{
+  "id": "setup-profiles",
+  "skill": "setup-pstack",
+  "prompt": "/setup-pstack",
+  "expect": {
+    "must_mention": ["default", "poteto"],
+    "must_not_mention": ["Task subagent", "AskQuestion"],
+    "gates": ["profile"]
+  }
+}
