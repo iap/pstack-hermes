@@ -142,8 +142,9 @@ if (args === "--no-interactive log short --stack --reverse") {
 }
 `);
   const runtime = JSON.stringify(process.execPath);
+  const runtimeCmd = runtime.replace(/%/g, "%%");
   await writeFile(join(bin, "gt"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
-  await writeFile(join(bin, "gt.cmd"), `@echo off\n${runtime} "%~dp0\\fake.mjs" %*\n`);
+  await writeFile(join(bin, "gt.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gt"), 0o755);
 
   const originalPath = process.env.PATH;
@@ -190,8 +191,9 @@ if (args === "pr list --state all --json number,headRefName,baseRefName,state --
 }
 `  );
   const runtime = JSON.stringify(process.execPath);
+  const runtimeCmd = runtime.replace(/%/g, "%%");
   await writeFile(join(bin, "gh"), `#!/bin/sh\nexec ${runtime} "$(dirname "$0")/fake.mjs" "$@"\n`);
-  await writeFile(join(bin, "gh.cmd"), `@echo off\n${runtime} "%~dp0\\fake.mjs" %*\n`);
+  await writeFile(join(bin, "gh.cmd"), `@echo off\n${runtimeCmd} "%~dp0\\fake.mjs" %*\n`);
   await chmod(join(bin, "gh"), 0o755);
 
   const originalPath = process.env.PATH;
