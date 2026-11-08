@@ -1,11 +1,11 @@
-# Golden-task evals (#194): weekly + manual, never a per-PR gate.
-# Requires a configured hermes home with provider access; the runner
-# seeds its isolated home from the runner's active hermes config.
+# Golden-task evals (#194): manual dispatch only, never a per-PR gate.
+# Requires a runner with the hermes CLI installed and a configured
+# Hermes home (provider credentials). A fresh GitHub-hosted runner has
+# neither, so there is deliberately no schedule trigger: weekly runs
+# happen on a configured maintainer runner via manual dispatch.
 name: evals
 
 on:
-  schedule:
-    - cron: "17 7 * * 1" # weekly, Monday 07:17 UTC
   workflow_dispatch:
 
 permissions:
@@ -19,6 +19,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+
+      - name: Guard hermes availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v hermes >/dev/null 2>&1; then
+            echo "::error::hermes CLI not installed on this runner; golden evals need a configured runner (see tools/evals/README.md)"
+            exit 1
+          fi
+          if [ ! -f "$HOME/.hermes/config.yaml" ] && [ -z "${HERMES_HOME:-}" ]; then
+            echo "::error::no configured Hermes home found; provider credentials are required"
+            exit 1
+          fi
+          hermes --version
 
       - name: Set up uv
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10
