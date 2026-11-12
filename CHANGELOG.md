@@ -4,6 +4,21 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-12
+
+### Added
+- `skills/hermes-vocabulary/` and `skills/hermes-troubleshooting/`: hermes-native
+  bridge skills, so the shipped package carries the vocabulary map and the
+  recovery playbook it points at (#156, #192). Skill count 47 -> 49.
+- `tools/evals/`: golden-task harness with rubric scoring, an isolated
+  `HERMES_HOME` seeded from the active home, and three starter cases (poteto
+  routing, setup profiles, why synthesis), wired as a dispatch-only workflow
+  (#194, #195).
+
+### Changed
+- `.github/labeler.yml`: root JS tooling and `keys/` are covered by the
+  `tooling` label (#193).
+
 ## [0.16.0] - 2026-11-08
 
 First standalone release. The upstream converter is retired (#156): the
