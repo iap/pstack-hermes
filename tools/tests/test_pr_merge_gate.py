@@ -141,3 +141,22 @@ def test_combined_status_context_blocks():
     )
     assert any("check failed: combined status" in p for p in problems)
 
+def test_empty_commit_status_is_not_pending():
+    # GitHub returns state=pending with no contexts when nothing ever reported.
+    pages = [{"state": "pending", "total_count": 0, "statuses": []}]
+    assert gate.status_entries(pages) == []
+
+
+def test_paginated_statuses_are_merged():
+    pages = [
+        {"state": "failure", "statuses": [{"context": "ci", "state": "failure"}]},
+        {"state": "success", "statuses": [{"context": "lint", "state": "success"}]},
+    ]
+    entries = gate.status_entries(pages)
+    assert [e["context"] for e in entries] == ["ci", "lint"]
+
+
+def test_unexplained_combined_state_is_surfaced():
+    pages = [{"state": "failure", "statuses": [{"context": "ci", "state": "success"}]}]
+    entries = gate.status_entries(pages)
+    assert any(e["context"] == "combined status" and e["state"] == "FAILURE" for e in entries)

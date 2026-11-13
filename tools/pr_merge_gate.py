@@ -172,6 +172,32 @@ def evaluate(check_runs: list[dict], body: str) -> list[str]:
     return problems
 
 
+def status_entries(pages: list[dict]) -> list[dict]:
+    """Flatten paginated commit-status pages into entries ``evaluate`` understands.
+
+    The endpoint caps contexts per page, so every page is merged. A page-level
+    ``state`` is surfaced as a synthetic entry only when real contexts exist and
+    none of them explains a non-success verdict: GitHub reports
+    ``state: "pending"`` for a commit with no statuses at all, which is not an
+    unfinished check run.
+    """
+    statuses: list[dict] = []
+    combined: list[str] = []
+    for page in pages:
+        statuses.extend(page.get("statuses") or [])
+        state = str(page.get("state") or "").upper()
+        if state and state != "SUCCESS":
+            combined.append(state)
+    if not combined or not statuses:
+        return statuses
+    explained = any(
+        str(item.get("state") or "").upper() in {"FAILURE", "ERROR", "PENDING"} for item in statuses
+    )
+    if not explained:
+        statuses.append({"context": "combined status", "state": combined[0]})
+    return statuses
+
+
 def fetch(pr: int, repo: str) -> tuple[list[dict], str]:
     """Read the head's check runs and the PR body through `gh`."""
     view = subprocess.run(
@@ -215,29 +241,13 @@ def fetch(pr: int, repo: str) -> tuple[list[dict], str]:
     for page in pages:
         runs.extend(page.get("check_runs") or [])
 
-    # Commit statuses are a separate API and carry their own failures/pending.
-    # The endpoint caps contexts per page, so paginate; and keep the combined
-    # `state`, which can be non-success while no individual context explains it.
     status_pages = gh_json(
         ["gh", "api", "--paginate", "--slurp", f"repos/{repo}/commits/{sha}/status?per_page=100"]
     )
     if isinstance(status_pages, dict):
         status_pages = [status_pages]
-    statuses: list[dict] = []
-    combined: list[str] = []
-    for page in status_pages:
-        statuses.extend(page.get("statuses") or [])
-        state = str(page.get("state") or "").upper()
-        if state and state != "SUCCESS":
-            combined.append(state)
-    explained = any(
-        str(item.get("state") or "").upper() in {"FAILURE", "ERROR", "PENDING"} for item in statuses
-    )
-    if combined and not explained:
-        # No individual context accounts for the combined verdict; surface it.
-        statuses.append({"context": "combined status", "state": combined[0]})
 
-    return runs + statuses, meta.get("body") or ""
+    return runs + status_entries(status_pages), meta.get("body") or ""
 
 
 def main(argv: list[str] | None = None) -> int:
