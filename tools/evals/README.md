@@ -11,18 +11,20 @@ Goal: measure whether the pstack **method** works, not just that files parse.
    Weekly/manual only — cost and latency make per-PR gating wrong.
 3. **Fresh-agent docs eval**: a docs-only agent completes a trivial change
    without missing-context questions (run after instruction rewrites).
-4. **Installed-user eval** (`install_smoke.py`): clean `HERMES_HOME`, install
-   the published package, `hermes plugins doctor --ci`, assert the shipped tree
-   (every skill, root `scripts/`, dual lockfile, model panel), then
-   `hermes plugins update` and re-assert. Catches the class behind #168 and
-   #169, which no static gate can see. Needs the `hermes` CLI; no provider
-   credentials.
+4. **Installed-user lifecycle** (`install_smoke.py`): clean `HERMES_HOME`,
+   install the published package, `hermes plugins doctor --ci`, assert the
+   shipped tree (every skill, root `scripts/`, dual lockfile, model panel),
+   then `plugins remove` and assert the directory and listing entry are gone,
+   reinstall pinned to the installed commit, and `plugins update` — re-asserting
+   the tree after each stop. Catches the class behind #168 and #169, which no
+   static gate can see. Needs the `hermes` CLI; no provider credentials.
 
 ## Run
 
 ```sh
 python3 tools/evals/run.py          # live hermes runs, weekly/manual
-python3 tools/evals/install_smoke.py                # installed-user smoke, no credentials
+python3 tools/evals/install_smoke.py                # full lifecycle: install, remove, reinstall, update
+python3 tools/evals/install_smoke.py --no-lifecycle # install + doctor only
 python3 tools/evals/install_smoke.py --keep         # keep the temp HERMES_HOME
 uv run --frozen pytest -q tools/tests/test_evals.py tools/tests/test_install_smoke.py
 ```
