@@ -178,6 +178,16 @@ There is no upstream re-pin. See
 The build prologue lives once, in the `.github/actions/build-package`
 composite action, shared by `ci.yml` and `release.yml`.
 
+### Dev-dependency ranges must admit Hermes core pins
+
+Hermes admission unions every enabled plugin's `pyproject.toml` dev group into
+one uv workspace alongside its own pins, so a floor above a core pin makes the
+plugin unadmittable even though the shipped content needs no Python at all
+(#205: `ruff>=0.16.4` against core's `ruff==0.15.10`). Keep each dev range wide
+enough to include what the current Hermes pins, and let `uv.lock` decide the
+version CI actually runs. When bumping a dev tool, check the core pin first;
+`uv lock --check` confirms the lock still matches.
+
 ### Change the model panel
 
 Edit `tools/assets/model-panel.json` (the single owner), derive the

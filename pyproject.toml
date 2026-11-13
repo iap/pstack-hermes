@@ -9,7 +9,11 @@ dependencies = []
 dev = [
     "pyyaml>=6.0",
     "pytest>=9.0.3,<10",
-    "ruff>=0.16.4,<0.18",
+    # Floor must admit the ruff that Hermes core pins (ruff==0.15.10 as of
+    # hermes-agent v0.23.x): admission unions every enabled plugin's dev group
+    # into one uv workspace, so a floor above the core pin makes the plugin
+    # unadmittable (#205). CI's resolved version still comes from uv.lock.
+    "ruff>=0.15.10,<0.18",
     # Workflow linting (ci.yml "Lint workflows" step). actionlint-py ships the
     # actionlint binary; shellcheck-py supplies the shellcheck it auto-detects,
     # which lints every `run:` block. Versions are locked in uv.lock like every
