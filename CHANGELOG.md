@@ -4,6 +4,13 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Changed
+- Release-signature trust material moved from `keys/allowed_signers` to
+  `.github/allowed_signers`. Repository infrastructure now lives in one place,
+  and `.github/` is already excluded from the published `dist` tree, so the
+  file never ships either way. The release gate still reads the file from the
+  `master` ref, never from the tag's tree.
+
 ## [0.16.1] - 2026-11-12
 
 ### Added
