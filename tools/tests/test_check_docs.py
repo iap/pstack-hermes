@@ -410,6 +410,15 @@ def test_bare_pstack_prose_is_not_flagged(tmp_path):
     assert check_docs.check_stale_paths(tmp_path) == []
 
 
+def test_release_packaging_without_zip_line_fails(tmp_path):
+    _write(
+        tmp_path / ".github" / "workflows" / "release.yml",
+        'run: |\n  tar -czf out.tgz .\n',
+    )
+    problems = check_docs.check_release_sources(tmp_path)
+    assert any("no zip invocation" in item for item in problems)
+
+
 def test_release_packaging_allows_optional_assets(tmp_path):
     _write(tmp_path / "plugin.json", "{}\n")
     _write(

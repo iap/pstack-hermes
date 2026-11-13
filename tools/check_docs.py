@@ -269,7 +269,12 @@ def check_release_sources(root: Path = ROOT) -> list[str]:
     if not workflow.is_file():
         return [".github/workflows/release.yml: missing release workflow"]
     problems: list[str] = []
-    for match in ZIP_SOURCE_RE.finditer(_read(workflow)):
+    matches = list(ZIP_SOURCE_RE.finditer(_read(workflow)))
+    if not matches:
+        # A refactored zip line must fail loudly: a check that finds nothing to
+        # check would otherwise report clean forever.
+        return ["release.yml: no zip invocation found; the packaging check cannot run"]
+    for match in matches:
         for token in match.group("paths").split():
             token = token.strip().rstrip("/")
             if not token or "$" in token or token == "assets":

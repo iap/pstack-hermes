@@ -31,6 +31,11 @@ Everything below follows from that rule.
 
 ## Do not
 
+- Merge a PR while CodeRabbit's check is `skipping` or `pending`, or with an
+  unchecked box in the PR body's bot-review section. `skipping` means *never
+  requested*, not clean. Run `python tools/pr_merge_gate.py <n>` first — green
+  CI alone is not the merge gate ([docs/agent/bot-reviews.md](docs/agent/bot-reviews.md)).
+
 - Do not run a converter or rebuild step to produce the package surfaces.
   Edit `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
   `LICENSE` directly.

@@ -221,7 +221,10 @@ def main(argv: list[str] | None = None) -> int:
             raise StepFailed("plugin is not listed after install")
         pinned_ref = args.ref or installed_commit(installed)
         if not pinned_ref:
-            raise StepFailed("cannot determine the installed commit for the pinned reinstall")
+            raise StepFailed(
+                "installed tree is not a git checkout, so there is no commit to re-pin; "
+                "pass --ref <sha> explicitly"
+            )
 
         print(f"[2/{total}] hermes plugins doctor --ci")
         doctor = run([hermes, "plugins", "doctor", PLUGIN_NAME, "--ci"], env=env)[1]
