@@ -42,8 +42,8 @@ Everything below follows from that rule.
   plugin skills. Personal procedure → local skills, skill tap, or a fork.
 - Implement GitLab (`glab`), or treat missing Graphite as a hard failure while
   GitHub fallback can satisfy the task.
-- Rewrite or delete the `dist` compatibility branch while installed clones
-  depend on it.
+- Reintroduce a compatibility branch: the repository root is the package and
+  Releases are the only published artifacts.
 - "Clean up" attribution, or re-add the excluded `benny` / `make-bot-ui`
   slots — that is the scanner / publisher contract.
 

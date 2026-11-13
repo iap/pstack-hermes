@@ -8,9 +8,9 @@ description: >-
 # WHY A COMPOSITE ACTION AND NOT A REUSABLE WORKFLOW
 # A reusable workflow (`uses: ./.github/workflows/build.yml`) would have to contain
 # the caller's ENTIRE job, because a `uses:` job cannot be followed by more steps
-# in that same job. All three callers continue past the shared prologue with
-# their own steps (ci: artifact upload; release: zip + notes + gh release;
-# publish: dist sync), so a reusable workflow cannot express
+# in that same job. Both callers continue past the shared prologue with
+# their own steps (ci: artifact upload; release: zip + notes + gh release),
+# so a reusable workflow cannot express
 # this shape without duplicating those steps into the called file. A composite
 # action composes into the middle of a job and is the correct tool here.
 # The usual reason to prefer a reusable workflow - secrets - does not apply: this
@@ -56,7 +56,7 @@ runs:
     # Dual-lock gate (#169): hermes installs Node deps via npm ci, so the
     # shipped package-lock.json must match package.json and carry the same
     # resolved versions as bun.lock. Lives here so every publication path
-    # (ci, publish-dist, release) gates on it, not just lint-and-tests.
+    # (ci, release) gates on it, not just lint-and-tests.
     - name: Dual lockfile matches package.json (npm ci dry-run)
       shell: bash
       run: npm ci --dry-run --ignore-scripts

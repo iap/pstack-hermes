@@ -5,6 +5,10 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Changed
+- Retired the `dist` publishing branch. The repository root is the package,
+  releases are built from the tagged commit, and `release.yml` no longer
+  compares against a second branch. Installs that tracked `dist` migrate with
+  remove-then-install (README).
 - Release-signature trust material moved from `keys/allowed_signers` to
   `.github/allowed_signers`. Repository infrastructure now lives in one place,
   and `.github/` is already excluded from the published `dist` tree, so the

@@ -26,7 +26,7 @@ install iap/pstack-hermes --ref <new-package-SHA> --force --enable`.
 1. `hermes plugins doctor pstack --ci` — manifest parses, all skills discover.
    Pick the target explicitly: `pstack` is ambiguous (repo root = local
    directory; elsewhere = installed package). Use the name as installed for
-   the dist package, or a resolved local path for a branch tree.
+   the installed package, or a resolved local path for a branch tree.
 2. Load the `setup-pstack` skill once - it writes `pstack-models.json` beside hermes' `config.yaml`, outside this package, so plugin updates do not discard it
    (the 18-role model panel the workflow skills read).
 3. Load `poteto-mode` and give it a real task — it classifies the work and
@@ -55,9 +55,10 @@ hermes plugins update pstack
 Unpinned root installs update in place. Pinned installs must be reinstalled
 with a new SHA and `--force` (see [Install](#install)).
 
-Installs created before the root-layout migration (the old
-source-subdirectory route) cannot update in place. Back up local edits,
-remove the old install, then install the root package:
+Installs created before the root-layout migration — the old
+source-subdirectory route, and installs that tracked the retired `dist`
+branch — cannot update in place. Back up local edits, remove the old
+install, then install the root package:
 
 ```sh
 hermes plugins remove pstack

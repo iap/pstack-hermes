@@ -371,23 +371,23 @@ def test_pr_template_bare_pstack_path_fails(tmp_path):
     assert any("PULL_REQUEST_TEMPLATE" in item for item in problems)
 
 
-def test_publish_source_missing_fails(tmp_path):
+def test_release_packaging_missing_source_fails(tmp_path):
     _write(
-        tmp_path / ".github" / "workflows" / "publish-dist.yml",
-        'run: |\n  cp -a plugin.json after-install.md "$dist/"\n',
+        tmp_path / ".github" / "workflows" / "release.yml",
+        'run: |\n  zip -r pstack-"${TAG_NAME}".zip plugin.json after-install.md\n',
     )
-    problems = check_docs.check_publish_sources(tmp_path)
+    problems = check_docs.check_release_sources(tmp_path)
     assert any("after-install.md" in item for item in problems)
 
 
-def test_publish_sources_exist(tmp_path):
+def test_release_packaging_sources_exist(tmp_path):
     _write(tmp_path / "plugin.json", "{}\n")
     _write(tmp_path / "README.md", "# x\n")
     _write(
-        tmp_path / ".github" / "workflows" / "publish-dist.yml",
-        'run: |\n  cp -a plugin.json README.md "$dist/"\n',
+        tmp_path / ".github" / "workflows" / "release.yml",
+        'run: |\n  zip -r pstack-"${TAG_NAME}".zip plugin.json README.md\n',
     )
-    assert check_docs.check_publish_sources(tmp_path) == []
+    assert check_docs.check_release_sources(tmp_path) == []
 
 
 def test_repository_docs_are_clean():
@@ -410,22 +410,13 @@ def test_bare_pstack_prose_is_not_flagged(tmp_path):
     assert check_docs.check_stale_paths(tmp_path) == []
 
 
-def test_inline_conditional_publish_source_missing_fails(tmp_path):
+def test_release_packaging_allows_optional_assets(tmp_path):
+    _write(tmp_path / "plugin.json", "{}\n")
     _write(
-        tmp_path / ".github" / "workflows" / "publish-dist.yml",
-        'run: |\n  if [ -d assets ]; then cp -a assets "$dist/"; fi\n',
+        tmp_path / ".github" / "workflows" / "release.yml",
+        'run: |\n  zip -r pstack-"${TAG_NAME}".zip plugin.json assets/\n',
     )
-    problems = check_docs.check_publish_sources(tmp_path)
-    assert any("assets" in item for item in problems)
-
-
-def test_inline_conditional_publish_source_exists(tmp_path):
-    _write(tmp_path / "assets" / "keep.txt", "x\n")
-    _write(
-        tmp_path / ".github" / "workflows" / "publish-dist.yml",
-        'run: |\n  if [ -d assets ]; then cp -a assets "$dist/"; fi\n',
-    )
-    assert check_docs.check_publish_sources(tmp_path) == []
+    assert check_docs.check_release_sources(tmp_path) == []
 
 
 def test_bare_package_path_in_agent_contract_fails(tmp_path):

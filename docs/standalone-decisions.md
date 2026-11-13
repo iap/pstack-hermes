@@ -7,7 +7,7 @@ Decisions locked before the standalone refactor touches code. Each entry states 
 > "effective when the converter is dropped" are now in force; historical
 > "until then" framing in §2/§3/§4/§6/§7 describes the pre-drop state and
 > is kept as the decision record, not current instructions. §3's
-> distribution gap is closed: publish-dist and release include
+> distribution gap is closed: the release ZIP includes
 > `package.json`, `bun.lock`, and `scripts/`.
 
 > [!NOTE]
@@ -77,7 +77,9 @@ Final upstream SHA `c47b1284` is also recorded in `CHANGELOG.md` so the history 
 
 ## 7. Releases — unchanged dispatch
 
-Signed-tag → `release.yml` from `master` → append-only `dist` channel stays as-is. The only change is that no step in the release path needs the upstream pin: remove `UPSTREAM_PIN` declarations and the reproducibility gate during the drop PR.
+Signed-tag → `release.yml` from `master`. The append-only `dist` channel this
+section described was retired in #201: the repository root is the package and
+the Release is the only published artifact. The only change is that no step in the release path needs the upstream pin: remove `UPSTREAM_PIN` declarations and the reproducibility gate during the drop PR.
 
 **Pin checker (required, part of the drop plan).** CI runs `tools/check_pins.py`, which fails when the `UPSTREAM_PIN` declarations are absent. The drop PR must therefore update `tools/check_pins.py` in the same change — remove the upstream lockstep check so the standalone change does not block CI, while preserving the checker's separate Hermes pin and notice checks as appropriate.
 

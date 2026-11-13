@@ -145,24 +145,22 @@ jobs:
       - name: Build package
         uses: ./.github/actions/build-package
 
-      - name: Verify release source and published package
+      - name: Verify release source
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin master dist
+          git fetch origin master
           source_sha="$(git rev-parse HEAD)"
           git merge-base --is-ancestor "$source_sha" origin/master
-          package_sha="$(git rev-parse origin/dist)"
-          published="$RUNNER_TEMP/release-dist"
-          mkdir -p "$published"
-          git archive "$package_sha" | tar -x -C "$published"
-          # Ignore dist-only compatibility metadata when comparing the package.
-          rm -rf "$published/.github" "$published/.gitattributes"
-          mkdir -p "$RUNNER_TEMP/release-built"
-          cp -a plugin.json skills config README.md LICENSE package.json bun.lock package-lock.json scripts "$RUNNER_TEMP/release-built"
-          if [ -d assets ]; then cp -a assets "$RUNNER_TEMP/release-built/"; fi
-          diff -qr "$RUNNER_TEMP/release-built" "$published"
-          echo "PACKAGE_SHA=$package_sha" >> "$GITHUB_ENV"
+          # The tagged commit IS the package: the repository root ships, and
+          # there is no second publishing branch to compare against. A missing
+          # path aborts here, before anything is packaged.
+          for rel in plugin.json README.md LICENSE package.json bun.lock package-lock.json; do
+            [ -f "$rel" ] || { echo "::error::release source is missing $rel"; exit 1; }
+          done
+          for rel in skills config scripts; do
+            [ -d "$rel" ] || { echo "::error::release source is missing $rel/"; exit 1; }
+          done
           echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
 
       - name: Package plugin
@@ -191,13 +189,12 @@ jobs:
             echo ""
             echo "## Verified package"
             echo "Source commit: $SOURCE_SHA"
-            echo "Package commit: $PACKAGE_SHA"
             echo '```sh'
-            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --enable"
+            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $SOURCE_SHA --enable"
             echo '```'
             echo "To move an existing pinned install to this release:"
             echo '```sh'
-            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $PACKAGE_SHA --force --enable"
+            echo "hermes plugins install ${GITHUB_REPOSITORY} --ref $SOURCE_SHA --force --enable"
             echo '```'
             echo "Unpinned installs: hermes plugins update pstack"
             echo "Verify the ZIP with: sha256sum --check SHA256SUMS"

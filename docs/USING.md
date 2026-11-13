@@ -39,7 +39,7 @@ convenience route when you want `/poteto-mode` style commands.
    `hermes plugins doctor pstack --ci` — the manifest must parse and all skills
    must be discovered. Pick the target explicitly: `pstack` is ambiguous
    (repo root = local directory; elsewhere = installed package). Use the name
-   as installed for the dist package, or a resolved local path for a branch
+   as installed for the installed package, or a resolved local path for a branch
    tree.
 2. **Configure the model panel** — run the `setup-pstack` skill once. It writes
    the model panel **outside** the package (typically `pstack-models.json`
@@ -120,8 +120,7 @@ welcome as PRs there.
 > [!WARNING]
 > **Anti-pattern:** using Hermes learning / `skill_manage` to "fix" or evolve
 > **stock** pstack skills inside the plugin install (including namespaced
-> `agent-plugin-pstack-…` skills). Updates and dist republishes collide with
-> those edits. Put improvements on a tap, a fork, or local skills instead.
+> `agent-plugin-pstack-…` skills). Plugin updates collide with those edits. Put improvements on a tap, a fork, or local skills instead.
 
 > [!WARNING]
 > Keep the hermes vocabulary when editing skills — `delegate_task`,
