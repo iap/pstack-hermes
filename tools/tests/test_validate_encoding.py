@@ -79,3 +79,48 @@ def test_encoding_check_covers_tooling_python(tmp_path):
 
     assert rep.failed
     assert any("tools/demo.py" in message for message in rep.failed)
+
+
+def test_encoding_check_covers_root_notice(tmp_path):
+    # AGENTS.md lists NOTICE.md as hand-written docs; a BOM must not pass.
+    (tmp_path / "NOTICE.md").write_bytes(b"\xef\xbb\xbfnotice\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any("NOTICE.md" in message for message in rep.failed)
+
+
+def test_encoding_check_covers_root_pyproject(tmp_path):
+    # Hand-written root tooling config, outside the package allowlist.
+    (tmp_path / "pyproject.toml").write_bytes(b"[project]\r\nname = 'x'\r\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any("pyproject.toml" in message for message in rep.failed)
+
+
+def test_encoding_check_covers_allowed_signers(tmp_path):
+    # The release workflow reads this extensionless text file; a BOM makes it
+    # unusable for `gpg.ssh.allowedSignersFile`.
+    signers = tmp_path / ".github" / "allowed_signers"
+    signers.parent.mkdir(parents=True)
+    signers.write_bytes(b"\xef\xbb\xbfuser@example.com ssh-ed25519 AAAA\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any(".github/allowed_signers" in message for message in rep.failed)

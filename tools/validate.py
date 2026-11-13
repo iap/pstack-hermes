@@ -111,7 +111,7 @@ def expected_principles(pkg: Path) -> int:
 LOADER_WHITELIST = {"$schema", "name", "version", "description", "author", "homepage",
                     "repository", "license", "keywords", "extensions"}
 # Filenames the encoding check touches even without a text suffix (dotfiles carry none).
-TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
+TEXT_NAMES = {".gitignore", ".build-provenance.txt", "allowed_signers"}
 # Model slugs in the repo-owned panel must be provider-qualified and lowercase
 # (vendor/model[:variant], e.g. z-ai/glm-5.2 or …:free) or the inherit-parent
 # selector. Catches hand-edit slips like a missing vendor prefix or `-free`
@@ -331,7 +331,14 @@ def check_skills(pkg: Path, rep: Report) -> None:
 
 
 HANDWRITTEN_ROOTS = (".github", "tools", "docs")
-HANDWRITTEN_ROOT_FILES = {"AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "SECURITY.md"}
+HANDWRITTEN_ROOT_FILES = {
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "NOTICE.md",
+    "pyproject.toml",
+}
 
 
 def is_handwritten_path(rel: Path) -> bool:
@@ -361,9 +368,9 @@ def check_encoding(pkg: Path, rep: Report) -> None:
         data = p.read_bytes()
         checked += 1
         if data.startswith(b"\xef\xbb\xbf"):
-            bom_files.append(str(rel))
+            bom_files.append(rel.as_posix())
         if b"\r\n" in data:
-            crlf_files.append(str(rel))
+            crlf_files.append(rel.as_posix())
     if bom_files:
         rep.fail(f"files with UTF-8 BOM: {bom_files}")
     else:
