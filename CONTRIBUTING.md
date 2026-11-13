@@ -207,7 +207,7 @@ Edit `skills/hermesbot/SKILL.md` directly. Validate.
    workflow definition from the tag's tree, so a tag pusher could rewrite the
    release gate itself. From `master`, `release.yml` fetches the tag by name,
    pins its object, requires the peeled commit to be an ancestor of `master`,
-   and verifies the signature against `keys/allowed_signers` from the master ref
+   and verifies the signature against `.github/allowed_signers` from the master ref
    (SSH ed25519 first; OpenPGP keys registered on your GitHub profile as the
    fallback, fetched live at release time — no key material is committed), or
    fails closed before packaging. Unsigned tags, and `v0.4.3` / `v0.5.0`-style
@@ -222,7 +222,7 @@ Edit `skills/hermesbot/SKILL.md` directly. Validate.
    git -c gpg.format=openpgp -c user.signingkey=9166D30F6FE70F56 \
      tag -s vX.Y.Z -m "vX.Y.Z" <source-sha>
    # verify before pushing
-   git -c gpg.ssh.allowedSignersFile=keys/allowed_signers -c gpg.format=ssh verify-tag vX.Y.Z
+   git -c gpg.ssh.allowedSignersFile=.github/allowed_signers -c gpg.format=ssh verify-tag vX.Y.Z
    git push origin vX.Y.Z
    ```
 

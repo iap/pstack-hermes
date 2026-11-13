@@ -35,7 +35,7 @@ tooling:
       - any-glob-to-any-file: "package.json"
       - any-glob-to-any-file: "bun.lock"
       - any-glob-to-any-file: "package-lock.json"
-      - any-glob-to-any-file: "keys/**"
+      - any-glob-to-any-file: ".github/allowed_signers"
 
 documentation:
   - changed-files:
