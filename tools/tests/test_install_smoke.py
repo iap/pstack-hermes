@@ -1,19 +1,23 @@
-﻿"""Tests for the installed-user smoke test (tools/evals/install_smoke.py).
+"""Tests for the installed-user lifecycle test (tools/evals/install_smoke.py).
 
 The install itself needs a healthy ``hermes`` CLI, so these tests cover the
-deterministic half: locating an installed tree and the structural assertions
-that encode #168 (root scripts must survive packaging) and #169 (dual lockfile).
+deterministic half: locating an installed tree, the structural assertions that
+encode #168 (root scripts survive packaging) and #169 (dual lockfile), the
+post-remove absence check, and tolerant parsing of `hermes plugins list --json`.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import shutil
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("install_smoke", ROOT / "tools" / "evals" / "install_smoke.py")
+SPEC = importlib.util.spec_from_file_location(
+    "install_smoke", ROOT / "tools" / "evals" / "install_smoke.py"
+)
 assert SPEC and SPEC.loader
 smoke = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(smoke)
@@ -94,3 +98,31 @@ def test_count_skills_counts_only_skill_manifests(tmp_path):
     tree = make_tree(tmp_path, skills=4)
     (tree / "skills" / "stray.txt").write_text("x", encoding="utf-8")
     assert smoke.count_skills(tree) == 4
+
+
+def test_assert_absent_passes_after_remove(tmp_path):
+    tree = make_tree(tmp_path)
+    shutil.rmtree(tree)
+    smoke.assert_absent(tmp_path)  # must not raise
+
+
+def test_assert_absent_fails_when_directory_remains(tmp_path):
+    make_tree(tmp_path)
+    with pytest.raises(smoke.StepFailed, match="remove left the install directory"):
+        smoke.assert_absent(tmp_path)
+
+
+def test_listing_contains_handles_list_of_objects():
+    entries = [{"name": "other"}, {"name": "pstack"}]
+    assert smoke.listing_contains(entries, "pstack")
+    assert not smoke.listing_contains(entries, "pstack-hermes")
+
+
+def test_listing_contains_handles_mapping_of_objects():
+    entries = {"pstack": {"name": "pstack", "enabled": True}}
+    assert smoke.listing_contains(entries, "pstack")
+
+
+def test_listing_contains_ignores_unrelated_shapes():
+    assert not smoke.listing_contains("not-a-listing", "pstack")
+    assert not smoke.listing_contains([], "pstack")
