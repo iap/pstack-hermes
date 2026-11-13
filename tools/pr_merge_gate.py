@@ -50,6 +50,8 @@ FAILING = {
 }
 # A check still in one of these states has not produced a verdict yet.
 UNFINISHED = {"QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "PENDING", "EXPECTED"}
+# `stale` is a completed-but-worthless check-run conclusion: the verdict is gone.
+STALE = {"STALE"}
 # A CodeRabbit verdict in one of these states is not clean: `skipping` means
 # never requested, `neutral` means it reviewed nothing.
 NOT_CLEAN = {"", "SKIPPED", "NEUTRAL"}
@@ -57,6 +59,7 @@ NOT_CLEAN = {"", "SKIPPED", "NEUTRAL"}
 BOT_SECTION_RE = re.compile(r"^##\s+Bot review \(gate\).*?$", re.MULTILINE)
 NEXT_SECTION_RE = re.compile(r"^##\s+", re.MULTILINE)
 UNCHECKED_RE = re.compile(r"^\s*-\s*\[ \]\s*(.+?)\s*$", re.MULTILINE)
+CHECKED_RE = re.compile(r"^\s*-\s*\[[xX]\]\s*(.+?)\s*$", re.MULTILINE)
 
 
 def _name(entry: dict) -> str:
@@ -85,7 +88,12 @@ def bot_boxes(body: str) -> list[str] | None:
     rest = body[match.end():]
     end = NEXT_SECTION_RE.search(rest)
     section = rest[: end.start()] if end else rest
-    return [item for item in UNCHECKED_RE.findall(section)]
+    boxes = UNCHECKED_RE.findall(section)
+    checked = CHECKED_RE.findall(section)
+    if not boxes and not checked:
+        # A heading with the boxes deleted is not an attestation; treat it as absent.
+        return None
+    return boxes
 
 
 def evaluate(check_runs: list[dict], body: str) -> list[str]:
@@ -106,10 +114,12 @@ def evaluate(check_runs: list[dict], body: str) -> list[str]:
         if looks_like_coderabbit:
             coderabbit_seen = True
 
-        if status in UNFINISHED:
-            problems.append(f"check not finished: {name} (status={status})")
+        # Legacy commit statuses carry their state in `conclusion` here, and
+        # `state: pending` is the only unfinished marker they have.
+        if status in UNFINISHED or conclusion in UNFINISHED:
+            problems.append(f"check not finished: {name} (status={status or conclusion})")
             continue
-        if conclusion in FAILING:
+        if conclusion in FAILING or conclusion in STALE:
             problems.append(f"check failed: {name} ({conclusion})")
             continue
         if looks_like_coderabbit:
@@ -124,10 +134,12 @@ def evaluate(check_runs: list[dict], body: str) -> list[str]:
                         f"{name} check has no app provenance; request `@coderabbitai full review` "
                         "and read the resulting check run"
                     )
-            elif conclusion in NOT_CLEAN:
+            elif conclusion != "SUCCESS":
+                # Only a successful verdict counts: `neutral`, `stale` and
+                # anything else mean no review happened.
                 problems.append(
                     f"CodeRabbit is not clean on this head (conclusion={conclusion or 'none'}); "
-                    "`skipping` means never requested"
+                    "only `success` counts, and `skipping` means never requested"
                 )
 
     if not coderabbit_seen:
@@ -163,18 +175,35 @@ def fetch(pr: int, repo: str) -> tuple[list[dict], str]:
     if not sha:
         raise RuntimeError("could not resolve the pull request head")
 
-    runs = subprocess.run(
-        ["gh", "api", f"repos/{repo}/commits/{sha}/check-runs"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=120,
-        check=False,
+    def gh_json(args: list[str]) -> object:
+        proc = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError((proc.stderr or proc.stdout).strip()[:400])
+        return json.loads(proc.stdout)
+
+    # Check runs paginate at 30 by default; `--slurp` keeps one array of pages.
+    pages = gh_json(
+        ["gh", "api", "--paginate", "--slurp", f"repos/{repo}/commits/{sha}/check-runs?per_page=100"]
     )
-    if runs.returncode != 0:
-        raise RuntimeError((runs.stderr or runs.stdout).strip()[:400])
-    return json.loads(runs.stdout).get("check_runs") or [], meta.get("body") or ""
+    if isinstance(pages, dict):
+        pages = [pages]
+    runs: list[dict] = []
+    for page in pages:
+        runs.extend(page.get("check_runs") or [])
+
+    # Commit statuses are a separate API and carry their own failures/pending.
+    status_doc = gh_json(["gh", "api", f"repos/{repo}/commits/{sha}/status"])
+    statuses = status_doc.get("statuses") or []
+
+    return runs + statuses, meta.get("body") or ""
 
 
 def main(argv: list[str] | None = None) -> int:

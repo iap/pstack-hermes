@@ -1,4 +1,4 @@
-"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
+﻿"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
 
 Pure-function tests: no `gh`, no network. The CLI half is exercised by hand
 before a merge; these tests pin the verdict logic the gate depends on, including
@@ -98,3 +98,29 @@ def test_legacy_status_context_shape_is_accepted():
     problems = gate.evaluate(rollup, BODY_CLEAN)
     # No app provenance on a status context: treated as unverifiable, not clean.
     assert any("no app provenance" in p for p in problems)
+
+def test_empty_bot_section_blocks():
+    body = "# Pull request\n\n## Bot review (gate)\n\n"
+    problems = gate.evaluate([CR_CLEAN], body)
+    assert any("no '## Bot review (gate)' section" in p for p in problems)
+
+
+def test_legacy_status_pending_blocks():
+    problems = gate.evaluate([CR_CLEAN, {"context": "external-ci", "state": "pending"}], BODY_CLEAN)
+    assert any("not finished: external-ci" in p for p in problems)
+
+
+def test_legacy_status_failure_blocks():
+    problems = gate.evaluate([CR_CLEAN, {"context": "external-ci", "state": "failure"}], BODY_CLEAN)
+    assert any("check failed: external-ci" in p for p in problems)
+
+
+def test_stale_coderabbit_conclusion_blocks():
+    problems = gate.evaluate([CR_CLEAN | {"conclusion": "stale"}], BODY_CLEAN)
+    assert any("check failed: CodeRabbit (STALE)" in p for p in problems)
+
+
+def test_coderabbit_neutral_blocks():
+    problems = gate.evaluate([CR_CLEAN | {"conclusion": "neutral"}], BODY_CLEAN)
+    assert any("only `success` counts" in p for p in problems)
+
