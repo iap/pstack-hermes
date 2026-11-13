@@ -1,4 +1,4 @@
-"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
+﻿"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
 
 Pure-function tests: no `gh`, no network. The CLI half is exercised by hand
 before a merge; these tests pin the verdict logic the gate depends on, including
@@ -32,8 +32,11 @@ BODY_CLEAN = """# Pull request
 - [x] things
 
 ## Bot review (gate)
-- [x] Qodo findings triaged
-- [x] CodeRabbit clean on this head
+- [x] Qodo [bot] findings triaged (fixed or answered with evidence) on this head
+- [x] CodeRabbit requested (`@coderabbitai full review` / `review`) and clean on this head
+- [x] All Bot 1 + Bot 2 review threads resolved
+- [x] No `skipping` / `pending` CodeRabbit check
+- [x] Round ledger comment updated
 """
 
 CR_CLEAN = run("CodeRabbit", "success")
@@ -77,7 +80,7 @@ def test_failed_check_blocks():
 
 
 def test_unchecked_bot_box_blocks():
-    body = BODY_CLEAN.replace("- [x] CodeRabbit clean", "- [ ] CodeRabbit clean")
+    body = BODY_CLEAN.replace("- [x] CodeRabbit requested", "- [ ] CodeRabbit requested")
     problems = gate.evaluate([CR_CLEAN], body)
     assert any("bot-review box unchecked" in p for p in problems)
 
@@ -123,4 +126,18 @@ def test_stale_coderabbit_conclusion_blocks():
 def test_coderabbit_neutral_blocks():
     problems = gate.evaluate([CR_CLEAN | {"conclusion": "neutral"}], BODY_CLEAN)
     assert any("only `success` counts" in p for p in problems)
+
+def test_missing_attestation_box_blocks():
+    body = BODY_CLEAN.replace(
+        "- [x] Qodo [bot] findings triaged (fixed or answered with evidence) on this head\n", ""
+    )
+    problems = gate.evaluate([CR_CLEAN], body)
+    assert any("attestation missing: Qodo findings triaged" in p for p in problems)
+
+
+def test_combined_status_context_blocks():
+    problems = gate.evaluate(
+        [CR_CLEAN, {"context": "combined status", "state": "failure"}], BODY_CLEAN
+    )
+    assert any("check failed: combined status" in p for p in problems)
 

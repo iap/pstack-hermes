@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Pre-merge gate for the bot-review contract (docs/agent/bot-reviews.md).
 
 Green CI is not the merge gate. The repository requires all of:
 
-- CodeRabbit **clean on the current head** â€” a `skipping` check means *never
+- CodeRabbit **clean on the current head** Ã¢â‚¬â€ a `skipping` check means *never
   requested*, which is not clean;
 - every Qodo finding fixed or answered with evidence;
 - every review thread resolved;
@@ -11,7 +11,7 @@ Green CI is not the merge gate. The repository requires all of:
 
 This tool checks the machine-readable half: the check runs, and the unchecked
 boxes in the PR body's ``## Bot review (gate)`` section. Thread resolution and
-Qodo triage stay human â€” the tool never claims they are done, only that nothing
+Qodo triage stay human Ã¢â‚¬â€ the tool never claims they are done, only that nothing
 machine-visible blocks the merge.
 
 Provenance matters: a check *named* CodeRabbit proves nothing, because a
@@ -61,6 +61,17 @@ NEXT_SECTION_RE = re.compile(r"^##\s+", re.MULTILINE)
 UNCHECKED_RE = re.compile(r"^\s*-\s*\[ \]\s*(.+?)\s*$", re.MULTILINE)
 CHECKED_RE = re.compile(r"^\s*-\s*\[[xX]\]\s*(.+?)\s*$", re.MULTILINE)
 
+# Every attestation the template asks for, keyed by a distinctive fragment.
+# Deleting a box must fail the gate, so presence is checked separately from
+# whether the box is ticked.
+REQUIRED_BOXES = {
+    "Qodo findings triaged": "qodo",
+    "CodeRabbit requested and clean": "coderabbit requested",
+    "all Bot 1 + Bot 2 threads resolved": "threads resolved",
+    "no skipping/pending CodeRabbit check": "coderabbit check",
+    "round ledger updated": "ledger",
+}
+
 
 def _name(entry: dict) -> str:
     return str(entry.get("name") or entry.get("context") or "")
@@ -80,20 +91,20 @@ def _app(entry: dict) -> str:
     return str(app.get("slug") or "") if isinstance(app, dict) else ""
 
 
-def bot_boxes(body: str) -> list[str] | None:
-    """Unchecked boxes in the bot-review section, or None when the section is absent."""
+def bot_section(body: str) -> tuple[list[str], list[str]] | None:
+    """(checked, unchecked) labels in the bot-review section, or None when absent."""
     match = BOT_SECTION_RE.search(body or "")
     if match is None:
         return None
     rest = body[match.end():]
     end = NEXT_SECTION_RE.search(rest)
     section = rest[: end.start()] if end else rest
-    boxes = UNCHECKED_RE.findall(section)
     checked = CHECKED_RE.findall(section)
-    if not boxes and not checked:
+    unchecked = UNCHECKED_RE.findall(section)
+    if not checked and not unchecked:
         # A heading with the boxes deleted is not an attestation; treat it as absent.
         return None
-    return boxes
+    return checked, unchecked
 
 
 def evaluate(check_runs: list[dict], body: str) -> list[str]:
@@ -145,13 +156,18 @@ def evaluate(check_runs: list[dict], body: str) -> list[str]:
     if not coderabbit_seen:
         problems.append("no CodeRabbit check on this head; request `@coderabbitai full review`")
 
-    boxes = bot_boxes(body)
-    if boxes is None:
+    section = bot_section(body)
+    if section is None:
         problems.append(
             "PR body has no '## Bot review (gate)' section; the attestation boxes are required"
         )
     else:
-        for box in boxes:
+        checked, unchecked = section
+        labels = " | ".join(checked + unchecked).lower()
+        for label, needle in REQUIRED_BOXES.items():
+            if needle not in labels:
+                problems.append(f"bot-review attestation missing: {label}")
+        for box in unchecked:
             problems.append(f"bot-review box unchecked: {box}")
     return problems
 
@@ -200,8 +216,26 @@ def fetch(pr: int, repo: str) -> tuple[list[dict], str]:
         runs.extend(page.get("check_runs") or [])
 
     # Commit statuses are a separate API and carry their own failures/pending.
-    status_doc = gh_json(["gh", "api", f"repos/{repo}/commits/{sha}/status"])
-    statuses = status_doc.get("statuses") or []
+    # The endpoint caps contexts per page, so paginate; and keep the combined
+    # `state`, which can be non-success while no individual context explains it.
+    status_pages = gh_json(
+        ["gh", "api", "--paginate", "--slurp", f"repos/{repo}/commits/{sha}/status?per_page=100"]
+    )
+    if isinstance(status_pages, dict):
+        status_pages = [status_pages]
+    statuses: list[dict] = []
+    combined: list[str] = []
+    for page in status_pages:
+        statuses.extend(page.get("statuses") or [])
+        state = str(page.get("state") or "").upper()
+        if state and state != "SUCCESS":
+            combined.append(state)
+    explained = any(
+        str(item.get("state") or "").upper() in {"FAILURE", "ERROR", "PENDING"} for item in statuses
+    )
+    if combined and not explained:
+        # No individual context accounts for the combined verdict; surface it.
+        statuses.append({"context": "combined status", "state": combined[0]})
 
     return runs + statuses, meta.get("body") or ""
 
