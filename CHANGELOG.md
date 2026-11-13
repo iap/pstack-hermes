@@ -4,6 +4,19 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-11-12
+
+### Added
+- `tools/evals/install_smoke.py`: installed-user lifecycle test — install,
+  `doctor --ci`, remove, pinned reinstall, update — with unit tests, and a step
+  in the dispatch-only `evals` workflow that runs it on a configured runner.
+
+### Fixed
+- Root-tree admission on Hermes: the dev-group floor `ruff>=0.16.4` now reads
+  `>=0.15.10`, so the plugin admits alongside Hermes core's pinned
+  `ruff==0.15.10`. 0.16.1 installed from the root tree but could not be enabled
+  (#205); the resolved ruff version is unchanged at 0.17.3.
+
 ### Changed
 - Retired the `dist` publishing branch. The repository root is the package,
   releases are built from the tagged commit, and `release.yml` no longer
