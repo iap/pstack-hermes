@@ -49,3 +49,33 @@ def test_encoding_check_skips_generated_node_modules(tmp_path):
 
     assert not rep.failed
     assert any("no CRLF" in message and "1 text files" in message for message in rep.passed)
+
+def test_encoding_check_covers_github_workflows(tmp_path):
+    # Issue #208: a BOM in hand-written CI used to pass every gate.
+    workflow = tmp_path / ".github" / "workflows" / "ci.yml"
+    workflow.parent.mkdir(parents=True)
+    workflow.write_bytes(b"\xef\xbb\xbfname: ci\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any(".github/workflows/ci.yml" in message for message in rep.failed)
+
+
+def test_encoding_check_covers_tooling_python(tmp_path):
+    tool = tmp_path / "tools" / "demo.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"print('x')\r\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any("tools/demo.py" in message for message in rep.failed)

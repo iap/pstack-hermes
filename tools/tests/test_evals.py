@@ -41,3 +41,25 @@ def test_load_golden():
     assert cases
     for case in cases:
         assert case["id"] and case["prompt"] and case["expect"]
+
+def test_score_accepts_alternates():
+    case = _case()
+    case["expect"]["must_mention"] = ["delegate|delegation|subagent"]
+    ok, failures = eval_run.score(case, "Hand it to a subagent and verify.")
+    assert ok, failures
+
+
+def test_score_rejects_when_no_alternate_matches():
+    case = _case()
+    case["expect"]["must_mention"] = ["delegate|subagent"]
+    ok, failures = eval_run.score(case, "I will do it myself, then verify.")
+    assert not ok
+    assert any("delegate|subagent" in line for line in failures)
+
+
+def test_forbidden_accepts_alternates():
+    case = _case()
+    case["expect"]["must_not_mention"] = ["AskQuestion|AskUserQuestion"]
+    ok, failures = eval_run.score(case, "Loading poteto-mode, will verify after. Then AskUserQuestion.")
+    assert not ok
+    assert any("forbidden present" in line for line in failures)

@@ -330,13 +330,29 @@ def check_skills(pkg: Path, rep: Report) -> None:
         rep.ok("issue #107: no inline-shell `!` trigger in TS patterns")
 
 
+HANDWRITTEN_ROOTS = (".github", "tools", "docs")
+HANDWRITTEN_ROOT_FILES = {"AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "SECURITY.md"}
+
+
+def is_handwritten_path(rel: Path) -> bool:
+    """True for repo text a person writes: CI, tooling, docs, root contracts.
+
+    Issue #208: the encoding gate only scanned package content, so a BOM or CRLF
+    in a workflow, a tool or a doc passed every check while AGENTS.md advertised
+    the rule as CI-enforced.
+    """
+    if len(rel.parts) == 1 and rel.name in HANDWRITTEN_ROOT_FILES:
+        return True
+    return bool(rel.parts) and rel.parts[0] in HANDWRITTEN_ROOTS
+
+
 def check_encoding(pkg: Path, rep: Report) -> None:
     bom_files, crlf_files, checked = [], [], 0
     for p in pkg.rglob("*"):
         if not p.is_file():
             continue
         rel = p.relative_to(pkg)
-        if not is_package_path(rel):
+        if not is_package_path(rel) and not is_handwritten_path(rel):
             continue
         if is_generated_dependency_path(rel):
             continue
