@@ -207,7 +207,12 @@ Edit `skills/hermesbot/SKILL.md` directly. Validate.
 
 1. Merge the release changes to `master`, including the `CHANGELOG.md`
    section for the version. `plugin.json` version is locally owned since #156.
-2. Create a **signed, annotated** `v*` tag on that source commit and push it. The release is then **dispatched
+2. **Prove the artifact before tagging.** Run the installed-user lifecycle
+   against the merged commit: `python tools/evals/install_smoke.py --ref
+   <merged-sha>`. It installs, enables, doctors, removes, re-pins and updates
+   the tree users actually receive. A release that cannot be enabled is not
+   releasable (#205 shipped because this step did not exist).
+3. Create a **signed, annotated** `v*` tag on that source commit and push it. The release is then **dispatched
    from `master` (`release` workflow → `Run workflow` → tag `vX.Y.Z`)**, not
    fired from the tag-push itself: workflows triggered by a tag push run the
    workflow definition from the tag's tree, so a tag pusher could rewrite the
@@ -237,14 +242,14 @@ Edit `skills/hermesbot/SKILL.md` directly. Validate.
    GitHub only accepts keys registered for signing for the SSH path — add the
    pubkey at Settings → SSH and GPG keys → New SSH **signing** key if it is
    not registered yet.
-3. The dispatched `release.yml` validates the tagged tree, then
+4. The dispatched `release.yml` validates the tagged tree, then
 <!-- coderabbit-ai-generated:v1 -->
 <!-- coderabbit-ai-generated-section:v1:9ad9535da30d31f95f6f7b2099158d95227e5463771f36b895a4222c9dcb07df -->
    creates a GitHub Release with ZIP, SHA-256 checksum, source SHA and immutable
    package install command.
 <!-- /coderabbit-ai-generated:v1 -->
    A missing packaged path aborts before creation; there is no branch to wait for.
-4. Close the milestone once all acceptance checks pass. Link issues and PRs
+5. Close the milestone once all acceptance checks pass. Link issues and PRs
    in release notes. Never move an existing release tag.
 
 ### Plan and adaptation tracking

@@ -14,7 +14,9 @@ permissions:
 jobs:
   golden:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The golden tasks can take 15 minutes; the lifecycle install adds a clone,
+    # an install, a remove, a pinned reinstall and an update on top of that.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -41,3 +43,9 @@ jobs:
 
       - name: Run golden-task evals
         run: uv run --frozen python tools/evals/run.py
+
+      # The lifecycle half: the golden tasks prove the method, this proves the
+      # artifact users receive installs, removes, re-pins and updates. Same
+      # runner requirement (hermes + a configured home), same fail-closed guard.
+      - name: Installed-user lifecycle
+        run: uv run --frozen python tools/evals/install_smoke.py
