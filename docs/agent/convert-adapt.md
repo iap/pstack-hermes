@@ -54,7 +54,8 @@ Prove the **built package** on hermes — not Cursor IDE dual-load.
    `hermes plugins doctor pstack --ci` **outside** this repo.
 3. Optional: load `poteto-mode` per [USING.md](../USING.md). Clean doctor +
    stock package failure → hermes harness issue, not a silent skill rewrite.
-4. Publish (CI): `master` maintains append-only `dist`.
+4. Publish (CI): a signed `v*` tag plus the dispatched `release` workflow is
+   the only publishing path; nothing is published from a branch.
 
 Validate runs static → repo YAML → gold manifest → gold load, including
 the hermes adaptation contract and model-panel consistency.

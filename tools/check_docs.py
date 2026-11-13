@@ -14,8 +14,8 @@ broke:
 3. Hand-written docs (plus `README.md`) carry no stale
    package-subdirectory paths (`pstack/skills/`, `pstack/config/`,
    `$PWD/pstack`, ...).
-4. `publish-dist.yml` copies only paths that exist in the tree (the dropped
-   `after-install.md` would have failed every master publish).
+4. `release.yml` packages only paths that exist in the tree (the dropped
+   `after-install.md` would have failed every release).
 5. Install docs (`README.md`, `docs/USING.md`) do not resurrect the dead
    `master` subdirectory install route.
 
@@ -73,7 +73,7 @@ LEGACY_NAME_CONTINUATIONS = frozenset(
 BARE_PACKAGE_RE = re.compile(r"(?<![\w./-])pstack/(?=\s|$|`)")
 CONTRACT_DOCS = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
 LAYOUT_GENERATED_EXEMPT = frozenset({"plugin.yaml"})
-CP_SOURCE_RE = re.compile(r'cp -a (?P<src>[^;\n"]+?) "\$dist/"')
+ZIP_SOURCE_RE = re.compile(r'zip -r pstack-"\$\{TAG_NAME\}"\.zip (?P<paths>[^;]+)')
 
 
 def _read(path: Path) -> str:
@@ -264,19 +264,19 @@ def check_stale_install_route(root: Path = ROOT) -> list[str]:
     return problems
 
 
-def check_publish_sources(root: Path = ROOT) -> list[str]:
-    workflow = root / ".github" / "workflows" / "publish-dist.yml"
+def check_release_sources(root: Path = ROOT) -> list[str]:
+    workflow = root / ".github" / "workflows" / "release.yml"
     if not workflow.is_file():
-        return [".github/workflows/publish-dist.yml: missing publish workflow"]
+        return [".github/workflows/release.yml: missing release workflow"]
     problems: list[str] = []
-    for match in CP_SOURCE_RE.finditer(_read(workflow)):
-        for token in match.group("src").split():
-            if "$" in token or "*" in token:
+    for match in ZIP_SOURCE_RE.finditer(_read(workflow)):
+        for token in match.group("paths").split():
+            token = token.strip().rstrip("/")
+            if not token or "$" in token or token == "assets":
+                # assets/ is packaged only when present; the fallback zip drops it.
                 continue
             if not (root / token).exists():
-                problems.append(
-                    f"publish-dist.yml: cp source does not exist: {token}"
-                )
+                problems.append(f"release.yml: packaged path does not exist: {token}")
     return problems
 
 
@@ -285,7 +285,7 @@ CHECKS = (
     ("layout matches .gitattributes", check_layout_manifest),
     ("no stale package subdirectory paths", check_stale_paths),
     ("no stale subdirectory-install route", check_stale_install_route),
-    ("publish-dist sources exist", check_publish_sources),
+    ("release packaging sources exist", check_release_sources),
 )
 
 

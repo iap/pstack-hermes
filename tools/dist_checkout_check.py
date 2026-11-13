@@ -138,7 +138,7 @@ def stage_tree(package: Path, dest: Path, *, source_tree: bool = False) -> None:
     items = list(package.iterdir())
     if source_tree:
         # The repository root also holds tooling, docs and local scratch
-        # (.venv, .pytest-tmp); stage only what publish-dist.yml ships.
+        # (.venv, .pytest-tmp); stage only what the release ships.
         items = [package / name for name in SOURCE_TREE_PATHS if (package / name).exists()]
     for item in items:
         if item.name in {".git", ".venv", "__pycache__"}:
