@@ -41,10 +41,13 @@ def score(case: dict, response: str) -> tuple[bool, list[str]]:
     failures: list[str] = []
     lowered = response.lower()
     for term in expect.get("must_mention", []):
-        if term.lower() not in lowered:
+        # `a|b` accepts any alternate: a rubric must not demand one phrasing.
+        alternatives = [part.strip().lower() for part in term.split("|") if part.strip()]
+        if not any(alt in lowered for alt in alternatives):
             failures.append(f"missing must_mention: {term}")
     for term in expect.get("must_not_mention", []):
-        if term.lower() in lowered:
+        forbidden = [part.strip().lower() for part in term.split("|") if part.strip()]
+        if any(alt in lowered for alt in forbidden):
             failures.append(f"forbidden present: {term}")
     for gate in expect.get("gates", []):
         if gate.lower() not in lowered:

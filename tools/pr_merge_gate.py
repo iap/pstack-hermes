@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Pre-merge gate for the bot-review contract (docs/agent/bot-reviews.md).
 
 Green CI is not the merge gate. The repository requires all of:
