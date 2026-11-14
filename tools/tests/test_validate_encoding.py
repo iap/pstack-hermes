@@ -124,3 +124,31 @@ def test_encoding_check_covers_allowed_signers(tmp_path):
 
     assert rep.failed
     assert any(".github/allowed_signers" in message for message in rep.failed)
+
+
+def test_encoding_check_covers_root_gitignore(tmp_path):
+    # CodeRabbit: a root .gitignore used to be skipped by the admission guard.
+    (tmp_path / ".gitignore").write_bytes(b"\xef\xbb\xbf*.pyc\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any(".gitignore" in message for message in rep.failed)
+
+
+def test_encoding_check_rejects_invalid_utf8(tmp_path):
+    # CodeRabbit: invalid bytes without BOM/CRLF must still fail the UTF-8 policy.
+    (tmp_path / "NOTICE.md").write_bytes(b"\xff\n")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any("not valid UTF-8" in message for message in rep.failed)
