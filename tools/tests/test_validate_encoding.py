@@ -152,3 +152,17 @@ def test_encoding_check_rejects_invalid_utf8(tmp_path):
 
     assert rep.failed
     assert any("not valid UTF-8" in message for message in rep.failed)
+
+
+def test_encoding_check_rejects_bare_cr(tmp_path):
+    (tmp_path / "tools" / "demo.py").parent.mkdir(parents=True)
+    (tmp_path / "tools" / "demo.py").write_bytes(b"print('x')\r")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"---\nname: demo\n---\n")
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+
+    assert rep.failed
+    assert any("bare CR" in message for message in rep.failed)

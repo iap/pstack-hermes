@@ -355,7 +355,7 @@ def is_handwritten_path(rel: Path) -> bool:
 
 
 def check_encoding(pkg: Path, rep: Report) -> None:
-    bom_files, crlf_files, utf8_files, checked = [], [], [], 0
+    bom_files, crlf_files, bare_cr_files, utf8_files, checked = [], [], [], [], 0
     for p in pkg.rglob("*"):
         if not p.is_file():
             continue
@@ -372,6 +372,8 @@ def check_encoding(pkg: Path, rep: Report) -> None:
             bom_files.append(rel.as_posix())
         if b"\r\n" in data:
             crlf_files.append(rel.as_posix())
+        if b"\r" in data.replace(b"\r\n", b""):
+            bare_cr_files.append(rel.as_posix())
         try:
             data.decode("utf-8")
         except UnicodeDecodeError:
@@ -384,6 +386,10 @@ def check_encoding(pkg: Path, rep: Report) -> None:
         rep.fail(f"files with CRLF: {crlf_files}")
     else:
         rep.ok(f"no CRLF in any of {checked} text files")
+    if bare_cr_files:
+        rep.fail(f"files with bare CR: {bare_cr_files}")
+    else:
+        rep.ok(f"no bare CR in any of {checked} text files")
     if utf8_files:
         rep.fail(f"files not valid UTF-8: {utf8_files}")
     else:
