@@ -3,7 +3,7 @@
   "skill": "poteto-mode",
   "prompt": "Refactor the retry logic in payments.ts to be idempotent. Plan first, then execute.",
   "expect": {
-    "must_mention": ["poteto-mode", "delegate|delegation|delegates|subagent"],
+    "must_mention": ["poteto-mode", "delegate|delegation|delegates"],
     "must_not_mention": ["Task subagent", "AskQuestion", "subagent_type"],
     "gates": ["plan", "verify"]
   }
