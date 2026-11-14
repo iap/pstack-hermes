@@ -3,7 +3,7 @@
   "skill": "setup-pstack",
   "prompt": "/setup-pstack",
   "expect": {
-    "must_mention": ["configure the current profile|configure your current profile|current profile", "create a new profile named poteto|create a poteto profile|poteto profile"],
+    "must_mention": ["configure the current profile|configure your current profile", "create a new profile named poteto|create a poteto profile"],
     "must_not_mention": ["Task subagent", "AskQuestion"],
     "gates": ["profile"]
   }
