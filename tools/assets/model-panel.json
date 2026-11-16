@@ -14,7 +14,7 @@
     ],
     "why investigators": "meituan/longcat-2.0",
     "why synthesizer": "z-ai/glm-5.2",
-    "reflect tooling": "qwen/qwen-2.5-7b-instruct",
+    "reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507",
     "reflect judgment, divergent, synthesizer": "z-ai/glm-5.2",
     "arena runners": [
       "meituan/longcat-2.0",

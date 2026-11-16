@@ -54,7 +54,7 @@ the panel is refreshed, and `setup-pstack` lets you override every row.
 | how critics | `meituan/longcat-2.0`, `meta/muse-spark-1.2-contributor` |
 | why investigators | `meituan/longcat-2.0` |
 | why synthesizer | `z-ai/glm-5.2` |
-| reflect tooling | `qwen/qwen-2.5-7b-instruct` |
+| reflect tooling | `qwen/qwen3-30b-a3b-instruct-2507` |
 | reflect judgment, divergent, synthesizer | `z-ai/glm-5.2` |
 | arena runners | `meituan/longcat-2.0`, `meta/muse-spark-1.2-contributor` |
 | arena cross-judge pool | `z-ai/glm-5.2`, `meituan/longcat-2.0` |

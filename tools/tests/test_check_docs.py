@@ -451,3 +451,56 @@ def test_generated_marker_listed_in_layout_passes(tmp_path):
         "| Path | Kind | Notes |\n|---|---|---|\n| `LICENSE` | generated | x |\n",
     )
     assert check_docs.check_layout_manifest(tmp_path) == []
+
+
+def _model_tree(tmp_path, panel_roles, table_rows):
+    import json
+
+    panel = tmp_path / "tools" / "assets" / "model-panel.json"
+    panel.parent.mkdir(parents=True)
+    panel.write_text(json.dumps({"roles": panel_roles}), encoding="utf-8")
+    body = "## The shipped panel\n\n| Role | Default |\n|---|---|\n" + table_rows + "\n\n## Next\n"
+    _write(tmp_path / "docs" / "MODELS.md", body)
+    return tmp_path
+
+
+def test_model_map_accepts_a_matching_table(tmp_path):
+    root = _model_tree(
+        tmp_path,
+        {"reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507"},
+        "| reflect tooling | `qwen/qwen3-30b-a3b-instruct-2507` |\n",
+    )
+
+    assert check_docs.check_model_map(root) == []
+
+
+def test_model_map_flags_a_stale_slug(tmp_path):
+    root = _model_tree(
+        tmp_path,
+        {"reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507"},
+        "| reflect tooling | `qwen/qwen-2.5-7b-instruct` |\n",
+    )
+
+    problems = check_docs.check_model_map(root)
+
+    assert any("reflect tooling" in p and "panel has" in p for p in problems)
+
+
+def test_model_map_flags_a_missing_role(tmp_path):
+    root = _model_tree(
+        tmp_path,
+        {"reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507"},
+        "",
+    )
+
+    assert any("missing from shipped panel" in p for p in check_docs.check_model_map(root))
+
+
+def test_model_map_flags_a_role_the_panel_no_longer_defines(tmp_path):
+    root = _model_tree(
+        tmp_path,
+        {"reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507"},
+        "| reflect tooling | `qwen/qwen3-30b-a3b-instruct-2507` |\n| ghost role | `x/y-1.0` |\n",
+    )
+
+    assert any("does not define" in p for p in check_docs.check_model_map(root))
