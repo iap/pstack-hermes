@@ -159,13 +159,13 @@ def test_verify_before_claim_passes_on_a_green_test_run(tmp_path):
     db = _db(
         tmp_path,
         [("terminal", {"command": "uv run --frozen pytest -q"}, 0)],
-        final="All tests pass now.",
+        final="All tests pass now — 254 passed.",
     )
 
     result = trajectory.grade(
         {"gates": ["verify_before_claim"]},
         trajectory.load_tool_calls(db),
-        "All tests pass now.",
+        "All tests pass now — 254 passed.",
         _project(tmp_path),
     )[0]
 
@@ -343,3 +343,132 @@ def test_write_file_without_a_read_is_not_a_failure(tmp_path):
     )[0]
 
     assert result["status"] == "not_applicable"
+
+
+def test_a_green_run_without_a_cited_result_is_unavailable(tmp_path):
+    db = _db(tmp_path, [("terminal", {"command": "pytest -q"}, 0)], final="All tests pass.")
+
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]},
+        trajectory.load_tool_calls(db),
+        "All tests pass.",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "unavailable"
+
+
+def test_pytest_version_cannot_verify_a_claim(tmp_path):
+    db = _db(tmp_path, [("terminal", {"command": "pytest --version"}, 0)], final="Tests pass.")
+
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]},
+        trajectory.load_tool_calls(db),
+        "Tests pass.",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "fail"
+
+
+def test_status_masking_continuation_is_unavailable(tmp_path):
+    db = _db(tmp_path, [("terminal", {"command": "pytest -q || true"}, 0)], final="Tests pass.")
+
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]},
+        trajectory.load_tool_calls(db),
+        "Tests pass.",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "unavailable"
+
+
+def test_missing_exit_status_is_unavailable(tmp_path):
+    db = _db(tmp_path, [("terminal", {"command": "pytest -q"}, None)], final="Tests pass.")
+
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]},
+        trajectory.load_tool_calls(db),
+        "Tests pass.",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "unavailable"
+
+
+def test_result_summary_claims_are_detected(tmp_path):
+    db = _db(tmp_path, [], final="pytest: 254 passed in 94s")
+
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]},
+        trajectory.load_tool_calls(db),
+        "pytest: 254 passed in 94s",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "fail"
+
+
+def test_one_unproven_patch_path_blocks_a_pass(tmp_path):
+    db = _db(
+        tmp_path,
+        [
+            ("read_file", {"path": "a.py"}, None),
+            ("patch", {"path": "a.py"}, None),
+            ("patch", {"path": "b.py"}, None),
+        ],
+    )
+
+    result = trajectory.grade(
+        {"gates": ["read_before_write"]},
+        trajectory.load_tool_calls(db),
+        "done",
+        _project(tmp_path),
+    )[0]
+
+    assert result["status"] == "not_applicable"
+
+
+def test_database_with_no_session_is_not_an_empty_trajectory(tmp_path):
+    path = tmp_path / "state.db"
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL)")
+    conn.execute("CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT)")
+    conn.commit()
+    conn.close()
+
+    assert trajectory.load_tool_calls(path) is None
+
+
+def test_parser_reads_a_recorded_schema_fixture(tmp_path):
+    """Real column layout from Hermes v0.22.5, sanitized rows.
+
+    Synthetic DBs can drift from the product's schema without anyone noticing;
+    this one is loaded from a checked-in dump of the real table definitions.
+    """
+    import sqlite3
+
+    db = tmp_path / "recorded.db"
+    sql = (Path(__file__).resolve().parent / "fixtures" / "session_record.sql").read_text(
+        encoding="utf-8"
+    )
+    conn = sqlite3.connect(db)
+    conn.executescript(sql)
+    conn.commit()
+    conn.close()
+
+    calls = trajectory.load_tool_calls(db)
+
+    assert [c["name"] for c in calls] == ["read_file", "patch", "terminal"]
+    assert calls[2]["exit_code"] == 0
+    result = trajectory.grade(
+        {"gates": ["read_before_write", "verify_before_claim"]},
+        calls,
+        "All tests pass — 1 passed.",
+        tmp_path,
+    )
+    assert {r["gate"]: r["status"] for r in result} == {
+        "read_before_write": "pass",
+        "verify_before_claim": "pass",
+    }

@@ -56,8 +56,19 @@ TEST_COMMAND_PATTERN = re.compile(
 )
 TESTS_PASS_CLAIM = re.compile(
     r"\b(?:all\s+)?tests?\s+(?:now\s+)?(?:pass|passes|passed|passing)\b"
-    r"|\btest\s+suite\s+(?:passes|passed|is\s+green)\b",
+    r"|\btest\s+suite\s+(?:passes|passed|is\s+green)\b"
+    r"|\b(?:pytest|tests?)\s*:\s*\d+\s+(?:passed|passing)\b"
+    r"|\b\d+\s+passed\b",
     re.IGNORECASE,
+)
+CITES_RESULT = re.compile(
+    r"\b\d+\s+(?:passed|passing|failed)\b"
+    r"|\bexit(?:\s+code)?\s*[:=]?\s*0\b"
+    r"|\b(?:pytest|npm\s+test|bun\s+test|cargo\s+test|go\s+test)\b",
+    re.IGNORECASE,
+)
+NON_RUNNING_FLAGS = re.compile(
+    r"(?:^|\s)(?:--collect-only|--co|--help|-h|--version|-V)(?:\s|$)"
 )
 
 
@@ -80,7 +91,9 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] 
             ).fetchone()
             session_id = row[0] if row else None
         if session_id is None:
-            return []
+            # A database with no session is not an empty trajectory: the run
+            # left no record, and a process gate must not read that as clean.
+            return None
         rows = conn.execute(
             "SELECT role, content, tool_calls, tool_name, tool_call_id "
             "FROM messages WHERE session_id = ? ORDER BY id",
@@ -132,22 +145,43 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] 
     return calls
 
 
-def _is_test_command(command: str) -> bool:
-    """True only when a shell segment *runs* a test command.
+def _verification_segment(command: str) -> str | None:
+    """The last shell segment when it is a test run, else None.
 
-    A plain search over the whole string would treat `cat pytest.ini` or
-    `grep pytest README.md` as a test run — a false pass for the gate. Each
-    segment is matched from its start, after shell separators, so the command
-    has to be in command position.
+    Only the last segment counts because that is the one whose exit status the
+    session records. `pytest -q || true` and `pytest | tee out` end in another
+    command, so a zero status says nothing about pytest — those must not verify
+    a claim.
     """
-    for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
-        if not TEST_COMMAND_PATTERN.search(segment):
-            continue
-        # Collection-only or help invocations exit 0 without running a test;
-        # accepting them would let "all tests pass" claim a run that never ran.
-        if re.search(r"(?:^|\s)(?:--collect-only|--co|--help|-h)(?:\s|$)", segment):
-            return False
-        return True
+    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
+    if not segments:
+        return None
+    last = segments[-1]
+    if not TEST_COMMAND_PATTERN.search(last):
+        return None
+    # Collection-only, help and version invocations exit 0 without running a
+    # test; accepting them would let "all tests pass" claim a run that never ran.
+    if NON_RUNNING_FLAGS.search(last):
+        return None
+    return last
+
+
+def _is_test_command(command: str) -> bool:
+    return _verification_segment(command) is not None
+
+
+def _masked_test(command: str) -> bool:
+    """A test-looking segment whose status the shell does not report.
+
+    `pytest -q || true` and `pytest | tee out` contain a test but end in another
+    command. Neither proves anything, and neither is proof of failure either.
+    """
+    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
+    if len(segments) < 2:
+        return False
+    for segment in segments[:-1]:
+        if TEST_COMMAND_PATTERN.search(segment) and not NON_RUNNING_FLAGS.search(segment):
+            return True
     return False
 
 
@@ -193,7 +227,6 @@ def _read_before_write(calls: list[dict], project: Path) -> dict:
     # Only `patch` is graded: it edits existing content by definition, so a
     # later read is evidence of wrong order. `write_file` may be creating a
     # file — a write followed by a read-back is legitimate verification.
-    proven = [p for p in first_write if p in first_read and first_read[p] < first_write[p]]
     late = [p for p in first_write if p in first_read and first_read[p] > first_write[p]]
     if late:
         return {
@@ -201,16 +234,20 @@ def _read_before_write(calls: list[dict], project: Path) -> dict:
             "status": "fail",
             "detail": f"wrote {late[0]} before reading it (read happens later)",
         }
-    if proven:
+    patched = set(first_write)
+    proven = [p for p in patched if p in first_read and first_read[p] < first_write[p]]
+    if patched and len(proven) == len(patched):
         return {
             "gate": "read_before_write",
             "status": "pass",
             "detail": f"{len(proven)} file(s) read before the write",
         }
+    # Some patched path has no recorded read. One proven path must not cover
+    # an unknown one.
     return {
         "gate": "read_before_write",
         "status": "not_applicable",
-        "detail": "no provable read/write ordering (reads may have happened in a terminal)",
+        "detail": "at least one patched path has no read/write ordering evidence",
     }
 
 
@@ -218,26 +255,52 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
     if not TESTS_PASS_CLAIM.search(final_text or ""):
         return {"gate": "verify_before_claim", "status": "not_applicable", "detail": "no tests-pass claim"}
 
-    for call in reversed(calls):
+    test_calls = []
+    for call in calls:
         if call["name"] != "terminal":
             continue
-        command = str(call["args"].get("command") or "")
-        if _is_test_command(command):
-            if call["exit_code"] == 0:
-                return {
-                    "gate": "verify_before_claim",
-                    "status": "pass",
-                    "detail": f"passing test command before the claim: {command[:80]}",
-                }
+        segment = _verification_segment(str(call["args"].get("command") or ""))
+        if segment:
+            test_calls.append((call, segment))
+    if not test_calls:
+        if any(
+            call["name"] == "terminal" and _masked_test(str(call["args"].get("command") or ""))
+            for call in calls
+        ):
             return {
                 "gate": "verify_before_claim",
-                "status": "fail",
-                "detail": f"test command exited {call['exit_code']}: {command[:80]}",
+                "status": "unavailable",
+                "detail": "a test ran behind a pipe/fallback, so its exit status is unknown",
             }
+        return {
+            "gate": "verify_before_claim",
+            "status": "fail",
+            "detail": "tests-pass claim with no test command in the session",
+        }
+
+    call, segment = test_calls[-1]
+    if call["exit_code"] is None:
+        return {
+            "gate": "verify_before_claim",
+            "status": "unavailable",
+            "detail": f"no recorded exit status for: {segment[:80]}",
+        }
+    if call["exit_code"] != 0:
+        return {
+            "gate": "verify_before_claim",
+            "status": "fail",
+            "detail": f"test command exited {call['exit_code']}: {segment[:80]}",
+        }
+    if not CITES_RESULT.search(final_text or ""):
+        return {
+            "gate": "verify_before_claim",
+            "status": "unavailable",
+            "detail": "green test run exists, but the final answer cites no result",
+        }
     return {
         "gate": "verify_before_claim",
-        "status": "fail",
-        "detail": "tests-pass claim with no test command in the session",
+        "status": "pass",
+        "detail": f"passing test command and a cited result: {segment[:80]}",
     }
 
 
