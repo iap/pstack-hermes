@@ -49,3 +49,49 @@ def test_encoding_check_skips_generated_node_modules(tmp_path):
 
     assert not rep.failed
     assert any("no CRLF" in message and "1 text files" in message for message in rep.passed)
+
+
+def _rep(tmp_path):
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+    return rep
+
+
+def test_encoding_flags_a_bom_in_a_workflow(tmp_path):
+    """#208: CI files were outside the gate, so a BOM shipped silently."""
+    wf = tmp_path / ".github" / "workflows" / "x.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_bytes(b"\xef\xbb\xbfname: x\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("BOM" in message and ".github/workflows/x.yml" in message for message in rep.failed)
+
+
+def test_encoding_flags_crlf_in_tools(tmp_path):
+    tool = tmp_path / "tools" / "x.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1\r\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("CRLF" in message and "tools/x.py" in message for message in rep.failed)
+
+
+def test_encoding_flags_a_bom_in_root_readme(tmp_path):
+    (tmp_path / "README.md").write_bytes(b"\xef\xbb\xbf# title\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("BOM" in message and "README.md" in message for message in rep.failed)
+
+
+def test_encoding_still_ignores_unlisted_root_scratch_files(tmp_path):
+    (tmp_path / "scratch.json").write_bytes(b"\xef\xbb\xbf{}\r\n")
+
+    rep = _rep(tmp_path)
+
+    assert not rep.failed

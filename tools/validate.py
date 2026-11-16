@@ -112,6 +112,21 @@ LOADER_WHITELIST = {"$schema", "name", "version", "description", "author", "home
                     "repository", "license", "keywords", "extensions"}
 # Filenames the encoding check touches even without a text suffix (dotfiles carry none).
 TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
+
+# Repo-owned text surfaces that are not installed package content. The package
+# predicate excludes them, which left the AGENTS.md encoding contract unenforced
+# exactly where it applies: CI, tooling and docs (#208).
+HANDWRITTEN_ROOT_FILES = frozenset({
+    "AGENTS.md", "CONTRIBUTING.md", "README.md", "SECURITY.md",
+    "NOTICE.md", "CHANGELOG.md", "CLAUDE.md",
+})
+HANDWRITTEN_DIRS = frozenset({".github", "tools", "docs", "scripts"})
+
+
+def is_handwritten_path(rel: Path) -> bool:
+    if len(rel.parts) == 1:
+        return rel.name in HANDWRITTEN_ROOT_FILES
+    return rel.parts[0] in HANDWRITTEN_DIRS
 # Model slugs in the repo-owned panel must be provider-qualified and lowercase
 # (vendor/model[:variant], e.g. z-ai/glm-5.2 or …:free) or the inherit-parent
 # selector. Catches hand-edit slips like a missing vendor prefix or `-free`
@@ -336,7 +351,7 @@ def check_encoding(pkg: Path, rep: Report) -> None:
         if not p.is_file():
             continue
         rel = p.relative_to(pkg)
-        if not is_package_path(rel):
+        if not (is_package_path(rel) or is_handwritten_path(rel)):
             continue
         if is_generated_dependency_path(rel):
             continue
@@ -557,7 +572,7 @@ def check_conflict_markers(pkg: Path, rep: Report) -> None:
         if not p.is_file():
             continue
         rel = p.relative_to(pkg)
-        if not is_package_path(rel):
+        if not (is_package_path(rel) or is_handwritten_path(rel)):
             continue
         if is_generated_dependency_path(rel):
             continue

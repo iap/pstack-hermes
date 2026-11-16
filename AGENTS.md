@@ -103,7 +103,7 @@ bun run typecheck   # deps + tsc --noEmit --strict
 | Versioning | `plugin.json` version is locally owned since the standalone refactor (#156) |
 | Releases | Tooling releases recorded in `CHANGELOG.md`; never move an existing tag |
 | Planning | GitHub issues, native sub-issues and milestones own plans; `docs/` holds instructions only |
-| Encoding | LF-only, no BOM, UTF-8 (CI-enforced) |
+| Encoding | LF-only, no BOM, UTF-8 — package content **and** `.github/`, `tools/`, `docs/`, `scripts/`, root docs (CI-enforced) |
 | Default branch | `master` |
 
 ## Where to edit

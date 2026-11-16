@@ -1,4 +1,4 @@
-﻿"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
+"""Tests for the pre-merge bot-review gate (tools/pr_merge_gate.py).
 
 Pure-function tests: no `gh`, no network. The CLI half is exercised by hand
 before a merge; these tests pin the verdict logic the gate depends on, including
