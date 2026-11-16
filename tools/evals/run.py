@@ -31,6 +31,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Loaded both as a script (tools/evals on sys.path) and via importlib in tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from trajectory import grade as grade_trajectory
+from trajectory import load_tool_calls
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
@@ -108,8 +114,10 @@ def seed_home(
     config.write_text(yaml.safe_dump(data), encoding="utf-8")
 
 
-def run_case(case: dict, hermes: str = "hermes", arm: str = "skill") -> tuple[str, list[str]]:
-    """Return ("pass"|"fail"|"error", failures)."""
+def run_case(
+    case: dict, hermes: str = "hermes", arm: str = "skill"
+) -> tuple[str, list[str], list[dict]]:
+    """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
     active = os.environ.get("HERMES_HOME")
     active_home = Path(active) if active else Path.home() / ".hermes"
     with tempfile.TemporaryDirectory(prefix="pstack-eval-") as td:
@@ -124,7 +132,7 @@ def run_case(case: dict, hermes: str = "hermes", arm: str = "skill") -> tuple[st
                 register_checkout_skills=arm == "skill",
             )
         except Exception as exc:  # malformed YAML, non-mapping config, bad skills shape
-            return "error", [f"seed error: {exc}"]
+            return "error", [f"seed error: {exc}"], []
         try:
             proc = subprocess.run(
                 build_argv(case, hermes, arm),
@@ -135,12 +143,28 @@ def run_case(case: dict, hermes: str = "hermes", arm: str = "skill") -> tuple[st
                 cwd=str(project),
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            return "error", [f"runner error: {exc}"]
+            return "error", [f"runner error: {exc}"], []
+
+        # Grade before the temp home is removed. A missing record is an error,
+        # never a pass: the gate could not see the evidence it claims to judge.
+        process: list[dict] = []
+        if case.get("process"):
+            calls = load_tool_calls(home / "state.db")
+            if calls is None:
+                return "error", ["process: no readable session record"], []
+            process = grade_trajectory(case["process"], calls, proc.stdout, project)
+
     if proc.returncode != 0:
         tail = (proc.stdout + proc.stderr)[-500:]
-        return "error", [f"hermes exited {proc.returncode}: {tail}"]
+        return "error", [f"hermes exited {proc.returncode}: {tail}"], []
     ok, failures = score(case, proc.stdout)
-    return ("pass" if ok else "fail"), failures
+    unavailable = [p for p in process if p["status"] == "unavailable"]
+    if unavailable:
+        return "error", [f"process {p['gate']}: {p['detail']}" for p in unavailable], process
+    process_fail = [p for p in process if p["status"] == "fail"]
+    for result in process_fail:
+        failures.append(f"{result['gate']}: {result['detail']}")
+    return ("pass" if ok and not process_fail else "fail"), failures, process
 
 
 def summarize(records: list[dict], arms: tuple[str, ...]) -> list[dict]:
@@ -216,11 +240,13 @@ def main(argv: list[str] | None = None) -> int:
     for case in cases:
         for arm in arms:
             for rep in range(1, args.reps + 1):
-                status, failures = run_case(case, args.hermes, arm)
+                status, failures, process = run_case(case, args.hermes, arm)
                 suffix = f" rep{rep}" if args.reps > 1 else ""
                 print(f"{status.upper()} {case['id']} [{arm}]{suffix}")
                 for line in failures:
                     print(f"  - {line}")
+                for result in process:
+                    print(f"  process {result['gate']}: {result['status']} ({result['detail']})")
                 records.append({"case": case["id"], "arm": arm, "status": status})
                 errors += status == "error"
                 skill_failed += status == "fail" and arm == "skill"

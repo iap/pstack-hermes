@@ -171,3 +171,94 @@ def test_print_summary_prints_na_when_an_arm_has_no_scored_runs(capsys):
     out = capsys.readouterr().out
     assert "n/a" in out
     assert "pp" not in out
+
+
+def _fake_session_db(home, calls):
+    """Write a minimal session DB into the isolated home a run_case created."""
+    import json
+    import sqlite3
+
+    conn = sqlite3.connect(home / "state.db")
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, "
+        "role TEXT, content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+    for index, (name, args, exit_code) in enumerate(calls):
+        call_id = f"c{index}"
+        payload = [{"call_id": call_id, "function": {"name": name, "arguments": json.dumps(args)}}]
+        conn.execute(
+            "INSERT INTO messages (session_id, role, tool_calls) VALUES ('s1','assistant',?)",
+            (json.dumps(payload),),
+        )
+        if exit_code is not None:
+            conn.execute(
+                "INSERT INTO messages (session_id, role, content, tool_name, tool_call_id) "
+                "VALUES ('s1','tool',?,'terminal',?)",
+                (json.dumps({"exit_code": exit_code}), call_id),
+            )
+    conn.commit()
+    conn.close()
+
+
+def _stub_hermes(monkeypatch, tmp_path, calls, stdout):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir(exist_ok=True)
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+
+    def fake_run(argv, **kwargs):
+        _fake_session_db(Path(kwargs["env"]["HERMES_HOME"]), calls)
+        return subprocess.CompletedProcess(argv, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+
+def test_run_case_grades_a_clean_trajectory_end_to_end(monkeypatch, tmp_path):
+    _stub_hermes(
+        monkeypatch,
+        tmp_path,
+        [
+            ("read_file", {"path": "a.py"}, None),
+            ("patch", {"path": "a.py"}, None),
+            ("terminal", {"command": "pytest -q"}, 0),
+        ],
+        "All tests pass — 1 passed.",
+    )
+    case = {
+        "id": "demo",
+        "prompt": "fix it",
+        "skill": "s",
+        "process": {"gates": ["read_before_write", "verify_before_claim"]},
+    }
+
+    status, failures, process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "pass", failures
+    assert {p["gate"]: p["status"] for p in process} == {
+        "read_before_write": "pass",
+        "verify_before_claim": "pass",
+    }
+
+
+def test_run_case_fails_a_prose_only_claim_end_to_end(monkeypatch, tmp_path):
+    _stub_hermes(
+        monkeypatch,
+        tmp_path,
+        [("read_file", {"path": "a.py"}, None)],
+        "All tests pass.",
+    )
+    case = {
+        "id": "demo",
+        "prompt": "fix it",
+        "skill": "s",
+        "process": {"gates": ["verify_before_claim"]},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "fail"
+    assert any("verify_before_claim" in line for line in failures)
