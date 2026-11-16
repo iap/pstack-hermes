@@ -1,12 +1,13 @@
 # Patches to the hermes CLI itself
 
 > [!WARNING]
-> **Historical.** The upstream PRs that proposed these patches to
+> **Archived (2026-11-16 UTC).** The upstream PRs that proposed these patches to
 > `NousResearch/hermes-agent` were opened and later **closed unmerged**
-> (2026-09-10). The patches remain here as reference only — none is
-> required for the package to load, validate, or install. Whether to keep
-> carrying them is an open decision (see the repository issues); treat this file
-> as a record, not a live plan.
+> (2026-09-10). The gaps they address are **still present** in Hermes v0.22.5
+> (verified against `v0.22.5+1468.g8d617f5`, commit `8d617f52`), but the project
+> no longer carries them as live fixes:
+> they live in [`patches/archive/`](../patches/archive/README.md) as a record.
+> None is required for the package to load, validate, or install.
 
 Agents routing harness gaps: prefer a fix or issue on
 `NousResearch/hermes-agent`. Do not treat these patches as a required
@@ -18,7 +19,7 @@ kept here because the portable-plugin work surfaced the gaps. Apply manually
 with `git apply <patch>` inside the hermes clone; none of them are required
 for the pstack package to load and validate.
 
-## patches/hermes-fork-portable-diagnostics.patch
+## patches/archive/hermes-fork-portable-diagnostics.patch
 
 `hermes_cli/agent_plugins.py` — when a manifest carries Cursor-only top-level
 fields (`agents`, `commands`, `hooks`, `automations`, `rules`), the loader's
@@ -29,7 +30,7 @@ success is the dangerous failure mode for Cursor ports.
 
 Status: independent of the other two patches; safe to apply at any time.
 
-## patches/hermes-fork-oneshot-cwd.patch (v1) vs patches/hermes-fork-oneshot-cwd-v2.patch
+## patches/archive/hermes-fork-oneshot-cwd.patch (v1) vs .../hermes-fork-oneshot-cwd-v2.patch
 
 Two mechanisms for the same observed failure: in `hermes -z` (oneshot) mode,
 "create a file in the current directory" resolved to the wrong location
@@ -53,14 +54,19 @@ kept for reference. Prefer v2 if applying only one.
 
 ## Verification status
 
-These patches are not applied by CI and are not required for the pstack package
-to load. Their applicability is checked weekly by
-`.github/workflows/patch-health.yml`: it clones `NousResearch/hermes-agent` at a
-target ref (default `main`; dispatchable with another ref), runs
-`git apply --check` for every file in `patches/`, and writes a PASS/FAIL table
-to the job summary. A stale patch fails the job — a signal to re-baseline it
-against the current tree or retire it, not a reason to block unrelated PRs.
+There are **no live patches** under `patches/` any more; every `.patch` file is
+in `patches/archive/` with the evidence table in its README. The weekly
+`patch-health` workflow still runs: it clones `NousResearch/hermes-agent` at a
+target ref (default `main` and the newest release tag; dispatchable with another
+ref) and applies `git apply --check` to every live patch. With zero live patches
+it records the archived count and passes; if both the live and archive sets are
+empty it fails, so an accidental deletion cannot look like a clean state.
 
-Last verified against: **not recorded** (check added 2026-11-17). Run the
-workflow with `ref` set to the Hermes version you actually target, and record
-the result here.
+Verification record: the gaps were re-checked on 2026-11-16 UTC against Hermes
+`v0.22.5+1468.g8d617f5`, commit `8d617f52fe3fdf29a222a42d29c72645329e6524`.
+The commit each patch was authored against is **not recorded** (unknown), which
+is one reason they are archived rather than re-baselined.
+
+Consequence of the archived oneshot patch: `hermes -z` does not seed a working
+directory. Pass absolute paths in oneshot prompts and eval cases
+(`tools/evals/README.md`).

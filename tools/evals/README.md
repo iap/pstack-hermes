@@ -35,6 +35,13 @@ Drop `golden/<id>.json` with `prompt`, `expect.must_mention`,
 `expect.must_not_mention` (Cursor vocab belongs here), and `gates`
 (concepts the response must name, e.g. plan/verify/evidence).
 
+## Known limitation: oneshot cwd
+
+`hermes -z` does not seed a working directory (the fix is archived in
+`patches/archive/README.md`, not applied). Prompts that create or edit files
+must pass **absolute paths**; relative paths may resolve against the wrong
+directory. The runner sets the process cwd, which is not the same thing.
+
 ## Optional process gates
 
 A golden case can also grade what the agent **did**, using the isolated run's

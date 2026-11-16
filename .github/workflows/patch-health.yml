@@ -1,7 +1,7 @@
-# Patch health (#214): the fork patches in patches/ are manual fixes, not
-# shipped code, so nothing used to notice when they stopped applying. This job
-# answers one question on a schedule: does each patch still apply to the
-# Hermes tree we target?
+# Patch health (#214): the fork patches are archived (patches/archive/), and
+# no live patch remains. This job still answers one question on a schedule:
+# does each *live* patch apply to the Hermes tree we target? With none live it
+# reports the archived count and passes; an empty repo fails instead.
 #
 # By default it tests both upstream `main` and the newest release tag: a patch
 # that still applies to main but broke against the latest tagged release is
@@ -82,9 +82,17 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           shopt -s nullglob
           patches=(patches/*.patch)
+          archived=(patches/archive/*.patch)
           if [ ${#patches[@]} -eq 0 ]; then
-            echo "::error::no patches found; the check would pass vacuously"
-            exit 1
+            # No live patches is a legitimate state (the fork patches are
+            # archived), but an empty repo is not.
+            if [ ${#archived[@]} -eq 0 ]; then
+              echo "::error::no live or archived patches; refusing a vacuous pass"
+              exit 1
+            fi
+            echo "| (none live) | PASS | ${#archived[@]} archived, not gated |" >> "$GITHUB_STEP_SUMMARY"
+            echo "no live patches; ${#archived[@]} archived (reference only)"
+            exit 0
           fi
           for p in "${patches[@]}"; do
             name="$(basename "$p")"

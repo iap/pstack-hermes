@@ -35,6 +35,8 @@ def test_patch_health_checks_every_patch_and_fails_on_a_stale_one():
 
     assert 'git clone --depth 1 --branch "$TARGET"' in script
     assert "patches/*.patch" in script
+    assert "patches/archive/*.patch" in script
+    assert "refusing a vacuous pass" in script
     assert 'git -C "$target" apply --check' in script
     assert 'exit "$failed"' in script, "a stale patch must fail the job"
     assert "GITHUB_STEP_SUMMARY" in script, "results must be visible without logs"
