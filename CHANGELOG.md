@@ -5,6 +5,12 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- Encoding gate also rejects bare CR and invalid UTF-8, and covers
+  `.gitignore`, `pyproject.toml` and `.github/allowed_signers`.
+- Golden rubrics accept `a|b` alternates in `must_mention` /
+  `must_not_mention`, so a correct answer is not failed for phrasing.
+
+### Added
 - `check_docs.py`: the shipped-panel table in `docs/MODELS.md` must equal
   `tools/assets/model-panel.json`, so a panel refresh cannot leave stale slugs
   in the docs again.

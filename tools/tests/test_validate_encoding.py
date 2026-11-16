@@ -68,7 +68,7 @@ def test_encoding_flags_a_bom_in_a_workflow(tmp_path):
     rep = _rep(tmp_path)
 
     assert rep.failed
-    expected = str(Path(".github") / "workflows" / "x.yml")
+    expected = (Path(".github") / "workflows" / "x.yml").as_posix()
     assert any("BOM" in message and expected in message for message in rep.failed)
 
 
@@ -80,7 +80,7 @@ def test_encoding_flags_crlf_in_tools(tmp_path):
     rep = _rep(tmp_path)
 
     assert rep.failed
-    expected = str(Path("tools") / "x.py")
+    expected = (Path("tools") / "x.py").as_posix()
     assert any("CRLF" in message and expected in message for message in rep.failed)
 
 
@@ -123,3 +123,58 @@ def test_encoding_still_fails_a_tracked_file_under_admitted_dirs(tmp_path):
 
     assert rep.failed
     assert any("CRLF" in message for message in rep.failed)
+
+
+BOM = bytes([239, 187, 191])
+CR = bytes([13])
+LF = bytes([10])
+
+
+def test_encoding_rejects_invalid_utf8(tmp_path):
+    (tmp_path / "NOTICE.md").write_bytes(bytes([255]) + LF)
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("not valid UTF-8" in m for m in rep.failed)
+
+
+def test_encoding_rejects_a_bare_cr(tmp_path):
+    tool = tmp_path / "tools" / "demo.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"print('x')" + CR)
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("bare CR" in m for m in rep.failed)
+
+
+def test_encoding_covers_the_allowed_signers_file(tmp_path):
+    """Extensionless text read by the release workflow: a BOM breaks gpg."""
+    signers = tmp_path / ".github" / "allowed_signers"
+    signers.parent.mkdir(parents=True)
+    signers.write_bytes(BOM + b"user@example.com ssh-ed25519 AAAA" + LF)
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any(".github/allowed_signers" in m for m in rep.failed)
+
+
+def test_encoding_covers_root_pyproject(tmp_path):
+    (tmp_path / "pyproject.toml").write_bytes(b"[project]" + CR + LF)
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("pyproject.toml" in m for m in rep.failed)
+
+
+def test_encoding_covers_root_gitignore(tmp_path):
+    (tmp_path / ".gitignore").write_bytes(BOM + b"*.pyc" + LF)
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any(".gitignore" in m for m in rep.failed)
