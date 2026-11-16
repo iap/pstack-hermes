@@ -310,15 +310,20 @@ def check_model_map(root: Path = ROOT) -> list[str]:
         return [f"{MODELS_DOC}: '## The shipped panel' section missing"]
     section = text.split("## The shipped panel", 1)[1].split("\n## ", 1)[0]
     documented: dict[str, set[str]] = {}
+    problems: list[str] = []
     for line in section.splitlines():
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if len(cells) != 2 or cells[0] in {"Role", "---"}:
             continue
+        if cells[0] in documented:
+            # A second row for the same role would overwrite the first and could
+            # hide a stale slug behind a correct duplicate.
+            problems.append(f"{MODELS_DOC}: duplicate row for role {cells[0]!r}")
+            continue
         documented[cells[0]] = set(re.findall(r"`([^`]+)`", cells[1]))
 
-    problems = []
     for role, value in roles.items():
         expected = {value} if isinstance(value, str) else set(value)
         if role not in documented:

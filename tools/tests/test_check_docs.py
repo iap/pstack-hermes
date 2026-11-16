@@ -504,3 +504,19 @@ def test_model_map_flags_a_role_the_panel_no_longer_defines(tmp_path):
     )
 
     assert any("does not define" in p for p in check_docs.check_model_map(root))
+
+
+def test_model_map_flags_duplicate_rows_that_could_hide_a_stale_slug(tmp_path):
+    rows = (
+        "| reflect tooling | `qwen/qwen-2.5-7b-instruct` |\n"
+        "| reflect tooling | `qwen/qwen3-30b-a3b-instruct-2507` |\n"
+    )
+    root = _model_tree(
+        tmp_path,
+        {"reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507"},
+        rows,
+    )
+
+    problems = check_docs.check_model_map(root)
+
+    assert any("duplicate row" in p for p in problems)
