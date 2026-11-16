@@ -1,5 +1,7 @@
 """Encoding checks ignore generated dependency installs inside the package tree."""
 
+from pathlib import Path
+
 import validate
 
 
@@ -49,3 +51,75 @@ def test_encoding_check_skips_generated_node_modules(tmp_path):
 
     assert not rep.failed
     assert any("no CRLF" in message and "1 text files" in message for message in rep.passed)
+
+
+def _rep(tmp_path):
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep)
+    return rep
+
+
+def test_encoding_flags_a_bom_in_a_workflow(tmp_path):
+    """#208: CI files were outside the gate, so a BOM shipped silently."""
+    wf = tmp_path / ".github" / "workflows" / "x.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_bytes(b"\xef\xbb\xbfname: x\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    expected = str(Path(".github") / "workflows" / "x.yml")
+    assert any("BOM" in message and expected in message for message in rep.failed)
+
+
+def test_encoding_flags_crlf_in_tools(tmp_path):
+    tool = tmp_path / "tools" / "x.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1\r\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    expected = str(Path("tools") / "x.py")
+    assert any("CRLF" in message and expected in message for message in rep.failed)
+
+
+def test_encoding_flags_a_bom_in_root_readme(tmp_path):
+    (tmp_path / "README.md").write_bytes(b"\xef\xbb\xbf# title\n")
+
+    rep = _rep(tmp_path)
+
+    assert rep.failed
+    assert any("BOM" in message and "README.md" in message for message in rep.failed)
+
+
+def test_encoding_still_ignores_unlisted_root_scratch_files(tmp_path):
+    (tmp_path / "scratch.json").write_bytes(b"\xef\xbb\xbf{}\r\n")
+
+    rep = _rep(tmp_path)
+
+    assert not rep.failed
+
+
+def test_encoding_skips_untracked_files_under_admitted_dirs(tmp_path):
+    """A clean checkout must pass even when an editor left scratch behind."""
+    tool = tmp_path / "tools" / "scratch.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1" + bytes([13, 10]))
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep, tracked={"tools/kept.py"})
+
+    assert not rep.failed
+
+
+def test_encoding_still_fails_a_tracked_file_under_admitted_dirs(tmp_path):
+    tool = tmp_path / "tools" / "kept.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1" + bytes([13, 10]))
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep, tracked={"tools/kept.py"})
+
+    assert rep.failed
+    assert any("CRLF" in message for message in rep.failed)
