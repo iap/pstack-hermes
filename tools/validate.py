@@ -111,7 +111,7 @@ def expected_principles(pkg: Path) -> int:
 LOADER_WHITELIST = {"$schema", "name", "version", "description", "author", "homepage",
                     "repository", "license", "keywords", "extensions"}
 # Filenames the encoding check touches even without a text suffix (dotfiles carry none).
-TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
+TEXT_NAMES = {".gitignore", ".build-provenance.txt", "allowed_signers"}
 
 # Repo-owned text surfaces that are not installed package content. The package
 # predicate excludes them, which left the AGENTS.md encoding contract unenforced
@@ -119,6 +119,8 @@ TEXT_NAMES = {".gitignore", ".build-provenance.txt"}
 HANDWRITTEN_ROOT_FILES = frozenset({
     "AGENTS.md", "CONTRIBUTING.md", "README.md", "SECURITY.md",
     "NOTICE.md", "CHANGELOG.md", "CLAUDE.md",
+    # Hand-written tooling/config: a BOM here breaks tooling, not just diffs.
+    ".gitignore", "pyproject.toml",
 })
 HANDWRITTEN_DIRS = frozenset({".github", "tools", "docs", "scripts"})
 
@@ -366,7 +368,7 @@ def check_skills(pkg: Path, rep: Report) -> None:
 
 
 def check_encoding(pkg: Path, rep: Report, tracked: set[str] | None = None) -> None:
-    bom_files, crlf_files, checked = [], [], 0
+    bom_files, crlf_files, bare_cr_files, utf8_files, checked = [], [], [], [], 0
     # None means "no Git filter" (tests, non-git checkouts); main() passes the
     # tracked set so on-disk scratch cannot fail the gate.
     for p in pkg.rglob("*"):
@@ -384,9 +386,15 @@ def check_encoding(pkg: Path, rep: Report, tracked: set[str] | None = None) -> N
         data = p.read_bytes()
         checked += 1
         if data.startswith(b"\xef\xbb\xbf"):
-            bom_files.append(str(rel))
+            bom_files.append(rel.as_posix())
         if b"\r\n" in data:
-            crlf_files.append(str(rel))
+            crlf_files.append(rel.as_posix())
+        if b"\r" in data.replace(b"\r\n", b""):
+            bare_cr_files.append(rel.as_posix())
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError:
+            utf8_files.append(rel.as_posix())
     if bom_files:
         rep.fail(f"files with UTF-8 BOM: {bom_files}")
     else:
@@ -395,6 +403,14 @@ def check_encoding(pkg: Path, rep: Report, tracked: set[str] | None = None) -> N
         rep.fail(f"files with CRLF: {crlf_files}")
     else:
         rep.ok(f"no CRLF in any of {checked} text files")
+    if bare_cr_files:
+        rep.fail(f"files with bare CR: {bare_cr_files}")
+    else:
+        rep.ok(f"no bare CR in any of {checked} text files")
+    if utf8_files:
+        rep.fail(f"files not valid UTF-8: {utf8_files}")
+    else:
+        rep.ok(f"all {checked} text files are valid UTF-8")
 
 
 def check_layout(pkg: Path, rep: Report) -> None:

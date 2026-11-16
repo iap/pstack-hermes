@@ -262,3 +262,41 @@ def test_run_case_fails_a_prose_only_claim_end_to_end(monkeypatch, tmp_path):
 
     assert status == "fail"
     assert any("verify_before_claim" in line for line in failures)
+
+
+def test_score_accepts_alternates():
+    case = _case()
+    case["expect"]["must_mention"] = ["delegate|delegation|subagent"]
+    ok, failures = eval_run.score(case, "Hand it to a subagent and verify.")
+    assert ok, failures
+
+
+def test_score_rejects_when_no_alternate_matches():
+    case = _case()
+    case["expect"]["must_mention"] = ["delegate|delegation"]
+    ok, failures = eval_run.score(case, "I will do it myself, then verify.")
+    assert not ok
+    assert any("delegate|delegation" in line for line in failures)
+
+
+def test_forbidden_accepts_alternates():
+    case = _case()
+    case["expect"]["must_not_mention"] = ["AskQuestion|AskUserQuestion"]
+    ok, failures = eval_run.score(case, "Loading poteto-mode, will verify after. Then AskUserQuestion.")
+    assert not ok
+    assert any("forbidden present" in line for line in failures)
+
+
+def test_routing_rubric_rejects_an_explicit_refusal_to_delegate():
+    """`delegate` as an alternate must not let "I will not delegate" pass."""
+    import json
+    from pathlib import Path
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
+    )
+    ok, _ = eval_run.score(
+        case,
+        "In poteto-mode I will not delegate; I will plan, then verify.",
+    )
+    assert not ok
