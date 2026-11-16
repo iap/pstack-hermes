@@ -4,6 +4,16 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Added
+- `check_docs.py`: the shipped-panel table in `docs/MODELS.md` must equal
+  `tools/assets/model-panel.json`, so a panel refresh cannot leave stale slugs
+  in the docs again.
+
+### Fixed
+- Model panel: `reflect tooling` moves from the retired
+  `qwen/qwen-2.5-7b-instruct` to `qwen/qwen3-30b-a3b-instruct-2507` (#216);
+  `config/models.json` and `docs/MODELS.md` follow the panel.
+
 ## [0.16.2] - 2026-11-12
 
 ### Added

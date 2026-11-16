@@ -25,6 +25,7 @@ Exit codes: 0 clean; 1 drift found; 2 unreadable input.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -285,12 +286,64 @@ def check_release_sources(root: Path = ROOT) -> list[str]:
     return problems
 
 
+MODEL_PANEL = Path("tools") / "assets" / "model-panel.json"
+MODELS_DOC = Path("docs") / "MODELS.md"
+
+
+def check_model_map(root: Path = ROOT) -> list[str]:
+    """The shipped-panel table in docs/MODELS.md must equal the panel JSON.
+
+    A stale table is how #216 read: the panel moved, the docs still named the
+    old slug, and only the live catalog check caught it.
+    """
+    panel_path, doc_path = root / MODEL_PANEL, root / MODELS_DOC
+    if not panel_path.is_file():
+        return [f"{MODEL_PANEL}: missing"]
+    if not doc_path.is_file():
+        return [f"{MODELS_DOC}: missing"]
+    roles = json.loads(_read(panel_path)).get("roles", {})
+    if not isinstance(roles, dict) or not roles:
+        return [f"{MODEL_PANEL}: no roles"]
+
+    text = _read(doc_path)
+    if "## The shipped panel" not in text:
+        return [f"{MODELS_DOC}: '## The shipped panel' section missing"]
+    section = text.split("## The shipped panel", 1)[1].split("\n## ", 1)[0]
+    documented: dict[str, set[str]] = {}
+    problems: list[str] = []
+    for line in section.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) != 2 or cells[0] in {"Role", "---"}:
+            continue
+        if cells[0] in documented:
+            # A second row for the same role would overwrite the first and could
+            # hide a stale slug behind a correct duplicate.
+            problems.append(f"{MODELS_DOC}: duplicate row for role {cells[0]!r}")
+            continue
+        documented[cells[0]] = set(re.findall(r"`([^`]+)`", cells[1]))
+
+    for role, value in roles.items():
+        expected = {value} if isinstance(value, str) else set(value)
+        if role not in documented:
+            problems.append(f"{MODELS_DOC}: role missing from shipped panel: {role}")
+        elif documented[role] != expected:
+            problems.append(
+                f"{MODELS_DOC}: role {role!r} lists {sorted(documented[role])}, panel has {sorted(expected)}"
+            )
+    for role in sorted(set(documented) - set(roles)):
+        problems.append(f"{MODELS_DOC}: documents a role the panel does not define: {role}")
+    return problems
+
+
 CHECKS = (
     ("router links resolve", check_router_links),
     ("layout matches .gitattributes", check_layout_manifest),
     ("no stale package subdirectory paths", check_stale_paths),
     ("no stale subdirectory-install route", check_stale_install_route),
     ("release packaging sources exist", check_release_sources),
+    ("model panel matches docs/MODELS.md", check_model_map),
 )
 
 
