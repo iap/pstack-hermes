@@ -1,10 +1,11 @@
 # Patches to the hermes CLI itself
 
 > [!WARNING]
-> **Archived (2026-11-17).** The upstream PRs that proposed these patches to
+> **Archived (2026-11-16 UTC).** The upstream PRs that proposed these patches to
 > `NousResearch/hermes-agent` were opened and later **closed unmerged**
 > (2026-09-10). The gaps they address are **still present** in Hermes v0.22.5
-> (verified 2026-11-17), but the project no longer carries them as live fixes:
+> (verified against `v0.22.5+1468.g8d617f5`, commit `8d617f52`), but the project
+> no longer carries them as live fixes:
 > they live in [`patches/archive/`](../patches/archive/README.md) as a record.
 > None is required for the package to load, validate, or install.
 
@@ -60,6 +61,11 @@ target ref (default `main` and the newest release tag; dispatchable with another
 ref) and applies `git apply --check` to every live patch. With zero live patches
 it records the archived count and passes; if both the live and archive sets are
 empty it fails, so an accidental deletion cannot look like a clean state.
+
+Verification record: the gaps were re-checked on 2026-11-16 UTC against Hermes
+`v0.22.5+1468.g8d617f5`, commit `8d617f52fe3fdf29a222a42d29c72645329e6524`.
+The commit each patch was authored against is **not recorded** (unknown), which
+is one reason they are archived rather than re-baselined.
 
 Consequence of the archived oneshot patch: `hermes -z` does not seed a working
 directory. Pass absolute paths in oneshot prompts and eval cases
