@@ -46,9 +46,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$REQUESTED" = "latest" ]; then
+            # sed -n '1s#...#p' instead of `head -1`: head closes the pipe
+            # early, git takes SIGPIPE, and `set -o pipefail` turns that into
+            # exit 141 — the job would fail before checking a single patch.
             target="$(git ls-remote --tags --refs --sort=-v:refname \
               https://github.com/NousResearch/hermes-agent.git \
-              | head -1 | awk '{print $2}' | sed 's#refs/tags/##')"
+              | sed -n '1s#.*refs/tags/##p')"
             if [ -z "$target" ]; then
               echo "::error::could not resolve the newest hermes-agent release tag"
               exit 1

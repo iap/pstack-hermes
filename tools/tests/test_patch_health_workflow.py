@@ -66,3 +66,19 @@ def test_patch_summary_names_the_failing_hunk():
 def test_patch_docs_point_at_the_health_check():
     text = DOCS.read_text(encoding="utf-8")
     assert "patch-health" in text, "docs/PATCHES.md must state where the check lives"
+
+
+def test_latest_resolution_cannot_die_of_sigpipe():
+    """`head -1` closes the pipe; under `set -o pipefail` that is exit 141.
+
+    The first dispatch of this workflow failed exactly that way, before it
+    checked a single patch. The resolver must read the whole stream.
+    """
+    data = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    job = next(iter(data["jobs"].values()))
+    resolve = next(s for s in job["steps"] if s.get("name") == "Resolve target ref")
+    script = resolve["run"]
+
+    assert "set -euo pipefail" in script
+    assert "| sed -n '1s#.*refs/tags/##p')" in script
+    assert "| head -1" not in script
