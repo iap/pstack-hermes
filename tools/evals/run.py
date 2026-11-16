@@ -101,8 +101,10 @@ def seed_home(
     if register_checkout_skills:
         if CHECKOUT_SKILLS not in dirs:
             dirs.append(CHECKOUT_SKILLS)
-    elif CHECKOUT_SKILLS in dirs:
-        dirs.remove(CHECKOUT_SKILLS)
+    else:
+        # Remove every occurrence: a config that lists the checkout twice would
+        # otherwise keep the method discoverable in the control arm.
+        skills["external_dirs"] = [d for d in dirs if d != CHECKOUT_SKILLS]
     config.write_text(yaml.safe_dump(data), encoding="utf-8")
 
 
@@ -156,9 +158,13 @@ def summarize(records: list[dict], arms: tuple[str, ...]) -> list[dict]:
     return out
 
 
-def _rate(cell: dict) -> float:
+def _rate(cell: dict) -> float | None:
+    """Pass rate over scored runs, or None when every run was a runner error.
+
+    None is not 0%: an arm with no measurement must not produce a numeric delta.
+    """
     scored = cell["total"] - cell["error"]
-    return (cell["pass"] / scored * 100.0) if scored else 0.0
+    return (cell["pass"] / scored * 100.0) if scored else None
 
 
 def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
@@ -172,8 +178,11 @@ def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
             cell = row[arm]
             line += f"{cell['pass']}/{cell['total']}".rjust(16)
         if arms == ARMS:
-            delta = _rate(row['skill']) - _rate(row['baseline'])
-            line += f"{delta:+.0f}pp".rjust(10)
+            skill_rate, baseline_rate = _rate(row['skill']), _rate(row['baseline'])
+            if skill_rate is None or baseline_rate is None:
+                line += "n/a".rjust(10)
+            else:
+                line += f"{skill_rate - baseline_rate:+.0f}pp".rjust(10)
         print(line)
     print(f"evals: {reps} rep(s) per case")
 
