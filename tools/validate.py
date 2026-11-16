@@ -127,6 +127,26 @@ def is_handwritten_path(rel: Path) -> bool:
     if len(rel.parts) == 1:
         return rel.name in HANDWRITTEN_ROOT_FILES
     return rel.parts[0] in HANDWRITTEN_DIRS
+
+
+def tracked_files(root: Path) -> set[str] | None:
+    """Repo-relative POSIX paths Git tracks, or None outside a Git checkout.
+
+    The widened encoding/conflict checks must judge the repository, not whatever
+    an editor or an agent left on disk: an ignored session plan under
+    docs/superpowers/ or an untracked scratch file must not fail CI.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            capture_output=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return {part for part in proc.stdout.decode("utf-8", "replace").split("\0") if part}
 # Model slugs in the repo-owned panel must be provider-qualified and lowercase
 # (vendor/model[:variant], e.g. z-ai/glm-5.2 or …:free) or the inherit-parent
 # selector. Catches hand-edit slips like a missing vendor prefix or `-free`
@@ -345,13 +365,17 @@ def check_skills(pkg: Path, rep: Report) -> None:
         rep.ok("issue #107: no inline-shell `!` trigger in TS patterns")
 
 
-def check_encoding(pkg: Path, rep: Report) -> None:
+def check_encoding(pkg: Path, rep: Report, tracked: set[str] | None = None) -> None:
     bom_files, crlf_files, checked = [], [], 0
+    # None means "no Git filter" (tests, non-git checkouts); main() passes the
+    # tracked set so on-disk scratch cannot fail the gate.
     for p in pkg.rglob("*"):
         if not p.is_file():
             continue
         rel = p.relative_to(pkg)
         if not (is_package_path(rel) or is_handwritten_path(rel)):
+            continue
+        if tracked is not None and rel.as_posix() not in tracked:
             continue
         if is_generated_dependency_path(rel):
             continue
@@ -559,7 +583,7 @@ def check_phase1(pkg: Path, rep: Report) -> None:
                 "(security bans package-wide, delegation vocab hermes-facing)")
 
 
-def check_conflict_markers(pkg: Path, rep: Report) -> None:
+def check_conflict_markers(pkg: Path, rep: Report, tracked: set[str] | None = None) -> None:
     """No unresolved VCS conflict markers may survive into generated output.
 
     Only the unambiguous markers are checked: `<<<<<<<`/`>>>>>>>`/`|||||||`
@@ -573,6 +597,8 @@ def check_conflict_markers(pkg: Path, rep: Report) -> None:
             continue
         rel = p.relative_to(pkg)
         if not (is_package_path(rel) or is_handwritten_path(rel)):
+            continue
+        if tracked is not None and rel.as_posix() not in tracked:
             continue
         if is_generated_dependency_path(rel):
             continue
@@ -873,13 +899,14 @@ def main() -> int:
     if not pkg.is_dir():
         rep.fail(f"package dir not found: {pkg}")
     else:
+        tracked = tracked_files(pkg)
         check_manifest(pkg, rep)
         check_skills(pkg, rep)
-        check_encoding(pkg, rep)
+        check_encoding(pkg, rep, tracked)
         check_layout(pkg, rep)
         check_phase1(pkg, rep)
         check_hermes_adaptation_contract(pkg, rep)
-        check_conflict_markers(pkg, rep)
+        check_conflict_markers(pkg, rep, tracked)
         check_model_panel(pkg, rep)
 
         print("-- [1..3] static checks (stdlib replication of agent_plugins.py rules) --")

@@ -1,5 +1,7 @@
 """Encoding checks ignore generated dependency installs inside the package tree."""
 
+from pathlib import Path
+
 import validate
 
 
@@ -66,7 +68,8 @@ def test_encoding_flags_a_bom_in_a_workflow(tmp_path):
     rep = _rep(tmp_path)
 
     assert rep.failed
-    assert any("BOM" in message and ".github/workflows/x.yml" in message for message in rep.failed)
+    expected = str(Path(".github") / "workflows" / "x.yml")
+    assert any("BOM" in message and expected in message for message in rep.failed)
 
 
 def test_encoding_flags_crlf_in_tools(tmp_path):
@@ -77,7 +80,8 @@ def test_encoding_flags_crlf_in_tools(tmp_path):
     rep = _rep(tmp_path)
 
     assert rep.failed
-    assert any("CRLF" in message and "tools/x.py" in message for message in rep.failed)
+    expected = str(Path("tools") / "x.py")
+    assert any("CRLF" in message and expected in message for message in rep.failed)
 
 
 def test_encoding_flags_a_bom_in_root_readme(tmp_path):
@@ -95,3 +99,27 @@ def test_encoding_still_ignores_unlisted_root_scratch_files(tmp_path):
     rep = _rep(tmp_path)
 
     assert not rep.failed
+
+
+def test_encoding_skips_untracked_files_under_admitted_dirs(tmp_path):
+    """A clean checkout must pass even when an editor left scratch behind."""
+    tool = tmp_path / "tools" / "scratch.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1" + bytes([13, 10]))
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep, tracked={"tools/kept.py"})
+
+    assert not rep.failed
+
+
+def test_encoding_still_fails_a_tracked_file_under_admitted_dirs(tmp_path):
+    tool = tmp_path / "tools" / "kept.py"
+    tool.parent.mkdir(parents=True)
+    tool.write_bytes(b"x = 1" + bytes([13, 10]))
+
+    rep = validate.Report()
+    validate.check_encoding(tmp_path, rep, tracked={"tools/kept.py"})
+
+    assert rep.failed
+    assert any("CRLF" in message for message in rep.failed)
