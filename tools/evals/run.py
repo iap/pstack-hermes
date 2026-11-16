@@ -10,6 +10,12 @@ every must_mention must appear, no must_not_mention may appear, every gate
 concept must appear. A non-zero hermes exit or timeout is a runner failure
 (exit 2), never a rubric pass. Exit 0 = all pass; 1 = any rubric failure.
 
+Arms (#212): `--arm skill` (default, unchanged) preloads the case skill and
+registers this checkout's skills; `--arm baseline` does neither, so the same
+prompt runs without the method; `--arm both` runs each case in both arms and
+prints the delta. `--reps N` repeats each case and reports pass counts, because
+a single rep cannot separate a rubric failure from run-to-run variance.
+
 Scoring is unit-tested without hermes (tools/tests/test_evals.py).
 Live runs are weekly/manual (cost + latency), never a per-PR gate.
 """
@@ -27,6 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
+ARMS = ("skill", "baseline")
+CHECKOUT_SKILLS = str(ROOT / "skills")
 
 
 def load_golden(directory: Path = GOLDEN_DIR) -> list[dict]:
@@ -52,8 +60,28 @@ def score(case: dict, response: str) -> tuple[bool, list[str]]:
     return (not failures), failures
 
 
-def seed_home(home: Path, active_home: Path | None) -> None:
-    """Copy provider config into the isolated home; register checkout skills."""
+def build_argv(case: dict, hermes: str = "hermes", arm: str = "skill") -> list[str]:
+    """Command for one run. The baseline arm must not preload a skill."""
+    argv = [hermes, "-z", case["prompt"]]
+    skill = case.get("skill", "")
+    if arm == "skill" and skill:
+        argv += ["--skills", skill]
+    return argv
+
+
+def seed_home(
+    home: Path,
+    active_home: Path | None,
+    register_checkout_skills: bool = True,
+) -> None:
+    """Copy provider config into the isolated home; optionally register checkout skills.
+
+    Baseline arms pass ``register_checkout_skills=False``: the checkout path is
+    removed from ``skills.external_dirs`` (if the copied config already lists
+    it) and never appended. Note this only removes *this checkout*; a skill
+    installed in the active home's own config is inherited on purpose, so keep
+    the eval host free of pstack installs when a clean baseline matters.
+    """
     home.mkdir(parents=True, exist_ok=True)
     config = home / "config.yaml"
     if active_home is not None:
@@ -70,13 +98,15 @@ def seed_home(home: Path, active_home: Path | None) -> None:
         data = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
     skills = data.setdefault("skills", {})
     dirs = skills.setdefault("external_dirs", [])
-    skills_dir = str(ROOT / "skills")
-    if skills_dir not in dirs:
-        dirs.append(skills_dir)
+    if register_checkout_skills:
+        if CHECKOUT_SKILLS not in dirs:
+            dirs.append(CHECKOUT_SKILLS)
+    elif CHECKOUT_SKILLS in dirs:
+        dirs.remove(CHECKOUT_SKILLS)
     config.write_text(yaml.safe_dump(data), encoding="utf-8")
 
 
-def run_case(case: dict, hermes: str = "hermes") -> tuple[str, list[str]]:
+def run_case(case: dict, hermes: str = "hermes", arm: str = "skill") -> tuple[str, list[str]]:
     """Return ("pass"|"fail"|"error", failures)."""
     active = os.environ.get("HERMES_HOME")
     active_home = Path(active) if active else Path.home() / ".hermes"
@@ -86,12 +116,16 @@ def run_case(case: dict, hermes: str = "hermes") -> tuple[str, list[str]]:
         project.mkdir(parents=True)
         env = {**os.environ, "HERMES_HOME": str(home)}
         try:
-            seed_home(home, active_home if active_home.is_dir() else None)
+            seed_home(
+                home,
+                active_home if active_home.is_dir() else None,
+                register_checkout_skills=arm == "skill",
+            )
         except Exception as exc:  # malformed YAML, non-mapping config, bad skills shape
             return "error", [f"seed error: {exc}"]
         try:
             proc = subprocess.run(
-                [hermes, "-z", case["prompt"], "--skills", case.get("skill", "")],
+                build_argv(case, hermes, arm),
                 capture_output=True,
                 text=True,
                 timeout=300,
@@ -107,25 +141,84 @@ def run_case(case: dict, hermes: str = "hermes") -> tuple[str, list[str]]:
     return ("pass" if ok else "fail"), failures
 
 
+def summarize(records: list[dict], arms: tuple[str, ...]) -> list[dict]:
+    """Aggregate per (case, arm) pass counts. ``records`` items: case, arm, status."""
+    rows: dict[str, dict] = {}
+    for record in records:
+        row = rows.setdefault(record["case"], {arm: {"pass": 0, "total": 0, "error": 0} for arm in arms})
+        cell = row[record["arm"]]
+        cell["total"] += 1
+        cell["pass"] += record["status"] == "pass"
+        cell["error"] += record["status"] == "error"
+    out = []
+    for case_id, row in rows.items():
+        out.append({"case": case_id, **row})
+    return out
+
+
+def _rate(cell: dict) -> float:
+    scored = cell["total"] - cell["error"]
+    return (cell["pass"] / scored * 100.0) if scored else 0.0
+
+
+def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
+    header = f"{'case':34}" + "".join(f"{arm:>16}" for arm in arms)
+    if arms == ARMS:
+        header += f"{'delta':>10}"
+    print(header)
+    for row in rows:
+        line = f"{row['case']:34}"
+        for arm in arms:
+            cell = row[arm]
+            line += f"{cell['pass']}/{cell['total']}".rjust(16)
+        if arms == ARMS:
+            delta = _rate(row['skill']) - _rate(row['baseline'])
+            line += f"{delta:+.0f}pp".rjust(10)
+        print(line)
+    print(f"evals: {reps} rep(s) per case")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--golden", default=str(GOLDEN_DIR))
     ap.add_argument("--hermes", default="hermes")
+    ap.add_argument(
+        "--arm",
+        choices=("skill", "baseline", "both"),
+        default="skill",
+        help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: run each case in both arms",
+    )
+    ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     args = ap.parse_args(argv)
+
+    if args.reps < 1:
+        print("evals: --reps must be >= 1", file=sys.stderr)
+        return 2
     cases = load_golden(Path(args.golden))
     if not cases:
         print("evals: no golden tasks found", file=sys.stderr)
         return 2
-    failed = errors = 0
+
+    arms = ARMS if args.arm == "both" else (args.arm,)
+    records: list[dict] = []
+    errors = 0
+    skill_failed = 0
+
     for case in cases:
-        status, failures = run_case(case, args.hermes)
-        print(f"{status.upper()} {case['id']}")
-        for line in failures:
-            print(f"  - {line}")
-        failed += status == "fail"
-        errors += status == "error"
-    print(f"evals: {len(cases) - failed - errors}/{len(cases)} passed, {errors} runner errors")
-    return 2 if errors else (1 if failed else 0)
+        for arm in arms:
+            for rep in range(1, args.reps + 1):
+                status, failures = run_case(case, args.hermes, arm)
+                suffix = f" rep{rep}" if args.reps > 1 else ""
+                print(f"{status.upper()} {case['id']} [{arm}]{suffix}")
+                for line in failures:
+                    print(f"  - {line}")
+                records.append({"case": case["id"], "arm": arm, "status": status})
+                errors += status == "error"
+                skill_failed += status == "fail" and arm == "skill"
+
+    _print_summary(summarize(records, arms), arms, args.reps)
+    print(f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s)")
+    return 2 if errors else (1 if skill_failed else 0)
 
 
 if __name__ == "__main__":
