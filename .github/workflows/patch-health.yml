@@ -1,0 +1,70 @@
+# Patch health (#214): the fork patches in patches/ are manual fixes, not
+# shipped code, so nothing used to notice when they stopped applying. This job
+# answers one question on a schedule: does each patch still apply to the
+# Hermes tree we target?
+#
+# Deliberately NOT a PR gate: a stale patch should not block unrelated work.
+# It must be visible and named, once a week, in the job summary.
+
+name: patch-health
+
+on:
+  schedule:
+    - cron: "41 6 * * 1" # weekly, Monday 06:41 UTC
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "hermes-agent git ref to test against"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+
+jobs:
+  apply-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REF: ${{ github.event.inputs.ref || 'main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Clone hermes-agent at the target ref
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$REF" \
+            https://github.com/NousResearch/hermes-agent.git "$RUNNER_TEMP/hermes-agent"
+          git -C "$RUNNER_TEMP/hermes-agent" log -1 --format='hermes-agent %H %s'
+
+      - name: Check every patch applies
+        run: |
+          set -uo pipefail
+          target="$RUNNER_TEMP/hermes-agent"
+          failed=0
+          {
+            echo "### Patch health vs \`$REF\`"
+            echo
+            echo "| patch | result |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          patches=(patches/*.patch)
+          if [ ${#patches[@]} -eq 0 ]; then
+            echo "::error::no patches found; the check would pass vacuously"
+            exit 1
+          fi
+          for p in "${patches[@]}"; do
+            name="$(basename "$p")"
+            if out="$(git -C "$target" apply --check "$GITHUB_WORKSPACE/$p" 2>&1)"; then
+              echo "| \`$name\` | PASS |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`$name\` | **FAIL** |" >> "$GITHUB_STEP_SUMMARY"
+              first_line="$(printf '%s\n' "$out" | head -1)"
+              echo "::error file=$p::patch does not apply to $REF: $first_line"
+              failed=1
+            fi
+          done
+          exit "$failed"

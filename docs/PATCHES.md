@@ -50,3 +50,17 @@ Status: **v2 supersedes v1 in intent** (written 6 minutes later, strictly
 less coupled). Both hunks touch `oneshot.py` but at different anchors, so
 they can coexist; until hermes-side runtime testing picks a winner, v1 is
 kept for reference. Prefer v2 if applying only one.
+
+## Verification status
+
+These patches are not applied by CI and are not required for the pstack package
+to load. Their applicability is checked weekly by
+`.github/workflows/patch-health.yml`: it clones `NousResearch/hermes-agent` at a
+target ref (default `main`; dispatchable with another ref), runs
+`git apply --check` for every file in `patches/`, and writes a PASS/FAIL table
+to the job summary. A stale patch fails the job — a signal to re-baseline it
+against the current tree or retire it, not a reason to block unrelated PRs.
+
+Last verified against: **not recorded** (check added 2026-11-17). Run the
+workflow with `ref` set to the Hermes version you actually target, and record
+the result here.
