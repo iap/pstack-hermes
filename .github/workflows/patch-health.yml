@@ -1,0 +1,99 @@
+# Patch health (#214): the fork patches in patches/ are manual fixes, not
+# shipped code, so nothing used to notice when they stopped applying. This job
+# answers one question on a schedule: does each patch still apply to the
+# Hermes tree we target?
+#
+# By default it tests both upstream `main` and the newest release tag: a patch
+# that still applies to main but broke against the latest tagged release is
+# exactly the failure a user on a release build would hit.
+#
+# Deliberately NOT a PR gate: a stale patch should not block unrelated work.
+# It must be visible and named, once a week, in the job summary.
+
+name: patch-health
+
+on:
+  schedule:
+    - cron: "41 6 * * 1" # weekly, Monday 06:41 UTC
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "hermes-agent git ref to test (leave empty to test main + latest release)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apply-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Dispatch with a ref -> exactly that ref. Scheduled (or empty input) ->
+        # main plus the newest release tag, resolved in the first step.
+        ref: ${{ github.event.inputs.ref != '' && fromJSON(format('["{0}"]', github.event.inputs.ref)) || fromJSON('["main","latest"]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve target ref
+        env:
+          REQUESTED: ${{ matrix.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$REQUESTED" = "latest" ]; then
+            target="$(git ls-remote --tags --refs --sort=-v:refname \
+              https://github.com/NousResearch/hermes-agent.git \
+              | head -1 | awk '{print $2}' | sed 's#refs/tags/##')"
+            if [ -z "$target" ]; then
+              echo "::error::could not resolve the newest hermes-agent release tag"
+              exit 1
+            fi
+          else
+            target="$REQUESTED"
+          fi
+          echo "TARGET=$target" >> "$GITHUB_ENV"
+          echo "resolved $REQUESTED -> $target"
+
+      - name: Clone hermes-agent at the target ref
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$TARGET" \
+            https://github.com/NousResearch/hermes-agent.git "$RUNNER_TEMP/hermes-agent"
+          git -C "$RUNNER_TEMP/hermes-agent" log -1 --format='hermes-agent %H %s'
+
+      - name: Check every patch applies
+        run: |
+          set -uo pipefail
+          target="$RUNNER_TEMP/hermes-agent"
+          failed=0
+          {
+            echo "### Patch health vs \`$TARGET\`"
+            echo
+            echo "| patch | result | failing hunk |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          patches=(patches/*.patch)
+          if [ ${#patches[@]} -eq 0 ]; then
+            echo "::error::no patches found; the check would pass vacuously"
+            exit 1
+          fi
+          for p in "${patches[@]}"; do
+            name="$(basename "$p")"
+            if out="$(git -C "$target" apply --check "$GITHUB_WORKSPACE/$p" 2>&1)"; then
+              echo "| \`$name\` | PASS | — |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              # First line is `error: patch failed: <file>:<line>` — the hunk a
+              # reader needs. Pipes are escaped so the table cannot break.
+              first_line="$(printf '%s\n' "$out" | head -1 | tr '|' '/')"
+              echo "| \`$name\` | **FAIL** | \`$first_line\` |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error file=$p::patch does not apply to $TARGET: $first_line"
+              failed=1
+            fi
+          done
+          exit "$failed"
