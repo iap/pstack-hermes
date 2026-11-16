@@ -98,7 +98,7 @@ bun run typecheck                         # deps + tsc --noEmit --strict
   drift).
 - Attribution: upstream MIT (© Lauren Tan) is preserved everywhere; new port
   work is © the pstack-hermes-port contributors.
-- Fork patches live in `patches/` with documentation in
+- Fork patches are archived in `patches/archive/` with documentation in
   [docs/PATCHES.md](docs/PATCHES.md); the drafted upstream PR text is
   [historical proposal](https://github.com/iap/pstack-hermes/issues/95).
 
