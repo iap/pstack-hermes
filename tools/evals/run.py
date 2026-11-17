@@ -106,18 +106,26 @@ def cleanup(path: Path, attempts: int = 3) -> bool:
     return False
 
 
-def preflight(hermes: str = "hermes", timeout: float = 30.0) -> tuple[bool, str]:
+def preflight(hermes: str = "hermes", timeout: float = 60.0) -> tuple[bool, str]:
     """Fail in seconds when the CLI itself cannot start.
 
     A broken install (out-of-sync venv, update-paused gateway) otherwise burns
-    the full per-case timeout before reporting an opaque error.
+    the full per-case timeout before reporting an opaque error. Run against a
+    throwaway HERMES_HOME: a version probe must not touch the live home or
+    trigger its boot repairs.
     """
-    try:
-        proc = subprocess.run(
-            [hermes, "--version"], capture_output=True, text=True, timeout=timeout
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return False, f"{hermes} --version failed: {exc}"
+    with tempfile.TemporaryDirectory(prefix="pstack-preflight-") as home:
+        env = {**os.environ, "HERMES_HOME": home, "HERMES_SUPERVISED_CHILD": "1"}
+        try:
+            proc = subprocess.run(
+                [hermes, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"{hermes} --version failed: {exc}"
     if proc.returncode != 0:
         tail = (proc.stdout + proc.stderr).strip()[-300:]
         return False, f"{hermes} --version exited {proc.returncode}: {tail}"
@@ -317,10 +325,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
     ap.add_argument("--model", default="", help="pin every run to this provider model")
     ap.add_argument("--timeout", type=float, default=300, help="per-case seconds (default 300)")
+    ap.add_argument(
+        "--preflight-timeout", type=float, default=60, help="seconds for the --version probe (default 60)"
+    )
     args = ap.parse_args(argv)
 
     if args.reps < 1:
         print("evals: --reps must be >= 1", file=sys.stderr)
+        return 2
+    if args.timeout <= 0 or args.preflight_timeout <= 0:
+        print("evals: --timeout and --preflight-timeout must be > 0", file=sys.stderr)
         return 2
     cases = load_golden(Path(args.golden))
     wanted = [task.strip() for task in args.tasks.split(",") if task.strip()]
@@ -334,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         print("evals: no golden tasks found", file=sys.stderr)
         return 2
 
-    ok, detail = preflight(args.hermes)
+    ok, detail = preflight(args.hermes, args.preflight_timeout)
     if not ok:
         print(f"evals: preflight failed — {detail}", file=sys.stderr)
         print("evals: repair the Hermes install first (`hermes update`, then restart the gateway)", file=sys.stderr)

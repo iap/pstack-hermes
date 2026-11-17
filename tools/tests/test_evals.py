@@ -459,3 +459,42 @@ def test_main_stops_before_cases_when_preflight_fails(monkeypatch, capsys):
     assert eval_run.main(["--tasks", "poteto-routing"]) == 2
     assert called == []
     assert "preflight failed" in capsys.readouterr().err
+
+
+def test_preflight_uses_a_throwaway_home(monkeypatch):
+    import subprocess
+
+    seen = {}
+
+    def fake_run(argv, **k):
+        seen["env"] = k.get("env") or {}
+        return subprocess.CompletedProcess(argv, 0, stdout="Hermes Agent v1\n", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+    ok, _ = eval_run.preflight("hermes")
+
+    assert ok
+    assert "pstack-preflight" in seen["env"]["HERMES_HOME"]
+    assert seen["env"]["HERMES_SUPERVISED_CHILD"] == "1"
+
+
+def test_preflight_timeout_is_configurable(monkeypatch):
+    import subprocess
+
+    seen = {}
+
+    def fake_run(argv, **k):
+        seen["timeout"] = k.get("timeout")
+        return subprocess.CompletedProcess(argv, 0, stdout="v\n", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+    eval_run.preflight("hermes", 120)
+
+    assert seen["timeout"] == 120
+
+
+def test_invalid_timeouts_are_rejected(capsys):
+    assert eval_run.main(["--timeout", "0"]) == 2
+    assert "--timeout" in capsys.readouterr().err
