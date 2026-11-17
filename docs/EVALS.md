@@ -56,3 +56,16 @@ difference real.
 No live sweep has been recorded yet. The runner, baseline arm, trajectory
 graders, preflight, and JSON record format are in place; the first sweep needs
 a host where `hermes` starts and a model the account can call.
+
+### Environment findings (2026-11-17)
+
+Two hosts were tried; record them so the next attempt does not repeat the work.
+
+| Host | Result |
+|---|---|
+| macOS 12.6 (x86_64), git install | `hermes --version` works after a reinstall, but the managed install cannot complete: the bundled Node binary needs a newer libc++ (`__ZNSt3__122__libcpp_verbose_abort` absent from `/usr/lib/libc++.1.dylib`). Every isolated home then reports `install out of sync` and refuses to run. |
+| Ubuntu 24.04 container, Hermes 0.19.0 via `uv tool install` | provider reachable (`GET /v1/models` → 200), `hermes --version` works, but `hermes -z` and even `hermes --help` stall after `Plugin discovery complete` — with either the copied config or a minimal one, and with both the Nous and OpenRouter providers. Not diagnosed further. |
+
+Conclusion: run the sweep on a supported Linux host or CI runner. Debugging the
+agent runtime on macOS 12.6 is not a good use of time — the platform limit is in
+the Node toolchain, not in this package.
