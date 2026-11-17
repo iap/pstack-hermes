@@ -300,3 +300,31 @@ def test_routing_rubric_rejects_an_explicit_refusal_to_delegate():
         "In poteto-mode I will not delegate; I will plan, then verify.",
     )
     assert not ok
+
+
+def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
+    before = dict(__import__("os").environ)
+
+    env = eval_run.build_env(tmp_path)
+
+    assert env["HERMES_HOME"] == str(tmp_path)
+    assert env["HERMES_SUPERVISED_CHILD"] == "1"
+    assert dict(__import__("os").environ) == before
+
+
+def test_tasks_filter_rejects_an_unknown_id(capsys):
+    assert eval_run.main(["--tasks", "no-such-case"]) == 2
+    assert "unknown task id" in capsys.readouterr().err
+
+
+def test_tasks_filter_runs_only_the_named_case(monkeypatch):
+    seen = []
+
+    def fake_run(case, hermes="hermes", arm="skill"):
+        seen.append(case["id"])
+        return "pass", [], []
+
+    monkeypatch.setattr(eval_run, "run_case", fake_run)
+
+    assert eval_run.main(["--tasks", "poteto-routing"]) == 0
+    assert seen == ["poteto-routing"]
