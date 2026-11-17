@@ -148,7 +148,9 @@ def seed_home(
         # Reuse the installed runtime instead of letting the fresh home
         # provision one: PM install in a temp home is slow and, on this host,
         # ends in "source-update completion failed / update_paused".
-        installs_src = active_home / "installs"
+        # Resolve before symlinking: a relative active_home would otherwise be
+        # interpreted relative to the link's own directory.
+        installs_src = (active_home / "installs").resolve()
         installs_dst = home / "installs"
         if installs_src.is_dir() and not installs_dst.exists():
             try:

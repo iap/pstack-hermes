@@ -394,3 +394,17 @@ def test_seed_home_copies_credentials_and_reuses_the_runtime(tmp_path):
     assert (home / "auth.json").is_file()
     assert (home / "installs").is_symlink()
     assert (home / "installs").resolve() == (active / "installs").resolve()
+
+
+def test_seed_home_symlinks_an_absolute_runtime_for_a_relative_home(monkeypatch, tmp_path):
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    (active / "installs").mkdir()
+    home = tmp_path / "home"
+    monkeypatch.chdir(tmp_path)
+
+    eval_run.seed_home(home, Path("active"), register_checkout_skills=False)
+
+    assert (home / "installs").resolve() == (active / "installs").resolve()
