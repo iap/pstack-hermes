@@ -5,6 +5,11 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- `tools/evals/run.py` preflights `hermes --version` (30 s) and stops with a
+  repair hint before any case runs; a broken install no longer burns the full
+  per-case timeout. Also `--timeout` for slow hosts.
+
+### Added
 - `tools/evals/run.py --model` pins a sweep to one provider model, so runs are
   comparable and a host default cannot silently choose the model.
 - Eval homes now receive `auth.json` and reuse the active home's `installs/`

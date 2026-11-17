@@ -106,6 +106,32 @@ def cleanup(path: Path, attempts: int = 3) -> bool:
     return False
 
 
+def preflight(hermes: str = "hermes", timeout: float = 60.0) -> tuple[bool, str]:
+    """Fail in seconds when the CLI itself cannot start.
+
+    A broken install (out-of-sync venv, update-paused gateway) otherwise burns
+    the full per-case timeout before reporting an opaque error. Run against a
+    throwaway HERMES_HOME: a version probe must not touch the live home or
+    trigger its boot repairs.
+    """
+    with tempfile.TemporaryDirectory(prefix="pstack-preflight-") as home:
+        env = {**os.environ, "HERMES_HOME": home, "HERMES_SUPERVISED_CHILD": "1"}
+        try:
+            proc = subprocess.run(
+                [hermes, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"{hermes} --version failed: {exc}"
+    if proc.returncode != 0:
+        tail = (proc.stdout + proc.stderr).strip()[-300:]
+        return False, f"{hermes} --version exited {proc.returncode}: {tail}"
+    return True, (proc.stdout or proc.stderr).strip().splitlines()[0] if (proc.stdout or proc.stderr).strip() else "ok"
+
+
 def build_env(home: Path) -> dict[str, str]:
     """Environment for one eval run.
 
@@ -178,7 +204,11 @@ def seed_home(
 
 
 def run_case(
-    case: dict, hermes: str = "hermes", arm: str = "skill", model: str = ""
+    case: dict,
+    hermes: str = "hermes",
+    arm: str = "skill",
+    model: str = "",
+    timeout: float = 300,
 ) -> tuple[str, list[str], list[dict]]:
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
     active = os.environ.get("HERMES_HOME")
@@ -204,7 +234,7 @@ def run_case(
                 build_argv(case, hermes, arm, model),
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=timeout,
                 env=env,
                 cwd=str(project),
             )
@@ -294,10 +324,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
     ap.add_argument("--model", default="", help="pin every run to this provider model")
+    ap.add_argument("--timeout", type=float, default=300, help="per-case seconds (default 300)")
+    ap.add_argument(
+        "--preflight-timeout", type=float, default=60, help="seconds for the --version probe (default 60)"
+    )
     args = ap.parse_args(argv)
 
     if args.reps < 1:
         print("evals: --reps must be >= 1", file=sys.stderr)
+        return 2
+    if args.timeout <= 0 or args.preflight_timeout <= 0:
+        print("evals: --timeout and --preflight-timeout must be > 0", file=sys.stderr)
         return 2
     cases = load_golden(Path(args.golden))
     wanted = [task.strip() for task in args.tasks.split(",") if task.strip()]
@@ -311,6 +348,13 @@ def main(argv: list[str] | None = None) -> int:
         print("evals: no golden tasks found", file=sys.stderr)
         return 2
 
+    ok, detail = preflight(args.hermes, args.preflight_timeout)
+    if not ok:
+        print(f"evals: preflight failed — {detail}", file=sys.stderr)
+        print("evals: repair the Hermes install first (`hermes update`, then restart the gateway)", file=sys.stderr)
+        return 2
+    print(f"evals: {detail}")
+
     arms = ARMS if args.arm == "both" else (args.arm,)
     records: list[dict] = []
     errors = 0
@@ -319,7 +363,9 @@ def main(argv: list[str] | None = None) -> int:
     for case in cases:
         for arm in arms:
             for rep in range(1, args.reps + 1):
-                status, failures, process = run_case(case, args.hermes, arm, args.model)
+                status, failures, process = run_case(
+                    case, args.hermes, arm, args.model, args.timeout
+                )
                 suffix = f" rep{rep}" if args.reps > 1 else ""
                 print(f"{status.upper()} {case['id']} [{arm}]{suffix}")
                 for line in failures:
