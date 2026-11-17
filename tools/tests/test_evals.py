@@ -360,7 +360,6 @@ def test_cleanup_retries_a_transient_failure(monkeypatch, tmp_path):
 
 
 def test_cleanup_reports_giving_up(monkeypatch, tmp_path):
-    import shutil
 
     def always_fail(path, *a, **k):
         raise OSError(66, "Directory not empty")
