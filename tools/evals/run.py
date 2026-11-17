@@ -70,12 +70,20 @@ def score(case: dict, response: str) -> tuple[bool, list[str]]:
     return (not failures), failures
 
 
-def build_argv(case: dict, hermes: str = "hermes", arm: str = "skill") -> list[str]:
-    """Command for one run. The baseline arm must not preload a skill."""
+def build_argv(
+    case: dict, hermes: str = "hermes", arm: str = "skill", model: str = ""
+) -> list[str]:
+    """Command for one run. The baseline arm must not preload a skill.
+
+    ``model`` pins the run to one provider model so a sweep is comparable; an
+    empty value leaves the host's configured default in place.
+    """
     argv = [hermes, "-z", case["prompt"]]
     skill = case.get("skill", "")
     if arm == "skill" and skill:
         argv += ["--skills", skill]
+    if model:
+        argv += ["-m", model]
     return argv
 
 
@@ -129,10 +137,27 @@ def seed_home(
     home.mkdir(parents=True, exist_ok=True)
     config = home / "config.yaml"
     if active_home is not None:
-        for name in ("config.yaml", ".env"):
+        # auth.json carries the provider credential the run needs; without it
+        # the model call cannot authenticate and the case just times out.
+        for name in ("config.yaml", ".env", "auth.json"):
             src = active_home / name
             if src.is_file():
                 shutil.copy2(src, home / name)
+                if name == "auth.json":
+                    (home / name).chmod(0o600)
+        # Reuse the installed runtime instead of letting the fresh home
+        # provision one: PM install in a temp home is slow and, on this host,
+        # ends in "source-update completion failed / update_paused".
+        # Resolve before symlinking: a relative active_home would otherwise be
+        # interpreted relative to the link's own directory.
+        installs_src = (active_home / "installs").resolve()
+        installs_dst = home / "installs"
+        if installs_src.is_dir() and not installs_dst.exists():
+            try:
+                installs_dst.symlink_to(installs_src, target_is_directory=True)
+            except OSError:
+                # Windows without developer mode: run without the shortcut.
+                pass
     try:
         import yaml
     except ImportError as exc:
@@ -153,7 +178,7 @@ def seed_home(
 
 
 def run_case(
-    case: dict, hermes: str = "hermes", arm: str = "skill"
+    case: dict, hermes: str = "hermes", arm: str = "skill", model: str = ""
 ) -> tuple[str, list[str], list[dict]]:
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
     active = os.environ.get("HERMES_HOME")
@@ -176,7 +201,7 @@ def run_case(
             return "error", [f"seed error: {exc}"], []
         try:
             proc = subprocess.run(
-                build_argv(case, hermes, arm),
+                build_argv(case, hermes, arm, model),
                 capture_output=True,
                 text=True,
                 timeout=300,
@@ -268,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
+    ap.add_argument("--model", default="", help="pin every run to this provider model")
     args = ap.parse_args(argv)
 
     if args.reps < 1:
@@ -293,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     for case in cases:
         for arm in arms:
             for rep in range(1, args.reps + 1):
-                status, failures, process = run_case(case, args.hermes, arm)
+                status, failures, process = run_case(case, args.hermes, arm, args.model)
                 suffix = f" rep{rep}" if args.reps > 1 else ""
                 print(f"{status.upper()} {case['id']} [{arm}]{suffix}")
                 for line in failures:

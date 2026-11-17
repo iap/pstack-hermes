@@ -5,6 +5,13 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- `tools/evals/run.py --model` pins a sweep to one provider model, so runs are
+  comparable and a host default cannot silently choose the model.
+- Eval homes now receive `auth.json` and reuse the active home's `installs/`
+  runtime; without them every case failed to authenticate or tried to
+  provision a runtime in a temp directory.
+
+### Added
 - `tools/evals/run.py --tasks id[,id]` to run a named subset (smoke runs).
 - Eval runs set `HERMES_SUPERVISED_CHILD=1` so boot does not try to finish a
   source update on a dirty checkout before every case.
