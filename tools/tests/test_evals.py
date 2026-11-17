@@ -320,7 +320,7 @@ def test_tasks_filter_rejects_an_unknown_id(capsys):
 def test_tasks_filter_runs_only_the_named_case(monkeypatch):
     seen = []
 
-    def fake_run(case, hermes="hermes", arm="skill"):
+    def fake_run(case, hermes="hermes", arm="skill", model=""):
         seen.append(case["id"])
         return "pass", [], []
 
@@ -369,3 +369,28 @@ def test_cleanup_reports_giving_up(monkeypatch, tmp_path):
     target.mkdir()
 
     assert eval_run.cleanup(target, attempts=2) is False
+
+
+def test_build_argv_pins_a_model_when_requested():
+    argv = eval_run.build_argv({"prompt": "x", "skill": "s"}, "hermes", "baseline", "vendor/model:free")
+    assert argv == ["hermes", "-z", "x", "-m", "vendor/model:free"]
+
+
+def test_build_argv_omits_the_model_flag_by_default():
+    argv = eval_run.build_argv({"prompt": "x", "skill": "s"}, "hermes", "skill", "")
+    assert "-m" not in argv
+
+
+def test_seed_home_copies_credentials_and_reuses_the_runtime(tmp_path):
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    (active / "auth.json").write_text("{}", encoding="utf-8")
+    (active / "installs").mkdir()
+    home = tmp_path / "home"
+
+    eval_run.seed_home(home, active, register_checkout_skills=False)
+
+    assert (home / "auth.json").is_file()
+    assert (home / "installs").is_symlink()
+    assert (home / "installs").resolve() == (active / "installs").resolve()
