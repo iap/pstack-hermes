@@ -539,3 +539,19 @@ def test_json_out_write_failure_is_an_error(monkeypatch, tmp_path):
     code = eval_run.main(["--tasks", "poteto-routing", "--json-out", str(blocker / "sweep.json")])
 
     assert code == 2
+
+
+def test_json_out_failure_keeps_the_previous_sweep(monkeypatch, tmp_path):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "v"))
+    monkeypatch.setattr(eval_run, "run_case", lambda *a, **k: ("pass", [], []))
+    target = tmp_path / "sweep.json"
+    target.write_text("previous sweep", encoding="utf-8")
+
+    def fail_replace(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(eval_run.os, "replace", fail_replace)
+
+    assert eval_run.main(["--tasks", "poteto-routing", "--json-out", str(target)]) == 2
+    assert target.read_text() == "previous sweep"
+    assert not (tmp_path / "sweep.json.tmp").exists()

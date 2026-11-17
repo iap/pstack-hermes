@@ -24,7 +24,7 @@ uv run --frozen python tools/evals/run.py \
 # Full sweep, durable record
 uv run --frozen python tools/evals/run.py \
   --model meituan/longcat-2.5:free --arm both --reps 3 \
-  --json-out tools/evals/results/$(date +%F)-sweep.json
+  --json-out tools/evals/results/$(date +%Y-%m-%dT%H%M%S)-sweep.json
 ```
 
 `--arm skill` (default) preloads the case skill; `baseline` runs without it and

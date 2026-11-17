@@ -403,10 +403,18 @@ def main(argv: list[str] | None = None) -> int:
             "summary": summary,
         }
         target = Path(args.json_out)
+        temp = target.with_name(target.name + ".tmp")
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+            # Write beside the target and replace atomically: a failed write
+            # must not truncate a sweep recorded earlier.
+            temp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+            os.replace(temp, target)
         except OSError as exc:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                pass  # the parent path may itself be unusable; nothing to clean
             print(f"evals: could not write {target}: {exc}", file=sys.stderr)
             return 2
         print(f"evals: wrote {target}")
