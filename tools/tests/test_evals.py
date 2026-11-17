@@ -498,3 +498,44 @@ def test_preflight_timeout_is_configurable(monkeypatch):
 def test_invalid_timeouts_are_rejected(capsys):
     assert eval_run.main(["--timeout", "0"]) == 2
     assert "--timeout" in capsys.readouterr().err
+
+
+def test_json_out_records_every_run(monkeypatch, tmp_path):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "Hermes Agent v9"))
+
+    def fake_run(case, hermes="hermes", arm="skill", model="", timeout=300):
+        if arm == "skill":
+            return "pass", [], [{"gate": "read_before_write", "status": "pass", "detail": "ok"}]
+        return "fail", ["missing must_mention: x"], []
+
+    monkeypatch.setattr(eval_run, "run_case", fake_run)
+    out = tmp_path / "results" / "sweep.json"
+
+    code = eval_run.main(
+        ["--tasks", "poteto-routing", "--model", "m/x:free", "--arm", "both", "--reps", "2", "--json-out", str(out)]
+    )
+
+    import json
+
+    payload = json.loads(out.read_text())
+    assert code == 0  # baseline failures are data, not a gate failure
+    assert payload["schema_version"] == "1"
+    assert payload["hermes"] == "Hermes Agent v9"
+    assert payload["model"] == "m/x:free"
+    assert payload["arms"] == ["skill", "baseline"]
+    assert payload["reps"] == 2
+    assert len(payload["records"]) == 4
+    assert {r["status"] for r in payload["records"] if r["arm"] == "skill"} == {"pass"}
+    assert payload["summary"][0]["skill"]["pass"] == 2
+    assert payload["summary"][0]["baseline"]["total"] == 2
+
+
+def test_json_out_write_failure_is_an_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "v"))
+    monkeypatch.setattr(eval_run, "run_case", lambda *a, **k: ("pass", [], []))
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+
+    code = eval_run.main(["--tasks", "poteto-routing", "--json-out", str(blocker / "sweep.json")])
+
+    assert code == 2

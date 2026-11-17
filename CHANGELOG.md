@@ -5,6 +5,13 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- `tools/evals/run.py --json-out PATH` writes every run (case, arm, rep,
+  status, rubric failures, process gates) plus the summary, the CLI version and
+  the pinned model, so a sweep is durable evidence instead of console output.
+- `docs/EVALS.md`: prerequisites, commands, how to read a sweep, and the known
+  environment failure modes.
+
+### Added
 - `tools/evals/run.py` preflights `hermes --version` (30 s) and stops with a
   repair hint before any case runs; a broken install no longer burns the full
   per-case timeout. Also `--timeout` for slow hosts.
