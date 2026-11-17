@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Loaded both as a script (tools/evals on sys.path) and via importlib in tests.
@@ -76,6 +77,25 @@ def build_argv(case: dict, hermes: str = "hermes", arm: str = "skill") -> list[s
     if arm == "skill" and skill:
         argv += ["--skills", skill]
     return argv
+
+
+def cleanup(path: Path, attempts: int = 3) -> bool:
+    """Remove a run's temp tree, retrying while Hermes finishes flushing.
+
+    Returns False when it still cannot be removed; the caller warns with the
+    path instead of failing the sweep or silently leaking the directory.
+    """
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError:
+            if attempt == attempts - 1:
+                return False
+            time.sleep(0.5 * (attempt + 1))
+    return False
 
 
 def build_env(home: Path) -> dict[str, str]:
@@ -140,9 +160,10 @@ def run_case(
     active_home = Path(active) if active else Path.home() / ".hermes"
     # Hermes may still be flushing state when the case returns; a cleanup race
     # must not abort the sweep (observed: OSError 66 'workspace').
-    with tempfile.TemporaryDirectory(prefix="pstack-eval-", ignore_cleanup_errors=True) as td:
-        home = Path(td) / "home"
-        project = Path(td) / "project"
+    td = Path(tempfile.mkdtemp(prefix="pstack-eval-"))
+    try:
+        home = td / "home"
+        project = td / "project"
         project.mkdir(parents=True)
         env = build_env(home)
         try:
@@ -173,6 +194,10 @@ def run_case(
             if calls is None:
                 return "error", ["process: no readable session record"], []
             process = grade_trajectory(case["process"], calls, proc.stdout, project)
+
+    finally:
+        if not cleanup(td):
+            print(f"evals: could not remove temp dir {td}", file=sys.stderr)
 
     if proc.returncode != 0:
         tail = (proc.stdout + proc.stderr)[-500:]
