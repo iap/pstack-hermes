@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Loaded both as a script (tools/evals on sys.path) and via importlib in tests.
@@ -328,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--preflight-timeout", type=float, default=60, help="seconds for the --version probe (default 60)"
     )
+    ap.add_argument("--json-out", default="", help="write the sweep (records + summary) to this path")
     args = ap.parse_args(argv)
 
     if args.reps < 1:
@@ -372,12 +374,51 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  - {line}")
                 for result in process:
                     print(f"  process {result['gate']}: {result['status']} ({result['detail']})")
-                records.append({"case": case["id"], "arm": arm, "status": status})
+                records.append(
+                    {
+                        "case": case["id"],
+                        "arm": arm,
+                        "rep": rep,
+                        "status": status,
+                        "failures": failures,
+                        "process": process,
+                    }
+                )
                 errors += status == "error"
                 skill_failed += status == "fail" and arm == "skill"
 
-    _print_summary(summarize(records, arms), arms, args.reps)
+    summary = summarize(records, arms)
+    _print_summary(summary, arms, args.reps)
     print(f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s)")
+
+    if args.json_out:
+        payload = {
+            "schema_version": "1",
+            "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "hermes": detail,
+            "model": args.model,
+            "arms": list(arms),
+            "reps": args.reps,
+            "records": records,
+            "summary": summary,
+        }
+        target = Path(args.json_out)
+        temp = target.with_name(target.name + ".tmp")
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Write beside the target and replace atomically: a failed write
+            # must not truncate a sweep recorded earlier.
+            temp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+            os.replace(temp, target)
+        except OSError as exc:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                pass  # the parent path may itself be unusable; nothing to clean
+            print(f"evals: could not write {target}: {exc}", file=sys.stderr)
+            return 2
+        print(f"evals: wrote {target}")
+
     return 2 if errors else (1 if skill_failed else 0)
 
 
