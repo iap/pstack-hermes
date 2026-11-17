@@ -300,3 +300,72 @@ def test_routing_rubric_rejects_an_explicit_refusal_to_delegate():
         "In poteto-mode I will not delegate; I will plan, then verify.",
     )
     assert not ok
+
+
+def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
+    before = dict(__import__("os").environ)
+
+    env = eval_run.build_env(tmp_path)
+
+    assert env["HERMES_HOME"] == str(tmp_path)
+    assert env["HERMES_SUPERVISED_CHILD"] == "1"
+    assert dict(__import__("os").environ) == before
+
+
+def test_tasks_filter_rejects_an_unknown_id(capsys):
+    assert eval_run.main(["--tasks", "no-such-case"]) == 2
+    assert "unknown task id" in capsys.readouterr().err
+
+
+def test_tasks_filter_runs_only_the_named_case(monkeypatch):
+    seen = []
+
+    def fake_run(case, hermes="hermes", arm="skill"):
+        seen.append(case["id"])
+        return "pass", [], []
+
+    monkeypatch.setattr(eval_run, "run_case", fake_run)
+
+    assert eval_run.main(["--tasks", "poteto-routing"]) == 0
+    assert seen == ["poteto-routing"]
+
+
+def test_cleanup_removes_the_tree(tmp_path):
+    target = tmp_path / "run"
+    target.mkdir()
+    (target / "f").write_text("x", encoding="utf-8")
+
+    assert eval_run.cleanup(target) is True
+    assert not target.exists()
+
+
+def test_cleanup_retries_a_transient_failure(monkeypatch, tmp_path):
+    import shutil
+
+    target = tmp_path / "run"
+    target.mkdir()
+    calls = {"n": 0}
+    real = shutil.rmtree
+
+    def flaky(path, *a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(66, "Directory not empty")
+        return real(path, *a, **k)
+
+    monkeypatch.setattr(eval_run.shutil, "rmtree", flaky)
+
+    assert eval_run.cleanup(target, attempts=2) is True
+    assert calls["n"] == 2
+
+
+def test_cleanup_reports_giving_up(monkeypatch, tmp_path):
+
+    def always_fail(path, *a, **k):
+        raise OSError(66, "Directory not empty")
+
+    monkeypatch.setattr(eval_run.shutil, "rmtree", always_fail)
+    target = tmp_path / "run"
+    target.mkdir()
+
+    assert eval_run.cleanup(target, attempts=2) is False

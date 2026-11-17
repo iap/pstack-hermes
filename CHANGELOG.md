@@ -5,6 +5,15 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Added
+- `tools/evals/run.py --tasks id[,id]` to run a named subset (smoke runs).
+- Eval runs set `HERMES_SUPERVISED_CHILD=1` so boot does not try to finish a
+  source update on a dirty checkout before every case.
+
+### Fixed
+- Eval temp-home cleanup no longer aborts the sweep with `OSError 66` when
+  Hermes is still flushing state (`ignore_cleanup_errors=True`).
+
+### Added
 - Encoding gate also rejects bare CR and invalid UTF-8, and covers
   `.gitignore`, `pyproject.toml` and `.github/allowed_signers`.
 - Golden rubrics accept `a|b` alternates in `must_mention` /

@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Loaded both as a script (tools/evals on sys.path) and via importlib in tests.
@@ -78,6 +79,40 @@ def build_argv(case: dict, hermes: str = "hermes", arm: str = "skill") -> list[s
     return argv
 
 
+def cleanup(path: Path, attempts: int = 3) -> bool:
+    """Remove a run's temp tree, retrying while Hermes finishes flushing.
+
+    Returns False when it still cannot be removed; the caller warns with the
+    path instead of failing the sweep or silently leaking the directory.
+    """
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError:
+            if attempt == attempts - 1:
+                return False
+            time.sleep(0.5 * (attempt + 1))
+    return False
+
+
+def build_env(home: Path) -> dict[str, str]:
+    """Environment for one eval run.
+
+    ``HERMES_SUPERVISED_CHILD`` tells the launcher it was started by a manager,
+    so boot does not try to finish a source update. On a dirty checkout that
+    tail blocks every case for minutes before the model is even called — the
+    harness must not inherit that repair obligation.
+    """
+    return {
+        **os.environ,
+        "HERMES_HOME": str(home),
+        "HERMES_SUPERVISED_CHILD": "1",
+    }
+
+
 def seed_home(
     home: Path,
     active_home: Path | None,
@@ -123,11 +158,14 @@ def run_case(
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
     active = os.environ.get("HERMES_HOME")
     active_home = Path(active) if active else Path.home() / ".hermes"
-    with tempfile.TemporaryDirectory(prefix="pstack-eval-") as td:
-        home = Path(td) / "home"
-        project = Path(td) / "project"
+    # Hermes may still be flushing state when the case returns; a cleanup race
+    # must not abort the sweep (observed: OSError 66 'workspace').
+    td = Path(tempfile.mkdtemp(prefix="pstack-eval-"))
+    try:
+        home = td / "home"
+        project = td / "project"
         project.mkdir(parents=True)
-        env = {**os.environ, "HERMES_HOME": str(home)}
+        env = build_env(home)
         try:
             seed_home(
                 home,
@@ -156,6 +194,10 @@ def run_case(
             if calls is None:
                 return "error", ["process: no readable session record"], []
             process = grade_trajectory(case["process"], calls, proc.stdout, project)
+
+    finally:
+        if not cleanup(td):
+            print(f"evals: could not remove temp dir {td}", file=sys.stderr)
 
     if proc.returncode != 0:
         tail = (proc.stdout + proc.stderr)[-500:]
@@ -225,12 +267,20 @@ def main(argv: list[str] | None = None) -> int:
         help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: run each case in both arms",
     )
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
+    ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
     args = ap.parse_args(argv)
 
     if args.reps < 1:
         print("evals: --reps must be >= 1", file=sys.stderr)
         return 2
     cases = load_golden(Path(args.golden))
+    wanted = [task.strip() for task in args.tasks.split(",") if task.strip()]
+    if wanted:
+        cases = [case for case in cases if case.get("id") in wanted]
+        missing = sorted(set(wanted) - {case.get("id") for case in cases})
+        if missing:
+            print(f"evals: unknown task id(s): {', '.join(missing)}", file=sys.stderr)
+            return 2
     if not cases:
         print("evals: no golden tasks found", file=sys.stderr)
         return 2
