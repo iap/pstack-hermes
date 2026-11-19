@@ -302,6 +302,22 @@ def test_routing_rubric_rejects_an_explicit_refusal_to_delegate():
     assert not ok
 
 
+def test_routing_rubric_rejects_the_banned_task_tool():
+    import json
+    from pathlib import Path
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
+    )
+    ok, failures = eval_run.score(
+        case,
+        "Loading poteto-mode. I will use the Task tool to delegate to a "
+        "subagent, with a plan and a verify step.",
+    )
+    assert not ok
+    assert any("Task tool|Task subagent" in line for line in failures)
+
+
 def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
     before = dict(__import__("os").environ)
 
