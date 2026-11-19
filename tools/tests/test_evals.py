@@ -334,6 +334,20 @@ def test_routing_rubric_rejects_markdown_formatted_task_tool():
     assert any("`Task`" in line for line in failures)
 
 
+def test_routing_rubric_accepts_lowercase_task_code_span():
+    import json
+    from pathlib import Path
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
+    )
+    ok, failures = eval_run.score(
+        case,
+        "In poteto-mode, I will plan the `task`, delegate the work, then verify it.",
+    )
+    assert ok, failures
+
+
 def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
     before = dict(__import__("os").environ)
 
