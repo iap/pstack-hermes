@@ -1,10 +1,9 @@
 ---
 name: hermes-vocabulary
 description: >-
-  Use when a coworker or harness message uses Cursor terms and you must answer
-  with hermes terms (delegate_task, clarify, hermes cron, goal.md, skill_manage).
-  Also use when the user types `subagent` or `agent swarm` to mean delegating.
-  Disambiguates Hermes agent vocabulary before delegating.
+  Use when the user types `subagent` or `agent swarm`, or a message uses Cursor
+  terms: answer with hermes terms (delegate_task, clarify, hermes cron,
+  goal.md, skill_manage). Disambiguates Hermes vocabulary before delegating.
 ---
 
 # Hermes vocabulary

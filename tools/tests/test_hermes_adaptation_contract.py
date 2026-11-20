@@ -86,3 +86,7 @@ def test_hermes_vocabulary_skill_teaches_user_typed_redirect():
     assert "delegate_task" in redirects[0]
     assert "`subagent`" in frontmatter
     assert "`agent swarm`" in frontmatter
+    desc_lines = frontmatter.split("description: >-", 1)[1].strip().splitlines()
+    description = " ".join(line.strip() for line in desc_lines)
+    assert "`subagent`" in description[:60]
+    assert "`agent swarm`" in description[:60]
