@@ -519,3 +519,77 @@ def test_no_banned_tool_unavailable_without_a_record(tmp_path):
     result = _no_banned_result(tmp_path, None)
 
     assert result["status"] == "unavailable"
+
+
+def _db_with_bad_calls(tmp_path, tool_calls_rows):
+    path = tmp_path / "state.db"
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, "
+        "role TEXT, content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+    for row in tool_calls_rows:
+        conn.execute(
+            "INSERT INTO messages (session_id, role, tool_calls) VALUES ('s1', 'assistant', ?)",
+            (row,),
+        )
+    conn.commit()
+    conn.close()
+    return path
+
+
+def test_no_banned_tool_unavailable_on_unparseable_call_row(tmp_path):
+    db = _db_with_bad_calls(
+        tmp_path,
+        [
+            json.dumps([{"function": {"name": "delegate_task", "arguments": "{}"}}]),
+            "not json",
+        ],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "unavailable"
+    assert "unparseable" in result["detail"]
+
+
+def test_no_banned_tool_unavailable_on_unparseable_arguments(tmp_path):
+    db = _db_with_bad_calls(
+        tmp_path,
+        [json.dumps([{"function": {"name": "delegate_task", "arguments": "not json"}}])],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "unavailable"
+
+
+def test_grading_uses_root_session_not_a_later_delegate_child(tmp_path):
+    db = tmp_path / "state.db"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, started_at REAL)"
+    )
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, "
+        "role TEXT, content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO sessions VALUES (?, ?, ?)",
+        [("parent", None, 1.0), ("child", "parent", 2.0)],
+    )
+    for session, name in [("parent", "delegate_task"), ("child", "Task")]:
+        payload = [{"function": {"name": name, "arguments": "{}"}}]
+        conn.execute(
+            "INSERT INTO messages (session_id, role, tool_calls) VALUES (?, 'assistant', ?)",
+            (session, json.dumps(payload)),
+        )
+    conn.commit()
+    conn.close()
+
+    calls = trajectory.load_tool_calls(db)
+
+    assert [call["name"] for call in calls] == ["delegate_task"]
+    assert _no_banned_result(tmp_path, calls)["status"] == "pass"
