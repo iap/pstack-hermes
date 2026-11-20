@@ -12,6 +12,10 @@ short form and must stay consistent with this file.
    Do **not** trigger Qodo manually. Triage its findings first. A new head can also
    draw an automatic re-review — observed on PR #230 at 18:16 UTC on `ffb8a85`
    after a push with no `@qodo` reply — so check every head for new findings.
+   If such an automatic re-review is still running, wait for it with the same
+   bounded backoff as the initial review (cap ~15–20 min) and triage its findings
+   before requesting CodeRabbit; the initial no-review timeout applies only when
+   no review is in flight and never waives findings that arrive later.
    Only a follow-up explicitly asking for a re-review (e.g. `@qodo fixed:` with a
    re-review request) opens the bounded wait for it as for the initial review
    (ledger it and proceed if it never arrives); dismissal replies
