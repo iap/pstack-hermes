@@ -66,7 +66,14 @@ session record (`$HERMES_HOME/state.db`):
 - `verify_before_claim` — a tests-pass claim in the final response requires a
   real test command with exit 0 earlier in the session. `cat pytest.ini` and
   `pytest --collect-only` do not count. No claim → `not_applicable`.
+- `no_banned_tool` — delegation must go through a `delegate_task` call. A call
+  to the banned `Task`/`AskQuestion` tools, a `subagent_type`/`generalPurpose`
+  argument, or a session with no `delegate_task` call fails. An unreadable
+  session record, an unparseable call row, or malformed arguments make the
+  gate `unavailable`, never a pass. Tool names and argument keys are compared
+  case-insensitively, so prose formatting cannot hide a call. The loader grades
+  the root session, not a later `delegate_task` child session.
 
 `unavailable` is reported as a runner error, never folded into a pass: a grader
-that cannot see the evidence says so. Both gates are unit-tested against
+that cannot see the evidence says so. These gates are unit-tested against
 synthetic session databases (`tools/tests/test_trajectory.py`).

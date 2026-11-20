@@ -2,8 +2,9 @@
 """Trajectory graders for the golden-task evals (#213).
 
 The golden tasks score what the agent *said*. pstack's principles are claims
-about what the agent *did*: read before writing, verify before claiming. This
-module reads the isolated run's session record and grades those two claims.
+about what the agent *did*: read before writing, verify before claiming, and
+delegate with `delegate_task` rather than the banned Cursor tool. This module
+reads the isolated run's session record and grades those claims.
 
 Design rule: never turn missing evidence into a pass. Every gate returns one of
 
@@ -16,6 +17,11 @@ Design rule: never turn missing evidence into a pass. Every gate returns one of
 
 `unavailable` is surfaced to the runner as an error, not folded into a pass.
 That is deliberate: a grader that cannot see the evidence must say so.
+
+`load_tool_calls` selects the root session rather than a later delegate child,
+and records unparseable rows on the returned list so `no_banned_tool` can
+report `unavailable` when a dropped call or argument block would otherwise be
+read as a clean tool choice.
 
 Scope is intentionally narrow. `read_before_write` is graded only for
 `write_file` calls with a parseable path. `patch` and any terminal-based write
@@ -34,6 +40,12 @@ from pathlib import Path
 
 READ_TOOLS = {"read_file"}
 WRITE_TOOLS = {"write_file", "patch"}
+DELEGATE_TOOL = "delegate_task"
+# Cursor-era tool names and delegation selectors that the port maps to
+# delegate_task / clarify. Matched against actual tool calls and argument keys,
+# so Markdown formatting in prose cannot hide a banned call.
+BANNED_TOOL_NAMES = frozenset({"task", "askquestion"})
+BANNED_TOOL_ARGS = frozenset({"subagent_type", "generalpurpose"})
 # execute_code can write any path without naming it as a tool argument. A
 # terminal command only blocks grading when it actually looks like a write:
 # treating every `ls`/`git status` as ambiguous would make the gate unusable.
@@ -72,11 +84,37 @@ NON_RUNNING_FLAGS = re.compile(
 )
 
 
-def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] | None:
-    """Ordered tool calls from one session (default: newest), or None when unreadable.
+class ToolCalls(list):
+    """Ordered tool calls with the parse failures seen while reading them."""
+
+    def __init__(self, calls=(), parse_errors=()):
+        super().__init__(calls)
+        self.parse_errors = list(parse_errors)
+
+
+def _root_session_id(conn: sqlite3.Connection) -> str | None:
+    """The run's own session, not a later `delegate_task` child session.
+
+    Real Hermes records carry `parent_session_id`; delegate children start
+    later, so selecting the newest session would grade the child instead of
+    the parent that made the delegation call. Older/minimal schemas without
+    the column fall back to the earliest session as the root proxy.
+    """
+    try:
+        row = conn.execute(
+            "SELECT id FROM sessions WHERE parent_session_id IS NULL ORDER BY started_at LIMIT 1"
+        ).fetchone()
+    except sqlite3.Error:
+        row = conn.execute("SELECT id FROM sessions ORDER BY started_at LIMIT 1").fetchone()
+    return row[0] if row else None
+
+
+def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls | None:
+    """Ordered tool calls from one session (default: root), or None when unreadable.
 
     Each item: {"name": str, "args": dict, "exit_code": int | None}.
     ``exit_code`` is filled from the matching terminal result when present.
+    ``parse_errors`` records rows whose calls or arguments could not be read.
     """
     if not db_path.is_file():
         return None
@@ -86,10 +124,7 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] 
         return None
     try:
         if session_id is None:
-            row = conn.execute(
-                "SELECT id FROM sessions ORDER BY started_at DESC LIMIT 1"
-            ).fetchone()
-            session_id = row[0] if row else None
+            session_id = _root_session_id(conn)
         if session_id is None:
             # A database with no session is not an empty trajectory: the run
             # left no record, and a process gate must not read that as clean.
@@ -116,23 +151,37 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] 
             exits[call_id] = payload["exit_code"]
 
     calls: list[dict] = []
+    parse_errors: list[str] = []
     for role, _content, tool_calls, _tool_name, _call_id in rows:
         if role != "assistant" or not tool_calls:
             continue
         try:
             parsed = json.loads(tool_calls)
         except (TypeError, ValueError):
+            parse_errors.append("tool_calls row")
             continue
         if not isinstance(parsed, list):
+            parse_errors.append("tool_calls row")
             continue
         for item in parsed:
-            fn = (item or {}).get("function") or {}
+            if not isinstance(item, dict):
+                parse_errors.append("tool-call entry")
+                continue
+            fn = item.get("function")
+            if not isinstance(fn, dict):
+                parse_errors.append("tool-call function")
+                continue
             name = fn.get("name")
-            if not name:
+            if not isinstance(name, str) or not name:
+                parse_errors.append("tool name")
                 continue
             try:
                 args = json.loads(fn.get("arguments") or "{}")
             except (TypeError, ValueError):
+                parse_errors.append("arguments")
+                args = {}
+            if not isinstance(args, dict):
+                parse_errors.append("arguments")
                 args = {}
             call_id = item.get("call_id") or item.get("id")
             calls.append(
@@ -142,7 +191,7 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> list[dict] 
                     "exit_code": exits.get(call_id),
                 }
             )
-    return calls
+    return ToolCalls(calls, parse_errors)
 
 
 def _verification_segment(command: str) -> str | None:
@@ -304,6 +353,38 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
     }
 
 
+def _no_banned_tool(calls: list[dict] | None) -> dict:
+    gate = "no_banned_tool"
+    if calls is None:
+        return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
+    if getattr(calls, "parse_errors", None):
+        return {
+            "gate": gate,
+            "status": "unavailable",
+            "detail": f"{len(calls.parse_errors)} unparseable tool-call record(s); tool choice cannot be verified",
+        }
+    for call in calls:
+        name = str(call.get("name") or "")
+        if name.lower() in BANNED_TOOL_NAMES:
+            return {"gate": gate, "status": "fail", "detail": f"banned tool called: {name}"}
+        args = call.get("args")
+        if isinstance(args, dict):
+            for key in args:
+                if str(key).lower() in BANNED_TOOL_ARGS:
+                    return {
+                        "gate": gate,
+                        "status": "fail",
+                        "detail": f"banned delegation argument passed to {name}: {key}",
+                    }
+    if not any(str(c.get("name") or "").lower() == DELEGATE_TOOL for c in calls):
+        return {"gate": gate, "status": "fail", "detail": "no delegate_task call in the session"}
+    return {
+        "gate": gate,
+        "status": "pass",
+        "detail": "delegated via delegate_task with no banned tool calls",
+    }
+
+
 def grade(expectations: dict, calls: list[dict], final_text: str, project: Path) -> list[dict]:
     """Grade the declared gates. Unknown gate names are a harness error."""
     results = []
@@ -312,6 +393,8 @@ def grade(expectations: dict, calls: list[dict], final_text: str, project: Path)
             results.append(_read_before_write(calls, project))
         elif gate == "verify_before_claim":
             results.append(_verify_before_claim(calls, final_text))
+        elif gate == "no_banned_tool":
+            results.append(_no_banned_tool(calls))
         else:
             results.append(
                 {"gate": gate, "status": "unavailable", "detail": "unknown gate name"}
