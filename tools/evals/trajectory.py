@@ -164,13 +164,23 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
             parse_errors.append("tool_calls row")
             continue
         for item in parsed:
-            fn = (item or {}).get("function") or {}
+            if not isinstance(item, dict):
+                parse_errors.append("tool-call entry")
+                continue
+            fn = item.get("function")
+            if not isinstance(fn, dict):
+                parse_errors.append("tool-call function")
+                continue
             name = fn.get("name")
-            if not name:
+            if not isinstance(name, str) or not name:
+                parse_errors.append("tool name")
                 continue
             try:
                 args = json.loads(fn.get("arguments") or "{}")
             except (TypeError, ValueError):
+                parse_errors.append("arguments")
+                args = {}
+            if not isinstance(args, dict):
                 parse_errors.append("arguments")
                 args = {}
             call_id = item.get("call_id") or item.get("id")

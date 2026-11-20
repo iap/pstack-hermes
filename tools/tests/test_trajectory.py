@@ -566,6 +566,27 @@ def test_no_banned_tool_unavailable_on_unparseable_arguments(tmp_path):
     assert result["status"] == "unavailable"
 
 
+def test_no_banned_tool_unavailable_on_malformed_call_entries(tmp_path):
+    valid = {"function": {"name": "delegate_task", "arguments": "{}"}}
+    for malformed in [{}, 7]:
+        db = _db_with_bad_calls(tmp_path, [json.dumps([valid, malformed])])
+
+        result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+        assert result["status"] == "unavailable"
+
+
+def test_no_banned_tool_unavailable_on_non_object_arguments(tmp_path):
+    db = _db_with_bad_calls(
+        tmp_path,
+        [json.dumps([{"function": {"name": "delegate_task", "arguments": '["subagent_type"]'}}])],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "unavailable"
+
+
 def test_grading_uses_root_session_not_a_later_delegate_child(tmp_path):
     db = tmp_path / "state.db"
     conn = sqlite3.connect(db)
