@@ -568,10 +568,12 @@ def test_no_banned_tool_unavailable_on_unparseable_arguments(tmp_path):
 
 def test_no_banned_tool_unavailable_on_malformed_call_entries(tmp_path):
     valid = {"function": {"name": "delegate_task", "arguments": "{}"}}
-    for malformed in [{}, 7]:
-        db = _db_with_bad_calls(tmp_path, [json.dumps([valid, malformed])])
+    for index, malformed in enumerate([{}, 7]):
+        case_dir = tmp_path / str(index)
+        case_dir.mkdir()
+        db = _db_with_bad_calls(case_dir, [json.dumps([valid, malformed])])
 
-        result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+        result = _no_banned_result(case_dir, trajectory.load_tool_calls(db))
 
         assert result["status"] == "unavailable"
 
