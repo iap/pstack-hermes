@@ -472,3 +472,50 @@ def test_parser_reads_a_recorded_schema_fixture(tmp_path):
         "read_before_write": "pass",
         "verify_before_claim": "pass",
     }
+
+
+def _no_banned_result(tmp_path, calls):
+    return trajectory.grade(
+        {"gates": ["no_banned_tool"]}, calls, "done", _project(tmp_path)
+    )[0]
+
+
+def test_no_banned_tool_accepts_delegate_task(tmp_path):
+    db = _db(tmp_path, [("delegate_task", {"task": "review"}, None)])
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "pass"
+
+
+def test_no_banned_tool_fails_on_task_tool(tmp_path):
+    db = _db(tmp_path, [("Task", {"task": "review"}, None)])
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "fail"
+    assert "Task" in result["detail"]
+
+
+def test_no_banned_tool_fails_on_banned_argument(tmp_path):
+    db = _db(tmp_path, [("delegate_task", {"subagent_type": "general"}, None)])
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "fail"
+    assert "subagent_type" in result["detail"]
+
+
+def test_no_banned_tool_fails_without_delegate_task(tmp_path):
+    db = _db(tmp_path, [("read_file", {"path": "a.py"}, None)])
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "fail"
+    assert "no delegate_task" in result["detail"]
+
+
+def test_no_banned_tool_unavailable_without_a_record(tmp_path):
+    result = _no_banned_result(tmp_path, None)
+
+    assert result["status"] == "unavailable"

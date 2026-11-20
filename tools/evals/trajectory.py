@@ -2,8 +2,9 @@
 """Trajectory graders for the golden-task evals (#213).
 
 The golden tasks score what the agent *said*. pstack's principles are claims
-about what the agent *did*: read before writing, verify before claiming. This
-module reads the isolated run's session record and grades those two claims.
+about what the agent *did*: read before writing, verify before claiming, and
+delegate with `delegate_task` rather than the banned Cursor tool. This module
+reads the isolated run's session record and grades those claims.
 
 Design rule: never turn missing evidence into a pass. Every gate returns one of
 
@@ -34,6 +35,12 @@ from pathlib import Path
 
 READ_TOOLS = {"read_file"}
 WRITE_TOOLS = {"write_file", "patch"}
+DELEGATE_TOOL = "delegate_task"
+# Cursor-era tool names and delegation selectors that the port maps to
+# delegate_task / clarify. Matched against actual tool calls and argument keys,
+# so Markdown formatting in prose cannot hide a banned call.
+BANNED_TOOL_NAMES = frozenset({"task", "askquestion"})
+BANNED_TOOL_ARGS = frozenset({"subagent_type", "generalpurpose"})
 # execute_code can write any path without naming it as a tool argument. A
 # terminal command only blocks grading when it actually looks like a write:
 # treating every `ls`/`git status` as ambiguous would make the gate unusable.
@@ -304,6 +311,32 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
     }
 
 
+def _no_banned_tool(calls: list[dict] | None) -> dict:
+    gate = "no_banned_tool"
+    if calls is None:
+        return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
+    for call in calls:
+        name = str(call.get("name") or "")
+        if name.lower() in BANNED_TOOL_NAMES:
+            return {"gate": gate, "status": "fail", "detail": f"banned tool called: {name}"}
+        args = call.get("args")
+        if isinstance(args, dict):
+            for key in args:
+                if str(key).lower() in BANNED_TOOL_ARGS:
+                    return {
+                        "gate": gate,
+                        "status": "fail",
+                        "detail": f"banned delegation argument passed to {name}: {key}",
+                    }
+    if not any(str(c.get("name") or "").lower() == DELEGATE_TOOL for c in calls):
+        return {"gate": gate, "status": "fail", "detail": "no delegate_task call in the session"}
+    return {
+        "gate": gate,
+        "status": "pass",
+        "detail": "delegated via delegate_task with no banned tool calls",
+    }
+
+
 def grade(expectations: dict, calls: list[dict], final_text: str, project: Path) -> list[dict]:
     """Grade the declared gates. Unknown gate names are a harness error."""
     results = []
@@ -312,6 +345,8 @@ def grade(expectations: dict, calls: list[dict], final_text: str, project: Path)
             results.append(_read_before_write(calls, project))
         elif gate == "verify_before_claim":
             results.append(_verify_before_claim(calls, final_text))
+        elif gate == "no_banned_tool":
+            results.append(_no_banned_tool(calls))
         else:
             results.append(
                 {"gate": gate, "status": "unavailable", "detail": "unknown gate name"}
