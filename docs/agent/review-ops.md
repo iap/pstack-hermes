@@ -76,27 +76,29 @@ Round loop:
    with backoff for a few minutes to ~15–20; if it never arrives, ledger `Qodo:
    no review yet` and proceed (no findings, gate unaffected). Never wait
    indefinitely; never trigger Qodo to force a review.
- 2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
-    Only a follow-up that explicitly asks Qodo for a re-review (for example
-    `@qodo fixed:` with a re-review request) opens the bounded wait; dismissal
-    replies (`@qodo false positive:` / `intentional:` / `rejected:`) do not.
-    Wait bounded (same as step 1) for a re-review that was asked for, and triage
-    whatever it raises before step 3. An automatic re-review on a new head can
-    also be in progress with no findings yet: poll it with the same bounded
-    backoff (cap ~15–20 min) until it publishes or the cap expires, then triage
-    anything it raises. The step 1 "no review yet" timeout permits proceeding
-    only when no review is in flight; findings that arrive later still gate.
-    At most two re-review cycles per head SHA; a further re-review request on
-    that head escalates to the maintainer.
- 3. Request the appropriate CodeRabbit review on the current head, after step 2
-    has settled every Qodo finding and no automatic Qodo review is in flight.
-    Use `full review` for the first pass, a rebase, a force-push, or a large
-    diff; use `review` only for a small fix push in the same round. Confirm the
-    verdict's `commit.oid` equals `headRefOid`.
- 4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Check
-    the pushed head for a new Qodo review (it can arrive without an `@qodo`
-    reply) and return to step 2 to triage new findings before step 3. Do not
-    repeat a bounded wait already completed for a re-review.
+2. Triage every Qodo finding (matrix below). Fix valid ones; reply on the rest.
+   Only a follow-up that explicitly asks Qodo for a re-review (for example
+   `@qodo fixed:` with a re-review request) opens the bounded wait; dismissal
+   replies (`@qodo false positive:` / `intentional:` / `rejected:`) do not.
+   Wait bounded (same as step 1) for a re-review that was asked for, and triage
+   whatever it raises before step 3. An automatic re-review on a new head can
+   also still be unpublished: the head-scoped signal is a published Qodo review
+   whose `commit.oid` equals `headRefOid` in the `latestReviews` query. Its
+   terminal states are that review publishing (triage it) or the bounded wait
+   expiring without one (ledger `Qodo: no review on <head>` and proceed as in
+   step 1). No published review is the only in-flight signal this workflow
+   exposes; a finding that arrives later still gates merge. At most two
+   re-review cycles per head SHA; a further re-review request on that head
+   escalates to the maintainer.
+3. Request the appropriate CodeRabbit review on the current head after step 2
+   has either triaged a published Qodo review or exhausted its bounded wait.
+   Use `full review` for the first pass, a rebase, a force-push, or a large
+   diff; use `review` only for a small fix push in the same round. Confirm the
+   verdict's `commit.oid` equals `headRefOid`.
+4. Triage CodeRabbit. Every fix push requires a new CodeRabbit request. Check
+   the pushed head for a published Qodo review (it can arrive without an
+   `@qodo` reply) and return to step 2 to triage new findings before step 3.
+   Do not repeat a bounded wait already completed for a re-review.
 5. Merge only when CodeRabbit is clean on the current head, every Qodo finding
    is fixed or answered, every thread is resolved, CI is green, and the local
    gates pass. Confirm the CodeRabbit check is not `skipping`.
