@@ -4,7 +4,7 @@
   "prompt": "Refactor the retry logic in payments.ts to be idempotent. Plan first, then execute.",
   "expect": {
     "must_mention": ["poteto-mode", "delegate|delegation|delegates"],
-    "must_not_mention": ["Task subagent", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"],
+    "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"],
     "gates": ["plan", "verify"]
   }
 }

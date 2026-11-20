@@ -302,6 +302,65 @@ def test_routing_rubric_rejects_an_explicit_refusal_to_delegate():
     assert not ok
 
 
+def test_routing_rubric_contract():
+    import json
+    from pathlib import Path
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
+    )
+    cases = [
+        (
+            "plain Task tool",
+            "Loading poteto-mode. I will use the Task tool to delegate, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "backticked Task tool",
+            "Loading poteto-mode. I will use the `Task` tool to delegate, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "backticked Task via",
+            "Loading poteto-mode. I will delegate via `Task`, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "backticked Task use",
+            "Loading poteto-mode. I will use `Task` to delegate, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "Task subagent",
+            "Loading poteto-mode. I will use the Task subagent to delegate, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "subagent_type",
+            "Loading poteto-mode. I will delegate with subagent_type, with a plan and a verify step.",
+            False,
+        ),
+        (
+            "lowercase task code span",
+            "In poteto-mode, I will plan the `task`, delegate the work, then verify it.",
+            True,
+        ),
+        (
+            "lowercase task prose",
+            "In poteto-mode, I will plan the task, delegate the work, then verify it.",
+            True,
+        ),
+        (
+            "proper delegation",
+            "Loading poteto-mode. I will delegate the refactor, plan first, then verify it.",
+            True,
+        ),
+    ]
+    for name, response, expected in cases:
+        ok, failures = eval_run.score(case, response)
+        assert ok is expected, f"{name}: expected {expected}, got {ok} ({failures})"
+
+
 def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
     before = dict(__import__("os").environ)
 
