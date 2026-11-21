@@ -1,9 +1,9 @@
 ---
 name: hermes-vocabulary
 description: >-
-  Use when a coworker or harness message uses Cursor terms and you must answer
-  with hermes terms (delegate_task, clarify, hermes cron, goal.md, skill_manage).
-  Disambiguates Hermes agent vocabulary before delegating.
+  Use when the user types `subagent` or `agent swarm`, or a message uses Cursor
+  terms: answer with hermes terms (delegate_task, clarify, hermes cron,
+  goal.md, skill_manage). Disambiguates Hermes vocabulary before delegating.
 ---
 
 # Hermes vocabulary
@@ -36,6 +36,8 @@ Tool names: `search_files` for `Glob`/`Grep`, `read_file` for `Read`.
 ## How to use
 
 Load this skill *before* translating a request. Answer in the left-hand column only; if the user’s term matches the right-hand description, correct it once and use the hermes term for the rest of the turn.
+
+If the user types `subagent` or `agent swarm` for delegating, redirect to `delegate_task` (or the **swarm** skill for fan-out).
 
 ## Guardrails
 

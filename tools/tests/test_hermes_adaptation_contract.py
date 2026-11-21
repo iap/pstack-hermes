@@ -1,6 +1,7 @@
 """Hermes adaptation regressions that must not survive generated output."""
 
 import json
+from pathlib import Path
 
 import validate
 
@@ -66,3 +67,26 @@ def test_model_panel_role_shapes_are_validated(tmp_path):
     joined = "\n".join(rep.failed)
     assert "reflect judgment, divergent, synthesizer" in joined
     assert "swarm workers" in joined
+
+
+def test_hermes_vocabulary_skill_teaches_user_typed_redirect():
+    skill = (
+        Path(__file__).resolve().parents[2]
+        / "skills"
+        / "hermes-vocabulary"
+        / "SKILL.md"
+    ).read_text(encoding="utf-8")
+    frontmatter, body = skill.split("---", 2)[1:3]
+    redirects = [
+        line
+        for line in body.splitlines()
+        if "subagent" in line.lower() and "agent swarm" in line.lower()
+    ]
+    assert redirects, "hermes-vocabulary must teach the user-typed delegation redirect"
+    assert "delegate_task" in redirects[0]
+    assert "`subagent`" in frontmatter
+    assert "`agent swarm`" in frontmatter
+    desc_lines = frontmatter.split("description: >-", 1)[1].strip().splitlines()
+    description = " ".join(line.strip() for line in desc_lines)
+    assert "`subagent`" in description[:60]
+    assert "`agent swarm`" in description[:60]

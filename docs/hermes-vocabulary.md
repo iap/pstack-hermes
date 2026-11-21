@@ -22,6 +22,10 @@ Single mapping home for every Cursor-to-hermes vocabulary pair this package enfo
 
 Tool names: `search_files` for `Glob`/`Grep`, `read_file` for `Read`.
 
+## User-typed aliases
+
+Bare `subagent` and `agent swarm` are user ways of asking for delegation, not banned constructs. Redirect them to `delegate_task` (or the **swarm** skill for fan-out); `skills/hermes-vocabulary` teaches this redirect.
+
 ## Enforcement
 
 - `tools/bans.py` `DELEGATION_VOCAB_BANS` — the banned list, shared by `tools/validate.py` and `tools/scanner_gate.py` so the two can never drift. The Cursor transcript alias (`agent-transcripts`) is banned in Markdown only: the shipped `worktree-audit.sh` legitimately mentions that dir for a compatibility check.
