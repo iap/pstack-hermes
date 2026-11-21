@@ -269,7 +269,7 @@ adaptation ledgers in `docs/`.
 3. After CodeRabbit reviews, reply in-thread to all findings with evidence (fix or justify). Continue until CodeRabbit's CI flow/check completes successfully. The maintainer or bot resolves the threads.
 4. **Merge only when CodeRabbit is clean on the current head commit**, every Qodo finding is triaged (fixed or answered with evidence), every review thread is resolved, and CI + local gates pass. Green CI alone is insufficient. Treat "skipping"/"pending" as not clean.
 5. Reply to findings with comments explaining what/why (not just resolving). Cross-check for false positives before applying fixes.
-6. **Bot-authored PRs** (e.g. dependabot) cannot get a CodeRabbit verdict without a bot review seat; the check stays `skipping`. Do not waive the gate or retry — land the identical change in an ordinary PR, pass the full gate, and close the bot PR as superseded. See `docs/agent/bot-reviews.md`.
+6. **Bot-authored PRs** (e.g. dependabot) cannot get a CodeRabbit verdict without a bot review seat; the check stays `skipping`. Do not waive the gate, and do not retry while the seat is missing: either have an org admin assign the bot a seat and request a fresh review, or land the identical change in an ordinary PR, pass the full gate, and close the bot PR as superseded. See `docs/agent/bot-reviews.md`.
 
 Qodo config: optional repo-level Qodo/PR-Agent config may live at `.pr_agent.toml` or `.qodo/pr-agent.toml`; this repo ships none. If added, keep it to a one-line pointer here and in `AGENTS.md`. See `docs/agent/bot-reviews.md`.
 

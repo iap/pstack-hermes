@@ -34,13 +34,14 @@ short form and must stay consistent with this file.
 ## Bot-authored PRs (dependabot)
 
 CodeRabbit skips PRs authored by a bot without an assigned review seat: its
-"Review skipped" note asks an org admin to assign a seat to the bot. Re-requests
-and cooldowns cannot change that — do not spend review cycles retrying. The
-merge gate still applies: a `skipping` CodeRabbit check is never clean, and
-there is no waiver for bot PRs. The compliant remedy is to land the identical
-change in an ordinary (human-authored) PR from a normal branch, run the full
-gate on it, then close the bot PR as superseded with a pointer to the new PR.
-Seat assignment by an org admin is the alternative.
+"Review skipped" note asks an org admin to assign a seat to the bot. Until a
+seat is assigned, re-requests and cooldowns cannot change that — do not spend
+review cycles retrying. The merge gate still applies: a `skipping` CodeRabbit
+check is never clean, and there is no waiver for bot PRs. After an org admin
+assigns the bot a seat, a fresh review request is allowed. Otherwise the
+remedy is to land the identical change in an ordinary (human-authored) PR from
+a normal branch, run the full gate on it, then close the bot PR as superseded
+with a pointer to the new PR.
 
 Observed on #210/#211 (Nov 2026), superseded by #235.
 
