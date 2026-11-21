@@ -39,9 +39,14 @@ clean state before merge. The port contract outranks every bot.
   force-push, or large diff; use `@coderabbitai review` only for a small fix
   push within the same round. A CodeRabbit check of `skipping` means **not
   requested**, never clean. If it does not respond, check CodeRabbit's
-  documented commands rather than assuming it is clean.
+   documented commands rather than assuming it is clean.
+   A bot-authored PR (e.g. dependabot) has no review seat, so a request returns
+   "Review skipped" and the check stays `skipping`; while the seat is missing,
+   do not retry. Either have an org admin assign the bot a seat and request a
+   fresh review, or supersede the PR with an ordinary one per
+   `docs/agent/bot-reviews.md`.
 
-  Two "no verdict" states look identical in the UI and are not:
+   Two "no verdict" states look identical in the UI and are not:
 
   - `skipping` - no verdict.
   - `in_progress` that never moves - **the review is paused**, not slow. After a
