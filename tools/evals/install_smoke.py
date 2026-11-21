@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_NAME = "pstack"
+PINNED_REASON_RE = re.compile(r"\bpin(?:ned)?\b", re.IGNORECASE)
+
+
+def is_pinned_install_refusal(out: str) -> bool:
+    return bool(PINNED_REASON_RE.search(out or ""))
 
 
 class StepFailed(Exception):
@@ -251,8 +257,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[5/{total}] hermes plugins update")
             rc, out = run([hermes, "plugins", "update", PLUGIN_NAME], env=env, allow_fail=True)
             if rc != 0:
-                lowered = out.lower()
-                if not any(word in lowered for word in ("pin", "--ref", "force", "commit")):
+                if not is_pinned_install_refusal(out):
                     tail = out.strip().splitlines()[-6:]
                     raise StepFailed(
                         "update failed without the documented pinned-install reason:\n  "

@@ -123,6 +123,26 @@ def test_listing_contains_handles_mapping_of_objects():
     assert smoke.listing_contains(entries, "pstack")
 
 
+PINNED_REFUSAL_GIT = (
+    "Plugin 'pstack' is pinned to 08db89f384c8fbf63ece78e6ec8d116dfd7b0aec. "
+    "To move it, run `hermes plugins install iap/pstack-hermes --force "
+    "--ref <40-character commit SHA>`."
+)
+PINNED_REFUSAL_TRANSACTION = (
+    "Plugin 'pstack' is pinned; reinstall with an explicit --ref to change it."
+)
+
+
+def test_pinned_install_refusal_is_recognised():
+    assert smoke.is_pinned_install_refusal(PINNED_REFUSAL_GIT)
+    assert smoke.is_pinned_install_refusal(PINNED_REFUSAL_TRANSACTION)
+
+
+def test_unrelated_update_failure_is_not_a_pinned_refusal():
+    assert not smoke.is_pinned_install_refusal("force push rejected by upstream")
+    assert not smoke.is_pinned_install_refusal("commit abc unavailable")
+
+
 def test_listing_contains_ignores_unrelated_shapes():
     assert not smoke.listing_contains("not-a-listing", "pstack")
     assert not smoke.listing_contains([], "pstack")
