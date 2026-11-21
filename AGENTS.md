@@ -39,10 +39,11 @@ Everything below follows from that rule.
 - Do not run a converter or rebuild step to produce the package surfaces.
   Edit `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
   `LICENSE` directly.
-- Rewrite hermes primitives back into Cursor vocabulary (`delegate_task`,
-  `clarify`, `session_search`, `hermes cron`, `hermesbot`). Single mapping
-  home: [docs/hermes-vocabulary.md](docs/hermes-vocabulary.md) (issue #157).
-  The bans in `tools/bans.py` and `HERMES_ADAPTATION_BANS` catch this.
+- Keep hermes primitives as-is — `delegate_task`, `clarify`, `session_search`,
+  `hermes cron`, `hermesbot`. Do not substitute Cursor terms for them. Single
+  mapping home: [docs/hermes-vocabulary.md](docs/hermes-vocabulary.md) (issue
+  #157). `tools/bans.py` and `HERMES_ADAPTATION_BANS` enforce this on package
+  surfaces; the rule also covers prose and paths the gates do not scan.
 - Point hermes `skill_manage`, `/learn`, or background learning at **stock**
   plugin skills. Personal procedure → local skills, skill tap, or a fork.
 - Implement GitLab (`glab`), or treat missing Graphite as a hard failure while

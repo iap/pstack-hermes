@@ -124,9 +124,10 @@ welcome as PRs there.
 
 > [!WARNING]
 > Keep the hermes vocabulary when editing skills — `delegate_task`,
-> `clarify`, `session_search`, `hermes cron`, `hermesbot`. Nothing on your
-> machine enforces this; a skill that instructs Cursor-style `Task`
-> subagents or `AskQuestion` will silently mislead the agent on hermes.
+> `clarify`, `session_search`, `hermes cron`, `hermesbot`. The local
+> `tools/scanner_gate.py --vocab-only` and `tools/validate.py` gates enforce the
+> package bans; a skill that instructs Cursor-style `Task` subagents or
+> `AskQuestion` will silently mislead the agent on hermes.
 
 ## Reporting problems
 
