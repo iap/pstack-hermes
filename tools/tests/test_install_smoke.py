@@ -123,6 +123,16 @@ def test_listing_contains_handles_mapping_of_objects():
     assert smoke.listing_contains(entries, "pstack")
 
 
+def test_pinned_install_refusal_is_recognised():
+    assert smoke.is_pinned_install_refusal("Install pinned to commit abc; reinstall with --force")
+    assert smoke.is_pinned_install_refusal("pinned install cannot be updated")
+
+
+def test_unrelated_update_failure_is_not_a_pinned_refusal():
+    assert not smoke.is_pinned_install_refusal("force push rejected by upstream")
+    assert not smoke.is_pinned_install_refusal("commit abc unavailable")
+
+
 def test_listing_contains_ignores_unrelated_shapes():
     assert not smoke.listing_contains("not-a-listing", "pstack")
     assert not smoke.listing_contains([], "pstack")
