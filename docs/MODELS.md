@@ -14,8 +14,10 @@ pstack picks a model per role. Three layers, highest precedence first:
    it). Each profile keeps its own panel, and
    profiles are per-device: setup configures the local hermes install
    only.
-2. **The shipped panel** — `config/models.json` inside the package. What a role
-   uses until you configure it.
+2. **The shipped panel** — `config/models.json` inside the package. A documented
+   reference of the defaults, re-verified against the provider catalog by
+   `model-drift-watch`; skills do not read it at runtime. A role uses your panel
+   when it exists, otherwise the embedded fallback in the skill (layer 3).
 3. **The method text** — skills name Cursor-family defaults
    (`grok-4.7-xhigh-fast`, `claude-opus-5-5-max`, `gpt-5.6-sol-max`); this port
    substitutes its own hermes-side defaults for those names, as mapped below.
@@ -25,8 +27,8 @@ pstack picks a model per role. Three layers, highest precedence first:
 | Upstream name in the method text | Roles it defaults | Hermes-side default, for now |
 |---|---|---|
 | `grok-4.7-xhigh-fast` | `feature, refactoring`, `bug-fix`, `perf-issue`, `hillclimb` | `z-ai/glm-5.2` |
-| `grok-4.7-xhigh-fast` | `swarm workers`, `how explorer` | `meituan/longcat-2.0` |
-| `claude-opus-5-5-max` | `judgment and prose`, `how explainer` | `meituan/longcat-2.0` |
+| `grok-4.7-xhigh-fast` | `swarm workers`, `how explorer` | `inherit-parent` |
+| `claude-opus-5-5-max` | `judgment and prose`, `how explainer` | `inherit-parent` |
 | `claude-opus-5-5-max` | `why synthesizer`, `reflect judgment, divergent, synthesizer` | `z-ai/glm-5.2` |
 | `gpt-5.6-sol-max` | `interrogate` reviewer slots | the `interrogate reviewers` list below |
 | `inherit-parent` | any role set to it | unchanged — the role runs on the parent chat model |
@@ -47,20 +49,20 @@ the panel is refreshed, and `setup-pstack` lets you override every row.
 | bug-fix | `z-ai/glm-5.2` |
 | perf-issue | `z-ai/glm-5.2` |
 | hillclimb | `z-ai/glm-5.2` |
-| judgment and prose | `meituan/longcat-2.0` |
+| judgment and prose | `inherit-parent` |
 | hardest tasks | `z-ai/glm-5.2` |
-| how explorer | `meituan/longcat-2.0` |
-| how explainer | `meituan/longcat-2.0` |
-| how critics | `meituan/longcat-2.0`, `meta/muse-spark-1.2-contributor` |
-| why investigators | `meituan/longcat-2.0` |
+| how explorer | `inherit-parent` |
+| how explainer | `inherit-parent` |
+| how critics | `inherit-parent`, `meta/muse-spark-1.2-contributor` |
+| why investigators | `inherit-parent` |
 | why synthesizer | `z-ai/glm-5.2` |
 | reflect tooling | `qwen/qwen3-30b-a3b-instruct-2507` |
 | reflect judgment, divergent, synthesizer | `z-ai/glm-5.2` |
-| arena runners | `meituan/longcat-2.0`, `meta/muse-spark-1.2-contributor` |
-| arena cross-judge pool | `z-ai/glm-5.2`, `meituan/longcat-2.0` |
-| swarm workers | `meituan/longcat-2.0` |
+| arena runners | `inherit-parent`, `meta/muse-spark-1.2-contributor` |
+| arena cross-judge pool | `z-ai/glm-5.2`, `inherit-parent` |
+| swarm workers | `inherit-parent` |
 | architect runners | `z-ai/glm-5.2`, `meta/muse-spark-1.2-contributor` |
-| interrogate reviewers | `z-ai/glm-5.2`, `meituan/longcat-2.0`, `meta/muse-spark-1.2-contributor` |
+| interrogate reviewers | `z-ai/glm-5.2`, `inherit-parent`, `meta/muse-spark-1.2-contributor` |
 
 ## Example `pstack-models.json`
 
@@ -73,9 +75,9 @@ re-runs, so it stays idempotent. A minimal user panel looks like:
   "roles": {
     "feature, refactoring": "z-ai/glm-5.2",
     "bug-fix": "z-ai/glm-5.2",
-    "judgment and prose": "meituan/longcat-2.0",
-    "swarm workers": "meituan/longcat-2.0",
-    "arena cross-judge pool": ["z-ai/glm-5.2", "meituan/longcat-2.0"]
+    "judgment and prose": "inherit-parent",
+    "swarm workers": "inherit-parent",
+    "arena cross-judge pool": ["z-ai/glm-5.2", "inherit-parent"]
   }
 }
 ```

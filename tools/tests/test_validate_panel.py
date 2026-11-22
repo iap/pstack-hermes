@@ -1,8 +1,10 @@
 """Stage-D consistency: the shipped panel must equal the repo-owned asset."""
 
 import json
+from pathlib import Path
 
 import validate
+from validate import MODEL_SLUG_RE
 
 
 def _panel(n=2):
@@ -137,3 +139,27 @@ def test_repeated_inherit_parent_selectors_are_allowed(tmp_path):
     validate.check_model_panel(pkg, rep, asset=asset)
 
     assert not rep.failed
+
+
+def test_shipped_panel_has_no_dead_slugs():
+    """The shipped config/models.json and the repo-owned panel must not
+    name a slug absent from the provider catalog (regression for the
+    meituan/longcat-2.0 default that failed the weekly model-drift-watch).
+    Every role value is either the inherit-parent selector or a
+    provider-qualified slug; the two files stay byte-identical.
+    """
+    root = Path(__file__).resolve().parents[2]
+    config = root / "config" / "models.json"
+    panel = root / "tools" / "assets" / "model-panel.json"
+    assert config.read_bytes() == panel.read_bytes()
+    for path in (config, panel):
+        roles = json.loads(path.read_text(encoding="utf-8")).get("roles", {})
+        assert len(roles) == 18, path
+        for role, value in roles.items():
+            vals = value if isinstance(value, list) else [value]
+            assert vals, (path, role)
+            for slug in vals:
+                assert slug == "inherit-parent" or MODEL_SLUG_RE.match(slug), (path, role, slug)
+    assert "meituan/longcat-2.0" not in config.read_text(encoding="utf-8")
+    assert "meituan/longcat-2.0" not in panel.read_text(encoding="utf-8")
+
