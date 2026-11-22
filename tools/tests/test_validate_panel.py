@@ -151,7 +151,7 @@ def test_shipped_panel_has_no_dead_slugs():
     root = Path(__file__).resolve().parents[2]
     config = root / "config" / "models.json"
     panel = root / "tools" / "assets" / "model-panel.json"
-    assert config.read_text(encoding="utf-8") == panel.read_text(encoding="utf-8")
+    assert config.read_bytes() == panel.read_bytes()
     for path in (config, panel):
         roles = json.loads(path.read_text(encoding="utf-8")).get("roles", {})
         assert len(roles) == 18, path
