@@ -4,34 +4,34 @@
     "bug-fix": "z-ai/glm-5.2",
     "perf-issue": "z-ai/glm-5.2",
     "hillclimb": "z-ai/glm-5.2",
-    "judgment and prose": "meituan/longcat-2.0",
+    "judgment and prose": "inherit-parent",
     "hardest tasks": "z-ai/glm-5.2",
-    "how explorer": "meituan/longcat-2.0",
-    "how explainer": "meituan/longcat-2.0",
+    "how explorer": "inherit-parent",
+    "how explainer": "inherit-parent",
     "how critics": [
-      "meituan/longcat-2.0",
+      "inherit-parent",
       "meta/muse-spark-1.2-contributor"
     ],
-    "why investigators": "meituan/longcat-2.0",
+    "why investigators": "inherit-parent",
     "why synthesizer": "z-ai/glm-5.2",
     "reflect tooling": "qwen/qwen3-30b-a3b-instruct-2507",
     "reflect judgment, divergent, synthesizer": "z-ai/glm-5.2",
     "arena runners": [
-      "meituan/longcat-2.0",
+      "inherit-parent",
       "meta/muse-spark-1.2-contributor"
     ],
     "arena cross-judge pool": [
       "z-ai/glm-5.2",
-      "meituan/longcat-2.0"
+      "inherit-parent"
     ],
-    "swarm workers": "meituan/longcat-2.0",
+    "swarm workers": "inherit-parent",
     "architect runners": [
       "z-ai/glm-5.2",
       "meta/muse-spark-1.2-contributor"
     ],
     "interrogate reviewers": [
       "z-ai/glm-5.2",
-      "meituan/longcat-2.0",
+      "inherit-parent",
       "meta/muse-spark-1.2-contributor"
     ]
   }
