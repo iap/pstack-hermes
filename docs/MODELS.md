@@ -14,8 +14,10 @@ pstack picks a model per role. Three layers, highest precedence first:
    it). Each profile keeps its own panel, and
    profiles are per-device: setup configures the local hermes install
    only.
-2. **The shipped panel** — `config/models.json` inside the package. What a role
-   uses until you configure it.
+2. **The shipped panel** — `config/models.json` inside the package. A documented
+   reference of the defaults, re-verified against the provider catalog by
+   `model-drift-watch`; skills do not read it at runtime. A role uses your panel
+   when it exists, otherwise the embedded fallback in the skill (layer 3).
 3. **The method text** — skills name Cursor-family defaults
    (`grok-4.7-xhigh-fast`, `claude-opus-5-5-max`, `gpt-5.6-sol-max`); this port
    substitutes its own hermes-side defaults for those names, as mapped below.
