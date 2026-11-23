@@ -78,3 +78,21 @@ def test_skill_arm_runner_error_still_fails_the_sweep(monkeypatch):
         ),
     )
     assert run.main(["--arm", "both", "--hermes", "hermes"]) == 2
+
+
+def test_masking_inside_and_after_shell_wrappers_is_detected():
+    """A failed test hidden by a wrapper suffix must not verify a claim.
+
+    The wrapper's exit status is the shell's, so an outer `|| true` or `| tee`
+    records 0 even when pytest failed. Both segment grading and masking
+    detection must see through the wrapper without dropping the suffix.
+    """
+    for command in (
+        "bash -c 'pytest -q || true'",
+        "bash -c 'pytest -q' || true",
+        "bash -c 'pytest -q' | tee out",
+        "timeout 60 pytest -q | tee out",
+    ):
+        assert trajectory._verification_segment(command) is None, command
+        assert trajectory._masked_test(command), command
+

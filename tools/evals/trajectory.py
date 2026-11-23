@@ -195,7 +195,7 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
 
 
 SHELL_C_RE = re.compile(
-    r"^\s*(?:bash|sh|zsh)\s+-c\s+(['\"])(.*)\1", re.IGNORECASE
+    r"^\s*(?:bash|sh|zsh)\s+-c\s+(['\"])(.*)\1\s*$", re.IGNORECASE
 )
 TIMEOUT_RE = re.compile(
     r"^\s*(?:env\s+[^&;|]*?\s+)?timeout\s+(?:\d+(?:\.\d+)?[smhd]?\s+)(.+)$",
@@ -258,7 +258,8 @@ def _masked_test(command: str) -> bool:
     if len(segments) < 2:
         return False
     for segment in segments[:-1]:
-        if TEST_COMMAND_PATTERN.search(segment) and not NON_RUNNING_FLAGS.search(segment):
+        inner = _unwrap_shell(segment)
+        if TEST_COMMAND_PATTERN.search(inner) and not NON_RUNNING_FLAGS.search(inner):
             return True
     return False
 
