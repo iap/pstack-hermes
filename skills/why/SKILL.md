@@ -10,7 +10,7 @@ Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
 
-Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit-parent`. If delegate_task rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`). Set `model` to that line's value when the rule and the line exist. Leave `model` unset when the rule or the line is missing, or when the value is `inherit-parent`, so the subagent runs on the parent chat model. If delegate_task rejects a configured slug, leave `model` unset for that spawn and say so.
 
 ## Operating Posture
 

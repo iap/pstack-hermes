@@ -33,20 +33,20 @@ Write one clear paragraph. If you're unsure about the intent, ask the user befor
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message using delegate_task. Use the `interrogate reviewers` line in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`), one reviewer per entry, extending or shrinking the Reviewer A/B/C labels below to the configured entry count. If the rule or that line is missing, use the table defaults.
+Launch all reviewers in a single message using delegate_task. Use the `interrogate reviewers` line in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`), one reviewer per entry, extending or shrinking the Reviewer A/B/C labels below to the configured entry count. If the rule or that line is missing, spawn three reviewers with `model` unset so they run on the parent chat model.
 
 | Subagent | Default model |
 |----------|---------------|
-| Reviewer A | `claude-opus-5-5-max` |
-| Reviewer B | `gpt-5.6-sol-max` |
-| Reviewer C | `grok-4.7-xhigh-fast` |
+| Reviewer A | parent chat model (`model` unset) |
+| Reviewer B | parent chat model (`model` unset) |
+| Reviewer C | parent chat model (`model` unset) |
 
 For each reviewer:
 - `delegate_task`: role `leaf`
 - `model`: the configured `interrogate reviewers` entry, or the table default with no configured line. For an `inherit-parent` entry, omit `model` so that reviewer runs on the parent model.
 - `readonly`: `true`
 
-If delegate_task rejects a configured entry, run that reviewer on the table default of its family and say so. Families go by prefix: `claude-*`, `gpt-*`, and `grok-*`. With no family match, use Reviewer A's default. If it rejects a table default, check the valid slugs in delegate_task's error message, pick the closest equivalent (prefer the highest-reasoning tier of the same family), spawn with it, and open a separate PR to update the default table. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug or apply either fallback to it.
+If delegate_task rejects a configured entry, omit `model` for that reviewer so it runs on the parent chat model, and say so. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug. Model diversity comes from explicit `interrogate reviewers` entries; with none configured, all reviewers share the parent chat model.
 
 Read `references/reviewer-prompt.md` and fill in the template with:
 1. The stated intent
