@@ -4,6 +4,8 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-11-23
+
 ### Fixed
 - Skills now fall back to the effective delegation model (`delegation.model`
   from `config.yaml` when set, otherwise the parent chat model) when no
