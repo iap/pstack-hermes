@@ -101,3 +101,22 @@ def test_skill_arm_runner_error_still_fails_the_sweep(monkeypatch):
         ),
     )
     assert run.main(["--arm", "both", "--hermes", "hermes"]) == 2
+
+
+def test_later_rejected_test_call_does_not_fall_back_to_an_earlier_one():
+    """A rejected later test attempt makes the gate unavailable.
+
+    Otherwise a passing `pytest -q`, followed by a rejected quoted or
+    redirected test run, would cite the earlier result and report a false
+    pass for a claim the later run may have disproved.
+    """
+    for later in ("pytest -q -k 'broken'", "pytest -q 2>&1", "pytest -q > out.txt"):
+        calls = [
+            {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+            {"name": "terminal", "args": {"command": later}, "exit_code": 0},
+        ]
+        result = trajectory.grade(
+            {"gates": ["verify_before_claim"]}, calls, "All tests pass - 10 passed.", Path(".")
+        )[0]
+        assert result["status"] == "unavailable", (later, result)
+

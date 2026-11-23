@@ -43,7 +43,7 @@ PLUGIN_NAME = "pstack"
 # was removed") and must not be classified as the documented refusal.
 PINNED_REASON_RE = re.compile(r"\bpinned\b", re.IGNORECASE)
 PINNED_REFUSAL_CUE_RE = re.compile(
-    r"--ref|reinstall|explicit|to (?:change|move) it|pinned install", re.IGNORECASE
+    r"--ref|explicit|to (?:change|move) it|pinned install", re.IGNORECASE
 )
 
 

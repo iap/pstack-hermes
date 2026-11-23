@@ -227,6 +227,18 @@ def _is_test_command(command: str) -> bool:
     return _verification_segment(command) is not None
 
 
+def _looks_like_test_command(command: str) -> bool:
+    """Loose signal that a command was meant to run tests.
+
+    Used only to detect a rejected *later* test attempt, never to grant a
+    pass. Strict grading stays in `_verification_segment`.
+    """
+    text = (command or "").strip()
+    if NON_RUNNING_FLAGS.search(text):
+        return False
+    return bool(TEST_COMMAND_PATTERN.search(text))
+
+
 def _masked_test(command: str) -> bool:
     """A test-looking segment whose status the shell does not report.
 
@@ -313,12 +325,25 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
         return {"gate": "verify_before_claim", "status": "not_applicable", "detail": "no tests-pass claim"}
 
     test_calls = []
+    rejected_later_test = False
     for call in calls:
         if call["name"] != "terminal":
             continue
-        segment = _verification_segment(str(call["args"].get("command") or ""))
+        command = str(call["args"].get("command") or "")
+        segment = _verification_segment(command)
         if segment:
             test_calls.append((call, segment))
+        elif test_calls and _looks_like_test_command(command):
+            # A later test attempt failed the strict check. Its exit status
+            # may be the reason the claim is true; grading the earlier call
+            # instead would be a false pass.
+            rejected_later_test = True
+    if rejected_later_test:
+        return {
+            "gate": "verify_before_claim",
+            "status": "unavailable",
+            "detail": "a later test command was rejected by the strict check",
+        }
     if not test_calls:
         if any(
             call["name"] == "terminal" and _masked_test(str(call["args"].get("command") or ""))
