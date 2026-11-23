@@ -423,7 +423,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(f"evals: wrote {target}")
 
-    return 2 if skill_errors else (1 if skill_failed else 0)
+    baseline_only = arms == ("baseline",)
+    if skill_errors or (baseline_only and errors):
+        return 2
+    return 1 if skill_failed else 0
 
 
 if __name__ == "__main__":

@@ -82,6 +82,14 @@ CITES_RESULT = re.compile(
 # Characters that can hide or change a command's exit status. A verification
 # segment containing any of them is not trusted, rather than parsed.
 SHELL_META_RE = re.compile(r"['\"$`\\<>(){}]")
+# Unanchored test-command signal for the fail-closed "later rejected test"
+# check. Matches a test run inside a wrapper or after a redirection.
+TEST_COMMAND_TOKEN_RE = re.compile(
+    r"(?:^|\W)(?:pytest|py\.test)\b"
+    r"|(?:npm|bun|yarn|pnpm)\s+(?:run\s+)?test\b"
+    r"|(?:cargo|go|make)\s+test\b",
+    re.IGNORECASE,
+)
 NON_RUNNING_FLAGS = re.compile(
     r"(?:^|\s)(?:--collect-only|--co|--help|-h|--version|-V)(?:\s|$)"
 )
@@ -238,7 +246,13 @@ def _looks_like_test_command(command: str) -> bool:
     # test attempt in an earlier segment.
     for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
         part = segment.strip()
-        if TEST_COMMAND_PATTERN.search(part) and not NON_RUNNING_FLAGS.search(part):
+        if NON_RUNNING_FLAGS.search(part):
+            continue
+        # A loose "looks like tests" signal is safe here: it only makes the
+        # gate unavailable, never a pass. Detect a test run behind a shell
+        # wrapper (`bash -c`, `timeout`, `env`) by searching the whole segment
+        # rather than requiring the anchored prefix.
+        if TEST_COMMAND_PATTERN.search(part) or TEST_COMMAND_TOKEN_RE.search(part):
             return True
     return False
 

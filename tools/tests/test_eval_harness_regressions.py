@@ -153,3 +153,30 @@ def test_accepted_retry_after_rejection_is_graded():
     ]
     assert _grade_test_claim(calls)["status"] == "pass"
 
+
+def test_baseline_only_sweep_with_errors_exits_nonzero(monkeypatch):
+    """A baseline-only sweep with runner errors has no measurement at all."""
+    monkeypatch.setattr(run, "preflight", lambda *a, **k: (True, "hermes ok"))
+    monkeypatch.setattr(
+        run,
+        "load_golden",
+        lambda *a, **k: [{"id": "demo", "prompt": "do it", "expect": {}}],
+    )
+    monkeypatch.setattr(
+        run,
+        "run_case",
+        lambda *a, **k: ("error", ["runner error"], []),
+    )
+    assert run.main(["--arm", "baseline", "--hermes", "hermes"]) == 2
+
+
+def test_later_wrapped_test_attempt_is_unavailable():
+    """A wrapped test run after an accepted one must not be ignored."""
+    for later in ("bash -c 'pytest -q'", "timeout 60 pytest -q"):
+        calls = [
+            {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+            {"name": "terminal", "args": {"command": later}, "exit_code": 0},
+        ]
+        result = _grade_test_claim(calls)
+        assert result["status"] == "unavailable", (later, result)
+
