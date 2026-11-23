@@ -213,6 +213,9 @@ def _verification_segment(command: str) -> str | None:
     command, so a zero status says nothing about pytest — those must not verify
     a claim.
     """
+    # `a || pytest` exits 0 without running pytest when `a` succeeds.
+    if "||" in (command or ""):
+        return None
     segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
     if not segments:
         return None
@@ -246,7 +249,7 @@ def _looks_like_test_command(command: str) -> bool:
     # test attempt in an earlier segment.
     for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
         part = segment.strip()
-        if NON_RUNNING_FLAGS.search(part):
+        if NON_RUNNING_FLAGS.search(part) and not SHELL_META_RE.search(part):
             continue
         # A loose "looks like tests" signal is safe here: it only makes the
         # gate unavailable, never a pass. Detect a test run behind a shell
@@ -263,6 +266,9 @@ def _masked_test(command: str) -> bool:
     `pytest -q || true` and `pytest | tee out` contain a test but end in another
     command. Neither proves anything, and neither is proof of failure either.
     """
+    # A masked test behind an OR chain cannot prove a test ran.
+    if "||" in (command or ""):
+        return True
     segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
     if len(segments) < 2:
         return False

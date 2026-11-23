@@ -180,3 +180,29 @@ def test_later_wrapped_test_attempt_is_unavailable():
         result = _grade_test_claim(calls)
         assert result["status"] == "unavailable", (later, result)
 
+
+def test_or_chain_skipping_test_cannot_verify():
+    """`true || pytest -q` exits 0 without running the test."""
+    assert trajectory._verification_segment("true || pytest -q") is None
+    calls = [{"name": "terminal", "args": {"command": "true || pytest -q"}, "exit_code": 0}]
+    assert trajectory.grade(
+        {"gates": ["verify_before_claim"]}, calls, "All tests pass - 10 passed.", Path(".")
+    )[0]["status"] != "pass"
+
+
+def test_quoted_non_running_value_still_flags_a_later_rejection():
+    """--help inside a quoted option value is not a bare non-running call."""
+    calls = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {
+            "name": "terminal",
+            "args": {"command": "pytest -q --junit-prefix=' --help '"},
+            "exit_code": 0,
+        },
+    ]
+    assert _grade_test_claim(calls)["status"] == "unavailable"
+
+
+def test_bare_non_running_flag_is_still_excluded():
+    assert not trajectory._looks_like_test_command("pytest --help")
+
