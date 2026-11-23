@@ -60,11 +60,11 @@ The same filled template goes to all reviewers, so every model applies the code-
 
 As results come back, build a unified picture:
 
-1. **Parse all findings** from the reviewers
-2. **Identify consensus**. Findings raised by 2+ models independently are highest signal.
-3. **Identify lone-model findings**. Still worth reading, but weight accordingly.
-4. **Deduplicate**. Different models may describe the same issue differently. Merge these and note which models raised it.
-5. **Note disagreements**. If one model flags something and another explicitly says the opposite, that's useful context for the verdict.
+1. **Parse all findings** from the reviewers, recording the effective model each one ran on.
+2. **Identify consensus**. Findings raised by 2+ reviewers are highest signal only when their effective models are distinct. When all reviewers share one model, repeated findings are the same model agreeing with itself, not cross-model consensus; say so in the verdict.
+3. **Identify single-reviewer findings**. Still worth reading, but weight accordingly.
+4. **Deduplicate**. Different reviewers may describe the same issue differently. Merge these and note which reviewers raised it.
+5. **Note disagreements**. If one reviewer flags something and another explicitly says the opposite, that's useful context for the verdict.
 
 ## Step 5, Lead Judgment
 

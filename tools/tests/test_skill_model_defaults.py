@@ -59,6 +59,18 @@ def test_no_concrete_model_defaults_in_skills():
     assert not offenders, "concrete model defaults in skill markdown:\n" + "\n".join(offenders)
 
 
+def test_consensus_claims_are_qualified_for_shared_models():
+    """Multi-model agreement claims must not stand unqualified now that the
+    no-panel fallback can give every delegate the same effective model.
+    """
+    offenders = []
+    for md in sorted(SKILLS.rglob("*.md")):
+        for lineno, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
+            if "Agreement is high-signal." in line and "only when" not in line:
+                offenders.append(f"{md.relative_to(SKILLS)}:{lineno}: {line.strip()}")
+    assert not offenders, "unqualified consensus claim:\n" + "\n".join(offenders)
+
+
 def test_no_legacy_default_fallback_prose():
     """The removed 'use the default / closest same-family slug' recovery rule
     must not survive in any spawning skill; a rejected configured model now
