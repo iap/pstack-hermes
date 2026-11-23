@@ -85,9 +85,9 @@ SHELL_META_RE = re.compile(r"['\"$`\\<>(){}]")
 # Unanchored test-command signal for the fail-closed "later rejected test"
 # check. Matches a test run inside a wrapper or after a redirection.
 TEST_COMMAND_TOKEN_RE = re.compile(
-    r"(?:^|\W)(?:pytest|py\.test)\b"
-    r"|(?:npm|bun|yarn|pnpm)\s+(?:run\s+)?test\b"
-    r"|(?:cargo|go|make)\s+test\b",
+    r"(?:^|\W)(?:pytest|py\.test)(?=$|\s|-)"
+    r"|(?:npm|bun|yarn|pnpm)\s+(?:run\s+)?test(?=$|\s|-)"
+    r"|(?:cargo|go|make)\s+test(?=$|\s|-)",
     re.IGNORECASE,
 )
 NON_RUNNING_FLAGS = re.compile(

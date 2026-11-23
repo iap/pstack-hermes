@@ -216,3 +216,16 @@ def test_non_test_or_chain_is_not_masked_evidence():
     )[0]
     assert result["status"] == "fail"
 
+
+def test_filename_argument_is_not_a_later_test_attempt():
+    """A non-test command naming pytest.ini must not invalidate evidence."""
+    assert not trajectory._looks_like_test_command("git diff -- pytest.ini")
+    calls = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "git diff -- pytest.ini"}, "exit_code": 0},
+    ]
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]}, calls, "All tests pass - 10 passed.", Path(".")
+    )[0]
+    assert result["status"] == "pass"
+
