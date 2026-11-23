@@ -96,3 +96,22 @@ def test_masking_inside_and_after_shell_wrappers_is_detected():
         assert trajectory._verification_segment(command) is None, command
         assert trajectory._masked_test(command), command
 
+
+def test_env_prefix_does_not_mask_an_executable():
+    """`env echo timeout ...` runs echo, not pytest."""
+    assert not trajectory._is_test_command("env echo timeout 60 pytest -q")
+    assert trajectory._is_test_command("env FOO=bar timeout 60 pytest -q")
+
+
+def test_final_segment_wrappers_are_recognised():
+    """A wrapper after a leading `cd` is still the graded final segment."""
+    assert trajectory._is_test_command("cd repo && timeout 60 pytest -q")
+
+
+def test_quoted_shell_operators_are_not_split():
+    """Operators inside quotes belong to the argument, not the command list."""
+    assert not trajectory._is_test_command("echo 'x; pytest -q'")
+    command = "bash -c 'pytest -q || true' | tee out"
+    assert trajectory._verification_segment(command) is None
+    assert trajectory._masked_test(command)
+

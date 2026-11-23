@@ -197,10 +197,16 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
 SHELL_C_RE = re.compile(
     r"^\s*(?:bash|sh|zsh)\s+-c\s+(['\"])(.*)\1\s*$", re.IGNORECASE
 )
+# `env` prefix must consume only options and NAME=VALUE assignments. An
+# executable such as `env echo timeout 60 pytest -q` is not an env prefix.
+ENV_PREFIX_RE = r"(?:env\s+(?:-[A-Za-z][^\s]*\s+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*\s+)*)?"
 TIMEOUT_RE = re.compile(
-    r"^\s*(?:env\s+[^&;|]*?\s+)?timeout\s+(?:\d+(?:\.\d+)?[smhd]?\s+)(.+)$",
+    r"^\s*" + ENV_PREFIX_RE + r"timeout\s+(?:\d+(?:\.\d+)?[smhd]?\s+)(.+)$",
     re.IGNORECASE,
 )
+OPERATOR_RE = re.compile(r"&&|\|\||[;|\n]")
+QUOTES = "'\""
+ESCAPE = "\\"
 
 
 def _unwrap_shell(command: str) -> str:
@@ -223,6 +229,61 @@ def _unwrap_shell(command: str) -> str:
     return text
 
 
+def _split_segments(command: str) -> list[str]:
+    """Split on shell operators outside quotes.
+
+    A regex split breaks `echo 'x; pytest -q'` into a fake final segment and
+    breaks `bash -c 'pytest -q || true' | tee` inside the quoted body. Track
+    quote state instead so only real operators separate commands.
+    """
+    text = command or ""
+    parts: list[str] = []
+    buf: list[str] = []
+    quote = ""
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            buf.append(ch)
+            if ch == ESCAPE and i + 1 < len(text):
+                buf.append(text[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+            i += 1
+            continue
+        if ch in QUOTES:
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        match = OPERATOR_RE.match(text, i)
+        if match:
+            parts.append("".join(buf).strip())
+            buf = []
+            i = match.end()
+            continue
+        buf.append(ch)
+        i += 1
+    parts.append("".join(buf).strip())
+    return [part for part in parts if part]
+
+
+def _graded_segments(command: str) -> list[str]:
+    """Unwrap the whole command, unwrap the final segment, then split.
+
+    Unwrapping the final segment handles `cd repo && timeout 60 pytest -q`;
+    splitting after unwrapping keeps masking inside a quoted body visible.
+    """
+    text = _unwrap_shell(command)
+    parts = _split_segments(text)
+    if not parts:
+        return []
+    parts[-1] = _unwrap_shell(parts[-1])
+    return _split_segments(" && ".join(parts)) if _unwrap_shell(parts[-1]) != parts[-1] else parts
+
+
 def _verification_segment(command: str) -> str | None:
     """The last shell segment when it is a test run, else None.
 
@@ -231,7 +292,7 @@ def _verification_segment(command: str) -> str | None:
     command, so a zero status says nothing about pytest — those must not verify
     a claim.
     """
-    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", _unwrap_shell(command)) if seg.strip()]
+    segments = _graded_segments(command)
     if not segments:
         return None
     last = segments[-1]
@@ -254,7 +315,7 @@ def _masked_test(command: str) -> bool:
     `pytest -q || true` and `pytest | tee out` contain a test but end in another
     command. Neither proves anything, and neither is proof of failure either.
     """
-    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", _unwrap_shell(command)) if seg.strip()]
+    segments = _graded_segments(command)
     if len(segments) < 2:
         return False
     for segment in segments[:-1]:
