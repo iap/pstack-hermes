@@ -19,8 +19,9 @@ pstack picks a model per role. Three layers, highest precedence first:
    `model-drift-watch`; skills do not read it at runtime. A role uses your panel
    when it exists, otherwise the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) (layer 3).
 3. **The method text** — skills name a panel role line, not a concrete
-   model. With no panel or role line they omit `model` and run on the parent
-   chat model. The upstream Cursor-family names (`grok-4.7-xhigh-fast`,
+   model. With no panel or role line they omit `model` and run on the
+   effective delegation model (`delegation.model` from `config.yaml` when set,
+   otherwise the parent chat model). The upstream Cursor-family names (`grok-4.7-xhigh-fast`,
    `claude-opus-5-5-max`, `gpt-5.6-sol-max`) survive only as effort-tier
    examples in `setup-pstack`; the mapping below is the shipped panel's provenance.
 

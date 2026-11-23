@@ -1,10 +1,12 @@
-"""Skills must default subagents to the parent chat model, not a concrete slug.
+"""Skills must not embed a concrete model as their no-panel fallback.
 
 Regression for #239: the shipped panel is a documentation artifact that no
 skill reads at runtime. With no per-profile pstack-models.json or role line,
 a concrete embedded slug is the only model the skill will instruct the agent
 to use. Those slugs are Cursor-family names Hermes rejects, so the fallback
-must be to omit `model` and let the subagent inherit the parent chat model.
+must be to omit `model` and let the subagent use the effective delegation
+model (`delegation.model` from `config.yaml` when set, otherwise the parent
+chat model).
 """
 
 import re

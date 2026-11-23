@@ -5,8 +5,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 ## [Unreleased]
 
 ### Fixed
-- Skills now fall back to the parent chat model when no per-profile
-  `pstack-models.json` or role line exists. Previously 17 embedded
+- Skills now fall back to the effective delegation model (`delegation.model`
+  from `config.yaml` when set, otherwise the parent chat model) when no
+  per-profile `pstack-models.json` or role line exists. Previously 17 embedded
   Cursor-family defaults (`grok-4.7-xhigh-fast`, `claude-opus-5-5-max`,
   `gpt-5.6-sol-max`) were used despite being invalid in Hermes (#239).
   Explicit panel overrides are unchanged. A regression test guards the
