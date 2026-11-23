@@ -44,7 +44,7 @@ After all Phase B candidates complete, choose one model from the `arena cross-ju
 
 Read every candidate end to end before picking.
 
-Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare against the cross-judge. Record the effective model of each runner and the judge. Agreement on the base confirms the pick only when the models are distinct; when they share one model, agreement is not an independent check and carries no extra weight. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
+Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare against the cross-judge. This agreement is between your pick and the judge's, so record your effective model and the judge's effective model. Runner models are not part of this comparison. Agreement on the base confirms the pick only when those two models are distinct; when they share one model, agreement is not an independent check and carries no extra weight. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
 
 Pick the base on which candidate a future maintainer can extend most easily without breaking invariants. Prefer the cleaner boundary or smaller API when two feel tied, per the Laziness Protocol.
 
