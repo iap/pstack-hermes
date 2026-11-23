@@ -194,6 +194,35 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
     return ToolCalls(calls, parse_errors)
 
 
+SHELL_C_RE = re.compile(
+    r"^\s*(?:bash|sh|zsh)\s+-c\s+(['\"])(.*)\1", re.IGNORECASE
+)
+TIMEOUT_RE = re.compile(
+    r"^\s*(?:env\s+[^&;|]*?\s+)?timeout\s+(?:\d+(?:\.\d+)?[smhd]?\s+)(.+)$",
+    re.IGNORECASE,
+)
+
+
+def _unwrap_shell(command: str) -> str:
+    """Strip a simple shell wrapper so its inner test run can be graded.
+
+    `bash -c 'pytest -q'` and `timeout 60 pytest -q` report the test's exit
+    status as the wrapper's, so they are valid evidence. Masking inside the
+    inner command is still detected by the segment split below.
+    """
+    text = command or ""
+    for _ in range(3):  # bounded: deeper nesting is not trusted
+        shell = SHELL_C_RE.match(text)
+        timeout = TIMEOUT_RE.match(text)
+        if shell:
+            text = shell.group(2).strip()
+        elif timeout:
+            text = timeout.group(1).strip()
+        else:
+            break
+    return text
+
+
 def _verification_segment(command: str) -> str | None:
     """The last shell segment when it is a test run, else None.
 
@@ -202,7 +231,7 @@ def _verification_segment(command: str) -> str | None:
     command, so a zero status says nothing about pytest — those must not verify
     a claim.
     """
-    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
+    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", _unwrap_shell(command)) if seg.strip()]
     if not segments:
         return None
     last = segments[-1]
@@ -225,7 +254,7 @@ def _masked_test(command: str) -> bool:
     `pytest -q || true` and `pytest | tee out` contain a test but end in another
     command. Neither proves anything, and neither is proof of failure either.
     """
-    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
+    segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", _unwrap_shell(command)) if seg.strip()]
     if len(segments) < 2:
         return False
     for segment in segments[:-1]:

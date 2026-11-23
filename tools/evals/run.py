@@ -360,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
     arms = ARMS if args.arm == "both" else (args.arm,)
     records: list[dict] = []
     errors = 0
+    skill_errors = 0
     skill_failed = 0
 
     for case in cases:
@@ -385,6 +386,9 @@ def main(argv: list[str] | None = None) -> int:
                     }
                 )
                 errors += status == "error"
+                # Baseline runner errors are data (the delta becomes n/a), not a
+                # gate failure. Only the skill arm measures the method.
+                skill_errors += status == "error" and arm == "skill"
                 skill_failed += status == "fail" and arm == "skill"
 
     summary = summarize(records, arms)
@@ -419,7 +423,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(f"evals: wrote {target}")
 
-    return 2 if errors else (1 if skill_failed else 0)
+    return 2 if skill_errors else (1 if skill_failed else 0)
 
 
 if __name__ == "__main__":
