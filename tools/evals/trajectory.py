@@ -267,7 +267,7 @@ def _masked_test(command: str) -> bool:
     command. Neither proves anything, and neither is proof of failure either.
     """
     # A masked test behind an OR chain cannot prove a test ran.
-    if "||" in (command or ""):
+    if "||" in (command or "") and _looks_like_test_command(command):
         return True
     segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
     if len(segments) < 2:

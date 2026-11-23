@@ -206,3 +206,13 @@ def test_quoted_non_running_value_still_flags_a_later_rejection():
 def test_bare_non_running_flag_is_still_excluded():
     assert not trajectory._looks_like_test_command("pytest --help")
 
+
+def test_non_test_or_chain_is_not_masked_evidence():
+    """An OR chain with no test attempt must not hide a missing test run."""
+    assert not trajectory._masked_test("true || false")
+    calls = [{"name": "terminal", "args": {"command": "true || false"}, "exit_code": 0}]
+    result = trajectory.grade(
+        {"gates": ["verify_before_claim"]}, calls, "All tests pass - 10 passed.", Path(".")
+    )[0]
+    assert result["status"] == "fail"
+
