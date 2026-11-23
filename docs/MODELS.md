@@ -17,7 +17,7 @@ pstack picks a model per role. Three layers, highest precedence first:
 2. **The shipped panel** — `config/models.json` inside the package. A documented
    reference of the defaults, re-verified against the provider catalog by
    `model-drift-watch`; skills do not read it at runtime. A role uses your panel
-   when it exists, otherwise the parent chat model (layer 3).
+   when it exists, otherwise the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) (layer 3).
 3. **The method text** — skills name a panel role line, not a concrete
    model. With no panel or role line they omit `model` and run on the parent
    chat model. The upstream Cursor-family names (`grok-4.7-xhigh-fast`,
@@ -33,7 +33,7 @@ pstack picks a model per role. Three layers, highest precedence first:
 | `claude-opus-5-5-max` | `judgment and prose`, `how explainer` | `inherit-parent` |
 | `claude-opus-5-5-max` | `why synthesizer`, `reflect judgment, divergent, synthesizer` | `z-ai/glm-5.2` |
 | `gpt-5.6-sol-max` | `interrogate` reviewer slots | the `interrogate reviewers` list below |
-| `inherit-parent` | any role set to it | unchanged — the role runs on the parent chat model |
+| `inherit-parent` | any role set to it | omit `model`; the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) |
 
 The `vendor/model` values are ids from the provider catalog the tooling checks
 against (OpenRouter); the weekly `model-drift-watch` workflow re-verifies every

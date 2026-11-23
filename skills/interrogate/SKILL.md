@@ -33,20 +33,20 @@ Write one clear paragraph. If you're unsure about the intent, ask the user befor
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message using delegate_task. Use the `interrogate reviewers` line in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`), one reviewer per entry, extending or shrinking the Reviewer A/B/C labels below to the configured entry count. If the rule or that line is missing, spawn three reviewers with `model` unset so they run on the parent chat model.
+Launch all reviewers in a single message using delegate_task. Use the `interrogate reviewers` line in the configured pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`), one reviewer per entry, extending or shrinking the Reviewer A/B/C labels below to the configured entry count. If the rule or that line is missing, spawn three reviewers with `model` unset so they run on the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model).
 
 | Subagent | Default model |
 |----------|---------------|
-| Reviewer A | parent chat model (`model` unset) |
-| Reviewer B | parent chat model (`model` unset) |
-| Reviewer C | parent chat model (`model` unset) |
+| Reviewer A | the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) (`model` unset) |
+| Reviewer B | the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) (`model` unset) |
+| Reviewer C | the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model) (`model` unset) |
 
 For each reviewer:
 - `delegate_task`: role `leaf`
-- `model`: the configured `interrogate reviewers` entry, or the table default with no configured line. For an `inherit-parent` entry, omit `model` so that reviewer runs on the parent model.
+- `model`: the configured `interrogate reviewers` entry, or the table default with no configured line. For an `inherit-parent` entry, omit `model` so that reviewer runs on the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model).
 - `readonly`: `true`
 
-If delegate_task rejects a configured entry, omit `model` for that reviewer so it runs on the parent chat model, and say so. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug. Model diversity comes from explicit `interrogate reviewers` entries; with none configured, all reviewers share the parent chat model.
+If delegate_task rejects a configured entry, omit `model` for that reviewer so it runs on the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model), and say so. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug. Model diversity comes from explicit `interrogate reviewers` entries; with none configured, all reviewers share the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model).
 
 Read `references/reviewer-prompt.md` and fill in the template with:
 1. The stated intent

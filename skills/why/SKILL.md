@@ -10,7 +10,7 @@ Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
 
-Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`). Set `model` to that line's value when the rule and the line exist. Leave `model` unset when the rule or the line is missing, or when the value is `inherit-parent`, so the subagent runs on the parent chat model. If delegate_task rejects a configured slug, leave `model` unset for that spawn and say so.
+Each spawn below names a role line in the pstack model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`). Set `model` to that line's value when the rule and the line exist. Leave `model` unset when the rule or the line is missing, or when the value is `inherit-parent`, so the subagent runs on the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model). If delegate_task rejects a configured slug, leave `model` unset for that spawn and say so.
 
 ## Operating Posture
 
@@ -81,7 +81,7 @@ Launch all matching investigators in a single message so they run concurrently. 
 
 Subagent config (each):
 - `delegate_task`: role `leaf`
-- `model`: the `why investigators` line from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the parent chat model)
+- `model`: the `why investigators` line from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model))
 - `readonly`: `false` (agent mode) so investigators can record findings if needed. Note: readonly on hermes restricts file writes only, so MCP access is unaffected. Investigators still shouldn't write anything.
 
 Each investigator gets:
@@ -125,7 +125,7 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 Spawn one synthesizer subagent:
 
 - `delegate_task`: role `leaf`
-- `model`: the `why synthesizer` line from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the parent chat model)
+- `model`: the `why synthesizer` line from the model panel (`pstack-models.json` in the hermes config dir next to `config.yaml`) (fallback: the effective delegation model (`delegation.model` from `config.yaml` when set, otherwise the parent chat model))
 - `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly mode on hermes restricts file writes only - MCP access is unaffected - but agent mode keeps the option to record findings.
 
 The synthesizer gets:
