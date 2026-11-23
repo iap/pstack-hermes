@@ -39,11 +39,34 @@ def test_listing_contains_handles_nested_json():
     assert not install_smoke.listing_contains({"plugins": {"other": {}}}, "pstack")
 
 
-def test_test_command_detection_unwraps_shell_wrappers():
-    assert trajectory._is_test_command("bash -c 'pytest -q'")
-    assert trajectory._is_test_command('sh -c "pytest -q"')
-    assert trajectory._is_test_command("timeout 60 pytest -q")
-    assert trajectory._is_test_command("bash -c 'cd /proj && pytest -q'")
+def test_wrapped_or_compound_commands_never_verify_a_claim():
+    """Default-deny: parsing shell wrappers reliably is not possible here.
+
+    A wrapped, quoted or compound command may have masked the test's exit
+    status, so none of these may be treated as verification evidence. Missing
+    evidence must not become a pass.
+    """
+    for command in (
+        "bash -c 'pytest -q'",
+        'sh -c "pytest -q"',
+        "timeout 60 pytest -q",
+        "env FOO=bar timeout 60 pytest -q",
+        "cd repo && timeout 60 pytest -q",
+        "pytest -q || true",
+        "pytest -q | tee out",
+        "bash -c 'pytest -q || true' | tee out",
+        "echo 'x; pytest -q'",
+        "pytest -q --rootdir='C:\\' || true",
+    ):
+        assert trajectory._verification_segment(command) is None, command
+        assert not trajectory._is_test_command(command), command
+
+
+def test_bare_test_commands_still_verify():
+    assert trajectory._is_test_command("pytest -q")
+    assert trajectory._is_test_command("uv run --frozen pytest -q")
+    assert trajectory._is_test_command("python -m pytest tools/tests")
+    assert trajectory._is_test_command("npm test")
 
 
 def test_baseline_runner_error_is_data_not_a_gate_failure(monkeypatch):
@@ -78,40 +101,3 @@ def test_skill_arm_runner_error_still_fails_the_sweep(monkeypatch):
         ),
     )
     assert run.main(["--arm", "both", "--hermes", "hermes"]) == 2
-
-
-def test_masking_inside_and_after_shell_wrappers_is_detected():
-    """A failed test hidden by a wrapper suffix must not verify a claim.
-
-    The wrapper's exit status is the shell's, so an outer `|| true` or `| tee`
-    records 0 even when pytest failed. Both segment grading and masking
-    detection must see through the wrapper without dropping the suffix.
-    """
-    for command in (
-        "bash -c 'pytest -q || true'",
-        "bash -c 'pytest -q' || true",
-        "bash -c 'pytest -q' | tee out",
-        "timeout 60 pytest -q | tee out",
-    ):
-        assert trajectory._verification_segment(command) is None, command
-        assert trajectory._masked_test(command), command
-
-
-def test_env_prefix_does_not_mask_an_executable():
-    """`env echo timeout ...` runs echo, not pytest."""
-    assert not trajectory._is_test_command("env echo timeout 60 pytest -q")
-    assert trajectory._is_test_command("env FOO=bar timeout 60 pytest -q")
-
-
-def test_final_segment_wrappers_are_recognised():
-    """A wrapper after a leading `cd` is still the graded final segment."""
-    assert trajectory._is_test_command("cd repo && timeout 60 pytest -q")
-
-
-def test_quoted_shell_operators_are_not_split():
-    """Operators inside quotes belong to the argument, not the command list."""
-    assert not trajectory._is_test_command("echo 'x; pytest -q'")
-    command = "bash -c 'pytest -q || true' | tee out"
-    assert trajectory._verification_segment(command) is None
-    assert trajectory._masked_test(command)
-
