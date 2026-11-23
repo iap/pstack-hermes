@@ -120,3 +120,36 @@ def test_later_rejected_test_call_does_not_fall_back_to_an_earlier_one():
         )[0]
         assert result["status"] == "unavailable", (later, result)
 
+
+def _grade_test_claim(calls):
+    return trajectory.grade(
+        {"gates": ["verify_before_claim"]}, calls, "All tests pass - 10 passed.", Path(".")
+    )[0]
+
+
+def test_unrelated_version_flag_cannot_hide_a_rejected_test():
+    """A --version on another command must not reuse an earlier passing run.
+
+    `pytest -q > out.txt` is rejected by the strict check; the trailing
+    `python --version` must not suppress that rejection.
+    """
+    calls = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {
+            "name": "terminal",
+            "args": {"command": "pytest -q > out.txt; python --version"},
+            "exit_code": 0,
+        },
+    ]
+    assert _grade_test_claim(calls)["status"] == "unavailable"
+
+
+def test_accepted_retry_after_rejection_is_graded():
+    """A final bare pytest -q must be graded, not shadowed by an earlier rejected attempt."""
+    calls = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "pytest -q -k 'broken'"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+    ]
+    assert _grade_test_claim(calls)["status"] == "pass"
+

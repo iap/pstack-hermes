@@ -233,10 +233,14 @@ def _looks_like_test_command(command: str) -> bool:
     Used only to detect a rejected *later* test attempt, never to grant a
     pass. Strict grading stays in `_verification_segment`.
     """
-    text = (command or "").strip()
-    if NON_RUNNING_FLAGS.search(text):
-        return False
-    return bool(TEST_COMMAND_PATTERN.search(text))
+    # Check the non-running flag on the segment that looks like the test.
+    # A --version on a later, unrelated command must not hide a rejected
+    # test attempt in an earlier segment.
+    for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
+        part = segment.strip()
+        if TEST_COMMAND_PATTERN.search(part) and not NON_RUNNING_FLAGS.search(part):
+            return True
+    return False
 
 
 def _masked_test(command: str) -> bool:
@@ -333,6 +337,7 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
         segment = _verification_segment(command)
         if segment:
             test_calls.append((call, segment))
+            rejected_later_test = False
         elif test_calls and _looks_like_test_command(command):
             # A later test attempt failed the strict check. Its exit status
             # may be the reason the claim is true; grading the earlier call
