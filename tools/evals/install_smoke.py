@@ -38,11 +38,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_NAME = "pstack"
-PINNED_REASON_RE = re.compile(r"\bpin(?:ned)?\b", re.IGNORECASE)
+# A pinned-install refusal needs both the pin state and a refusal cue. A bare
+# "pin"/"pinned" appears in unrelated failures ("pinned dependency", "the pin
+# was removed") and must not be classified as the documented refusal.
+PINNED_REASON_RE = re.compile(r"\bpinned\b", re.IGNORECASE)
+PINNED_REFUSAL_CUE_RE = re.compile(
+    r"--ref|explicit|to (?:change|move) it|pinned install", re.IGNORECASE
+)
 
 
 def is_pinned_install_refusal(out: str) -> bool:
-    return bool(PINNED_REASON_RE.search(out or ""))
+    text = out or ""
+    return bool(PINNED_REASON_RE.search(text) and PINNED_REFUSAL_CUE_RE.search(text))
 
 
 class StepFailed(Exception):
@@ -110,16 +117,14 @@ def listing_contains(entries: object, name: str) -> bool:
     The JSON shape is hermes' business, not ours: accept a list of objects, a
     dict of objects, or any nesting where the plugin name appears as a value.
     """
+    if isinstance(entries, str):
+        return entries == name
     if isinstance(entries, dict):
-        entries = list(entries.values())
-    if not isinstance(entries, list):
-        return False
-    for entry in entries:
-        if isinstance(entry, str) and entry == name:
-            return True
-        if isinstance(entry, dict):
-            if any(value == name for value in entry.values()):
-                return True
+        return any(key == name for key in entries) or any(
+            listing_contains(value, name) for value in entries.values()
+        )
+    if isinstance(entries, list):
+        return any(listing_contains(entry, name) for entry in entries)
     return False
 
 

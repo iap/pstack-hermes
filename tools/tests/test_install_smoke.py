@@ -141,6 +141,9 @@ def test_pinned_install_refusal_is_recognised():
 def test_unrelated_update_failure_is_not_a_pinned_refusal():
     assert not smoke.is_pinned_install_refusal("force push rejected by upstream")
     assert not smoke.is_pinned_install_refusal("commit abc unavailable")
+    assert not smoke.is_pinned_install_refusal(
+        "Failed to reinstall pinned dependency: connection timed out."
+    )
 
 
 def test_listing_contains_ignores_unrelated_shapes():

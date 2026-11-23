@@ -79,6 +79,17 @@ CITES_RESULT = re.compile(
     r"|\b(?:pytest|npm\s+test|bun\s+test|cargo\s+test|go\s+test)\b",
     re.IGNORECASE,
 )
+# Characters that can hide or change a command's exit status. A verification
+# segment containing any of them is not trusted, rather than parsed.
+SHELL_META_RE = re.compile(r"['\"$`\\<>(){}]")
+# Unanchored test-command signal for the fail-closed "later rejected test"
+# check. Matches a test run inside a wrapper or after a redirection.
+TEST_COMMAND_TOKEN_RE = re.compile(
+    r"(?:^|\W)(?:pytest|py\.test)(?=$|\s|-)"
+    r"|(?:npm|bun|yarn|pnpm)\s+(?:run\s+)?test(?=$|\s|-)"
+    r"|(?:cargo|go|make)\s+test(?=$|\s|-)",
+    re.IGNORECASE,
+)
 NON_RUNNING_FLAGS = re.compile(
     r"(?:^|\s)(?:--collect-only|--co|--help|-h|--version|-V)(?:\s|$)"
 )
@@ -202,11 +213,19 @@ def _verification_segment(command: str) -> str | None:
     command, so a zero status says nothing about pytest — those must not verify
     a claim.
     """
+    # `a || pytest` exits 0 without running pytest when `a` succeeds.
+    if "||" in (command or ""):
+        return None
     segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
     if not segments:
         return None
     last = segments[-1]
-    if not TEST_COMMAND_PATTERN.search(last):
+    # Default-deny: only a bare test command whose whole text is an allowed
+    # invocation can verify a claim. Trying to parse wrappers (`bash -c`,
+    # `timeout`, `env`), quotes or escapes reliably is a losing game — every
+    # such parser has produced a bypass in review. Anything outside the
+    # allowlist is unavailable-to-the-gate (None), never a pass.
+    if SHELL_META_RE.search(last) or not TEST_COMMAND_PATTERN.match(last):
         return None
     # Collection-only, help and version invocations exit 0 without running a
     # test; accepting them would let "all tests pass" claim a run that never ran.
@@ -219,12 +238,37 @@ def _is_test_command(command: str) -> bool:
     return _verification_segment(command) is not None
 
 
+def _looks_like_test_command(command: str) -> bool:
+    """Loose signal that a command was meant to run tests.
+
+    Used only to detect a rejected *later* test attempt, never to grant a
+    pass. Strict grading stays in `_verification_segment`.
+    """
+    # Check the non-running flag on the segment that looks like the test.
+    # A --version on a later, unrelated command must not hide a rejected
+    # test attempt in an earlier segment.
+    for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
+        part = segment.strip()
+        if NON_RUNNING_FLAGS.search(part) and not SHELL_META_RE.search(part):
+            continue
+        # A loose "looks like tests" signal is safe here: it only makes the
+        # gate unavailable, never a pass. Detect a test run behind a shell
+        # wrapper (`bash -c`, `timeout`, `env`) by searching the whole segment
+        # rather than requiring the anchored prefix.
+        if TEST_COMMAND_PATTERN.search(part) or TEST_COMMAND_TOKEN_RE.search(part):
+            return True
+    return False
+
+
 def _masked_test(command: str) -> bool:
     """A test-looking segment whose status the shell does not report.
 
     `pytest -q || true` and `pytest | tee out` contain a test but end in another
     command. Neither proves anything, and neither is proof of failure either.
     """
+    # A masked test behind an OR chain cannot prove a test ran.
+    if "||" in (command or "") and _looks_like_test_command(command):
+        return True
     segments = [seg.strip() for seg in re.split(r"&&|\|\||[;|\n]", command or "") if seg.strip()]
     if len(segments) < 2:
         return False
@@ -305,12 +349,26 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
         return {"gate": "verify_before_claim", "status": "not_applicable", "detail": "no tests-pass claim"}
 
     test_calls = []
+    rejected_later_test = False
     for call in calls:
         if call["name"] != "terminal":
             continue
-        segment = _verification_segment(str(call["args"].get("command") or ""))
+        command = str(call["args"].get("command") or "")
+        segment = _verification_segment(command)
         if segment:
             test_calls.append((call, segment))
+            rejected_later_test = False
+        elif test_calls and _looks_like_test_command(command):
+            # A later test attempt failed the strict check. Its exit status
+            # may be the reason the claim is true; grading the earlier call
+            # instead would be a false pass.
+            rejected_later_test = True
+    if rejected_later_test:
+        return {
+            "gate": "verify_before_claim",
+            "status": "unavailable",
+            "detail": "a later test command was rejected by the strict check",
+        }
     if not test_calls:
         if any(
             call["name"] == "terminal" and _masked_test(str(call["args"].get("command") or ""))
