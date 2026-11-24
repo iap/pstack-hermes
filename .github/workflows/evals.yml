@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tasks:
-        description: "Comma-separated golden case ids (blank = every case)"
+        description: "Comma-separated golden case ids (blank = every case, requires reps=1)"
         type: string
         default: poteto-routing
       arm:
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     # The golden tasks can take 15 minutes; the lifecycle install adds a clone,
     # an install, a remove, a pinned reinstall and an update on top of that.
-    timeout-minutes: 180
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -70,17 +70,17 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Smoke-test one-shot model call
+      - name: Reject infeasible sweep inputs
         shell: bash
         env:
-          MODEL: ${{ inputs.model }}
+          TASKS: ${{ inputs.tasks }}
+          REPS: ${{ inputs.reps }}
         run: |
           set -euo pipefail
-          args=(-z "Reply with OK")
-          if [ -n "$MODEL" ]; then
-            args+=(-m "$MODEL")
+          if [ -z "$TASKS" ] && [ "$REPS" -gt 1 ]; then
+            echo "::error::blank tasks with reps>1 exceeds the job budget; name a case or use reps=1"
+            exit 1
           fi
-          timeout 90 hermes "${args[@]}"
 
       - name: Run golden-task evals
         shell: bash
@@ -100,6 +100,39 @@ jobs:
             args+=(--model "$MODEL")
           fi
           uv run --frozen python tools/evals/run.py "${args[@]}"
+
+      - name: Publish sweep summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - "$RUNNER_TEMP/sweep.json" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          src, out = Path(sys.argv[1]), Path(sys.argv[2])
+          if not src.is_file():
+              with out.open("a", encoding="utf-8") as fh:
+                  fh.write("evals: no sweep record to summarize\n")
+              raise SystemExit(0)
+          data = json.loads(src.read_text(encoding="utf-8"))
+
+          def rate(cell):
+              scored = cell["total"] - cell["error"]
+              return cell["pass"] / scored * 100 if scored else None
+
+          lines = ["| case | skill | baseline | delta |", "|---|---|---|---|"]
+          for row in data.get("summary", []):
+              def cell(arm):
+                  c = row.get(arm, {"pass": 0, "total": 0, "error": 0})
+                  return f"{c['pass']}/{c['total']}" + (f" ({c['error']} error)" if c["error"] else "")
+              skill, base = row.get("skill", {}), row.get("baseline", {})
+              s, b = rate(skill), rate(base)
+              delta = f"{s - b:+.0f}pp" if s is not None and b is not None else "n/a"
+              lines.append(f"| {row['case']} | {cell('skill')} | {cell('baseline')} | {delta} |")
+          with out.open("a", encoding="utf-8") as fh:
+              fh.write("\n".join(lines) + "\n")
+          PY
 
       - name: Upload sweep record
         if: always()

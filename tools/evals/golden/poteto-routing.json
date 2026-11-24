@@ -6,7 +6,9 @@
     "payments.ts": "type Charge = (token: string) => Promise<string>;\n\nexport async function chargeWithRetry(\n  charge: Charge,\n  token: string,\n): Promise<string> {\n  for (let attempt = 0; attempt < 3; attempt++) {\n    try {\n      return await charge(token);\n    } catch (error) {\n      if (attempt === 2) throw error;\n    }\n  }\n  throw new Error(\"unreachable\");\n}\n"
   },
   "expect": {
-    "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"]
+    "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"],
+    "files_changed": ["payments.ts"],
+    "file_contains": [{"path": "payments.ts", "text": "idempot"}]
   },
-  "process": {"gates": ["no_banned_tool", "verify_before_claim"]}
+  "process": {"gates": ["no_banned_tool", "verify_before_claim", "verification_present"]}
 }

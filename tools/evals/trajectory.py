@@ -411,6 +411,28 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
     }
 
 
+def _verification_present(calls: list[dict] | None) -> dict:
+    gate = "verification_present"
+    if calls is None:
+        return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
+    for call in calls:
+        command = str(call.get("args", {}).get("command") or "")
+        if _masked_test(command):
+            return {"gate": gate, "status": "unavailable", "detail": "test ran behind a pipe/fallback"}
+    for call in calls:
+        if call.get("name") != "terminal":
+            continue
+        command = str(call.get("args", {}).get("command") or "")
+        if _verification_segment(command) is None:
+            continue
+        if call.get("exit_code") is None:
+            return {"gate": gate, "status": "unavailable", "detail": "no recorded exit status for test command"}
+        if call["exit_code"] != 0:
+            return {"gate": gate, "status": "fail", "detail": f"test command exited {call['exit_code']}"}
+        return {"gate": gate, "status": "pass", "detail": "passing test command in session"}
+    return {"gate": gate, "status": "fail", "detail": "no passing test command in the session"}
+
+
 def _no_banned_tool(calls: list[dict] | None) -> dict:
     gate = "no_banned_tool"
     if calls is None:
@@ -451,6 +473,8 @@ def grade(expectations: dict, calls: list[dict], final_text: str, project: Path)
             results.append(_read_before_write(calls, project))
         elif gate == "verify_before_claim":
             results.append(_verify_before_claim(calls, final_text))
+        elif gate == "verification_present":
+            results.append(_verification_present(calls))
         elif gate == "no_banned_tool":
             results.append(_no_banned_tool(calls))
         else:

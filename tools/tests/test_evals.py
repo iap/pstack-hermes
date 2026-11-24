@@ -88,6 +88,60 @@ def test_run_case_seeds_fixture_before_hermes(monkeypatch, tmp_path):
     assert "export const ok = true;" in seen["fixture"]
 
 
+def test_run_case_fails_when_fixture_is_unchanged(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    monkeypatch.setattr(
+        eval_run.subprocess,
+        "run",
+        lambda argv, **k: subprocess.CompletedProcess(argv, 0, stdout="done", stderr=""),
+    )
+    case = {
+        "id": "demo",
+        "prompt": "do it",
+        "fixtures": {"payments.ts": "original\n"},
+        "expect": {"files_changed": ["payments.ts"]},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "fail"
+    assert any("payments.ts unchanged" in line for line in failures)
+
+
+def test_run_case_detects_a_changed_fixture(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+
+    def fake_run(argv, **k):
+        target = Path(argv[2]).parent / "payments.ts"
+        target.write_text("idempotent retry\n", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, stdout="done", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    case = {
+        "id": "demo",
+        "prompt": "{PROJECT}/payments.ts",
+        "fixtures": {"payments.ts": "original\n"},
+        "expect": {
+            "files_changed": ["payments.ts"],
+            "file_contains": [{"path": "payments.ts", "text": "idempotent"}],
+        },
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "pass", failures
+
+
 def test_run_case_rejects_fixture_path_escape(monkeypatch, tmp_path):
     active = tmp_path / "active"
     active.mkdir()
@@ -119,6 +173,9 @@ def test_seed_home_skill_arm_registers_a_snapshot_not_the_checkout(tmp_path):
     assert eval_run.CHECKOUT_SKILLS not in dirs
     assert dirs == [str(home / eval_run.SKILL_SNAPSHOT)]
     assert (home / eval_run.SKILL_SNAPSHOT / "poteto-mode" / "SKILL.md").is_file()
+    shim = home / eval_run.SKILL_SNAPSHOT / "poteto-mode" / "scripts" / "check-plan.mjs"
+    assert (shim.parent / "../../../scripts/check-plan.mjs").resolve() == (home / "scripts" / "check-plan.mjs").resolve()
+    assert (home / "scripts" / "check-plan.mjs").is_file()
 
 
 def test_skill_snapshot_cannot_modify_the_checkout(tmp_path):
@@ -255,6 +312,8 @@ def _fake_session_db(home, calls):
         "role TEXT, content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
     )
     conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1','user','do it')")
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1','assistant','ok')")
     for index, (name, args, exit_code) in enumerate(calls):
         call_id = f"c{index}"
         payload = [{"call_id": call_id, "function": {"name": name, "arguments": json.dumps(args)}}]
@@ -441,7 +500,9 @@ def test_routing_case_has_fixture_and_behavior_rubric():
     assert "{PROJECT}" in case["prompt"]
     assert "must_mention" not in case["expect"]
     assert "gates" not in case["expect"]
-    assert case["process"]["gates"] == ["no_banned_tool", "verify_before_claim"]
+    assert case["expect"]["files_changed"] == ["payments.ts"]
+    assert case["expect"]["file_contains"] == [{"path": "payments.ts", "text": "idempot"}]
+    assert case["process"]["gates"] == ["no_banned_tool", "verify_before_claim", "verification_present"]
     ok, failures = eval_run.score(case, "Refactored payments.ts to be idempotent.")
     assert ok, failures
 
@@ -671,7 +732,29 @@ def test_session_probe_rejects_a_host_without_session_records(monkeypatch):
     ok, detail = eval_run.probe_session_record("hermes")
 
     assert not ok
-    assert "no readable session record" in detail
+    assert "no readable user and assistant turn" in detail
+
+
+def test_session_probe_rejects_a_session_without_turns(monkeypatch):
+    import sqlite3
+    import subprocess
+
+    def fake_run(argv, **k):
+        home = Path(k["env"]["HERMES_HOME"])
+        conn = sqlite3.connect(home / "state.db")
+        conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL)")
+        conn.execute("CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT)")
+        conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+        conn.commit()
+        conn.close()
+        return subprocess.CompletedProcess(argv, 0, stdout="OK\n", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+    ok, detail = eval_run.probe_session_record("hermes")
+
+    assert not ok
+    assert "no readable user and assistant turn" in detail
 
 
 def test_main_stops_before_cases_when_session_probe_fails(monkeypatch, capsys):

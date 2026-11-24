@@ -46,7 +46,11 @@ Prompts that touch files need `fixtures`: a map of relative path to file
 contents, written into the run's empty temp project before the model starts.
 Use `{PROJECT}` in the prompt for that project's absolute path. Prefer
 `process.gates` over text checks for behavior — a correct final answer need
-not name the skill or the tools it used.
+not name the skill or the tools it used. Add `expect.files_changed` (paths that
+must differ from their fixture baseline) and `expect.file_contains`
+(`{path, text}` pairs) so a run cannot pass by delegating unrelated work.
+`process.gates: ["verification_present"]` requires a passing test command even
+when the reply makes no tests-pass claim.
 
 ## Known limitation: oneshot cwd
 

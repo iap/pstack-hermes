@@ -616,3 +616,14 @@ def test_grading_uses_root_session_not_a_later_delegate_child(tmp_path):
 
     assert [call["name"] for call in calls] == ["delegate_task"]
     assert _no_banned_result(tmp_path, calls)["status"] == "pass"
+
+
+def test_verification_present_requires_a_passing_test_command():
+    passing = [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}]
+    assert trajectory._verification_present(passing)["status"] == "pass"
+
+    unrelated = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+    assert trajectory._verification_present(unrelated)["status"] == "fail"
+
+    masked = [{"name": "terminal", "args": {"command": "pytest -q || true"}, "exit_code": 0}]
+    assert trajectory._verification_present(masked)["status"] == "unavailable"
