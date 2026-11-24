@@ -428,7 +428,9 @@ def _verification_present(calls: list[dict] | None) -> dict:
         command = str(call.get("args", {}).get("command") or "")
         if _verification_segment(command):
             attempts.append(("strict", call))
-        elif _masked_test(command) or _looks_like_test_command(command):
+        elif _masked_test(command) or (
+            _looks_like_test_command(command) and (SHELL_META_RE.search(command) or "|" in command)
+        ):
             attempts.append(("masked", call))
     if not attempts:
         return {"gate": gate, "status": "fail", "detail": "no test command in the session"}

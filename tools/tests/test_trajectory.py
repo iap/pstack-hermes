@@ -652,3 +652,6 @@ def test_verification_present_grades_the_final_test_attempt():
 
     clean_then_masked = [call("pytest -q", 0), call("pytest -q | tee out", 0)]
     assert trajectory._verification_present(clean_then_masked)["status"] == "unavailable"
+
+    passing_then_search = [call("pytest -q", 0), call("grep pytest README", 0)]
+    assert trajectory._verification_present(passing_then_search)["status"] == "pass"
