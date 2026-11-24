@@ -118,8 +118,8 @@ jobs:
           data = json.loads(src.read_text(encoding="utf-8"))
 
           def rate(cell):
-              scored = cell["total"] - cell["error"]
-              return cell["pass"] / scored * 100 if scored else None
+              scored = cell.get("total", 0) - cell.get("error", 0)
+              return cell.get("pass", 0) / scored * 100 if scored else None
 
           lines = ["| case | skill | baseline | delta |", "|---|---|---|---|"]
           for row in data.get("summary", []):

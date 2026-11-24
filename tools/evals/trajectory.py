@@ -415,22 +415,25 @@ def _verification_present(calls: list[dict] | None) -> dict:
     gate = "verification_present"
     if calls is None:
         return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
-    for call in calls:
-        command = str(call.get("args", {}).get("command") or "")
-        if _masked_test(command):
-            return {"gate": gate, "status": "unavailable", "detail": "test ran behind a pipe/fallback"}
+    attempts = []
     for call in calls:
         if call.get("name") != "terminal":
             continue
         command = str(call.get("args", {}).get("command") or "")
-        if _verification_segment(command) is None:
-            continue
-        if call.get("exit_code") is None:
-            return {"gate": gate, "status": "unavailable", "detail": "no recorded exit status for test command"}
-        if call["exit_code"] != 0:
-            return {"gate": gate, "status": "fail", "detail": f"test command exited {call['exit_code']}"}
-        return {"gate": gate, "status": "pass", "detail": "passing test command in session"}
-    return {"gate": gate, "status": "fail", "detail": "no passing test command in the session"}
+        if _verification_segment(command):
+            attempts.append(("strict", call))
+        elif _masked_test(command) or _looks_like_test_command(command):
+            attempts.append(("masked", call))
+    if not attempts:
+        return {"gate": gate, "status": "fail", "detail": "no test command in the session"}
+    kind, call = attempts[-1]
+    if kind == "masked":
+        return {"gate": gate, "status": "unavailable", "detail": "final test attempt has masked status"}
+    if call.get("exit_code") is None:
+        return {"gate": gate, "status": "unavailable", "detail": "no recorded exit status for final test command"}
+    if call["exit_code"] != 0:
+        return {"gate": gate, "status": "fail", "detail": f"final test command exited {call['exit_code']}"}
+    return {"gate": gate, "status": "pass", "detail": "passing final test command in session"}
 
 
 def _no_banned_tool(calls: list[dict] | None) -> dict:

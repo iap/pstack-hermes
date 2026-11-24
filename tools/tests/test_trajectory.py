@@ -627,3 +627,20 @@ def test_verification_present_requires_a_passing_test_command():
 
     masked = [{"name": "terminal", "args": {"command": "pytest -q || true"}, "exit_code": 0}]
     assert trajectory._verification_present(masked)["status"] == "unavailable"
+
+
+def test_verification_present_grades_the_final_test_attempt():
+    def call(command, exit_code):
+        return {"name": "terminal", "args": {"command": command}, "exit_code": exit_code}
+
+    red_then_green = [call("pytest -q", 1), call("pytest -q", 0)]
+    assert trajectory._verification_present(red_then_green)["status"] == "pass"
+
+    green_then_red = [call("pytest -q", 0), call("pytest -q", 1)]
+    assert trajectory._verification_present(green_then_red)["status"] == "fail"
+
+    masked_then_clean = [call("pytest -q | tee out", 0), call("pytest -q", 0)]
+    assert trajectory._verification_present(masked_then_clean)["status"] == "pass"
+
+    clean_then_masked = [call("pytest -q", 0), call("pytest -q | tee out", 0)]
+    assert trajectory._verification_present(clean_then_masked)["status"] == "unavailable"
