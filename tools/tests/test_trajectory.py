@@ -629,6 +629,14 @@ def test_verification_present_requires_a_passing_test_command():
     assert trajectory._verification_present(masked)["status"] == "unavailable"
 
 
+def test_verification_present_is_unavailable_with_unparseable_records():
+    calls = trajectory.ToolCalls(
+        [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}],
+        ["tool_calls row"],
+    )
+    assert trajectory._verification_present(calls)["status"] == "unavailable"
+
+
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
         return {"name": "terminal", "args": {"command": command}, "exit_code": exit_code}

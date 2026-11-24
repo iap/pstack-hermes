@@ -415,6 +415,12 @@ def _verification_present(calls: list[dict] | None) -> dict:
     gate = "verification_present"
     if calls is None:
         return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
+    if getattr(calls, "parse_errors", None):
+        return {
+            "gate": gate,
+            "status": "unavailable",
+            "detail": f"{len(calls.parse_errors)} unparseable tool-call record(s); final test attempt cannot be verified",
+        }
     attempts = []
     for call in calls:
         if call.get("name") != "terminal":
