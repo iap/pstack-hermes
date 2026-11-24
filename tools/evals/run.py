@@ -4,14 +4,15 @@
 Runs each tools/evals/golden/*.json prompt via `hermes -z` with the case's
 skill preloaded (--skills), in an isolated HERMES_HOME seeded from the
 active home's config.yaml/.env (provider access), with skills.external_dirs
-pointing at this checkout's skills/, and cwd in an empty temp project so
-live runs cannot modify the checkout. Rubric-scores the final response:
+pointing at a per-run snapshot of this checkout's skills/, and cwd in an
+empty temp project so live runs cannot write to the checkout. Rubric-scores
+the final response:
 every must_mention must appear, no must_not_mention may appear, every gate
 concept must appear. A non-zero hermes exit or timeout is a runner failure
 (exit 2), never a rubric pass. Exit 0 = all pass; 1 = any rubric failure.
 
 Arms (#212): `--arm skill` (default, unchanged) preloads the case skill and
-registers this checkout's skills; `--arm baseline` does neither, so the same
+registers a per-run snapshot of this checkout's skills; `--arm baseline` does neither, so the same
 prompt runs without the method; `--arm both` runs each case in both arms and
 prints the delta. `--reps N` repeats each case and reports pass counts, because
 a single rep cannot separate a rubric failure from run-to-run variance.
@@ -43,6 +44,8 @@ ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
 CHECKOUT_SKILLS = str(ROOT / "skills")
+SKILL_SNAPSHOT = "eval-skills"
+PROJECT_TOKEN = "{PROJECT}"
 
 
 def load_golden(directory: Path = GOLDEN_DIR) -> list[dict]:
@@ -72,14 +75,22 @@ def score(case: dict, response: str) -> tuple[bool, list[str]]:
 
 
 def build_argv(
-    case: dict, hermes: str = "hermes", arm: str = "skill", model: str = ""
+    case: dict,
+    hermes: str = "hermes",
+    arm: str = "skill",
+    model: str = "",
+    project: Path | None = None,
 ) -> list[str]:
     """Command for one run. The baseline arm must not preload a skill.
 
     ``model`` pins the run to one provider model so a sweep is comparable; an
-    empty value leaves the host's configured default in place.
+    empty value leaves the host's configured default in place. ``project``
+    resolves the ``{PROJECT}`` token so prompts can name absolute fixture paths.
     """
-    argv = [hermes, "-z", case["prompt"]]
+    prompt = case["prompt"]
+    if project is not None:
+        prompt = prompt.replace(PROJECT_TOKEN, str(project))
+    argv = [hermes, "-z", prompt]
     skill = case.get("skill", "")
     if arm == "skill" and skill:
         argv += ["--skills", skill]
@@ -133,6 +144,43 @@ def preflight(hermes: str = "hermes", timeout: float = 60.0) -> tuple[bool, str]
     return True, (proc.stdout or proc.stderr).strip().splitlines()[0] if (proc.stdout or proc.stderr).strip() else "ok"
 
 
+def probe_session_record(
+    hermes: str = "hermes", timeout: float = 180.0, model: str = ""
+) -> tuple[bool, str]:
+    """Prove a one-shot run leaves a readable session record.
+
+    ``--version`` passes on hosts where every turn is executed by a gateway
+    that never persists a session; grading then reports "no readable session
+    record" for every case. Probe before a sweep so such a host fails in
+    seconds instead of hours.
+    """
+    with tempfile.TemporaryDirectory(prefix="pstack-probe-") as home_dir:
+        home = Path(home_dir)
+        active = os.environ.get("HERMES_HOME")
+        active_home = Path(active) if active else Path.home() / ".hermes"
+        try:
+            seed_home(home, active_home if active_home.is_dir() else None, register_checkout_skills=False)
+        except Exception as exc:
+            return False, f"session probe seed failed: {exc}"
+        env = build_env(home)
+        argv = [hermes, "-z", "Reply with OK"]
+        if model:
+            argv += ["-m", model]
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"session probe failed: {exc}"
+        if proc.returncode != 0:
+            tail = (proc.stdout + proc.stderr).strip()[-300:]
+            return False, f"session probe exited {proc.returncode}: {tail}"
+        if load_tool_calls(home / "state.db") is None:
+            return False, (
+                "session probe left no readable session record; "
+                "the gateway is not persisting one-shot turns for this HERMES_HOME"
+            )
+    return True, "one-shot session record readable"
+
+
 def build_env(home: Path) -> dict[str, str]:
     """Environment for one eval run.
 
@@ -153,13 +201,15 @@ def seed_home(
     active_home: Path | None,
     register_checkout_skills: bool = True,
 ) -> None:
-    """Copy provider config into the isolated home; optionally register checkout skills.
+    """Copy provider config into the isolated home; optionally register skills.
 
-    Baseline arms pass ``register_checkout_skills=False``: the checkout path is
-    removed from ``skills.external_dirs`` (if the copied config already lists
-    it) and never appended. Note this only removes *this checkout*; a skill
-    installed in the active home's own config is inherited on purpose, so keep
-    the eval host free of pstack installs when a clean baseline matters.
+    The skill arm copies this checkout's skills into ``<home>/eval-skills`` and
+    registers *that* path: a live run can edit the snapshot, never the package
+    under test. Baseline arms register nothing and prune both the checkout path
+    and any snapshot path from the copied config. Note this only removes *this
+    checkout*; a skill installed in the active home's own config is inherited
+    on purpose, so keep the eval host free of pstack installs when a clean
+    baseline matters.
     """
     home.mkdir(parents=True, exist_ok=True)
     config = home / "config.yaml"
@@ -188,20 +238,37 @@ def seed_home(
     try:
         import yaml
     except ImportError as exc:
-        raise RuntimeError("PyYAML is required to register checkout skills") from exc
+        raise RuntimeError("PyYAML is required to register eval skills") from exc
     data = {}
     if config.is_file():
         data = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
     skills = data.setdefault("skills", {})
     dirs = skills.setdefault("external_dirs", [])
+    snapshot = str(home / SKILL_SNAPSHOT)
+    dirs = [d for d in dirs if d not in (CHECKOUT_SKILLS, snapshot)]
     if register_checkout_skills:
-        if CHECKOUT_SKILLS not in dirs:
-            dirs.append(CHECKOUT_SKILLS)
-    else:
-        # Remove every occurrence: a config that lists the checkout twice would
-        # otherwise keep the method discoverable in the control arm.
-        skills["external_dirs"] = [d for d in dirs if d != CHECKOUT_SKILLS]
+        target = home / SKILL_SNAPSHOT
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(
+            ROOT / "skills",
+            target,
+            ignore=shutil.ignore_patterns("node_modules", "__pycache__", ".pytest_cache", ".DS_Store"),
+        )
+        dirs.append(snapshot)
+    skills["external_dirs"] = dirs
     config.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+
+def seed_fixtures(project: Path, case: dict) -> None:
+    """Write a case's fixtures into the temp project before the run."""
+    root = project.resolve()
+    for relative, content in case.get("fixtures", {}).items():
+        target = (project / relative).resolve()
+        if not target.is_relative_to(root):
+            raise ValueError(f"fixture path escapes project: {relative}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
 
 
 def run_case(
@@ -223,6 +290,7 @@ def run_case(
         project.mkdir(parents=True)
         env = build_env(home)
         try:
+            seed_fixtures(project, case)
             seed_home(
                 home,
                 active_home if active_home.is_dir() else None,
@@ -232,7 +300,7 @@ def run_case(
             return "error", [f"seed error: {exc}"], []
         try:
             proc = subprocess.run(
-                build_argv(case, hermes, arm, model),
+                build_argv(case, hermes, arm, model, project),
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -329,14 +397,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--preflight-timeout", type=float, default=60, help="seconds for the --version probe (default 60)"
     )
+    ap.add_argument(
+        "--session-probe-timeout", type=float, default=180, help="seconds for the one-shot session probe (default 180)"
+    )
     ap.add_argument("--json-out", default="", help="write the sweep (records + summary) to this path")
     args = ap.parse_args(argv)
 
     if args.reps < 1:
         print("evals: --reps must be >= 1", file=sys.stderr)
         return 2
-    if args.timeout <= 0 or args.preflight_timeout <= 0:
-        print("evals: --timeout and --preflight-timeout must be > 0", file=sys.stderr)
+    if args.timeout <= 0 or args.preflight_timeout <= 0 or args.session_probe_timeout <= 0:
+        print("evals: --timeout, --preflight-timeout and --session-probe-timeout must be > 0", file=sys.stderr)
         return 2
     cases = load_golden(Path(args.golden))
     wanted = [task.strip() for task in args.tasks.split(",") if task.strip()]
@@ -356,6 +427,13 @@ def main(argv: list[str] | None = None) -> int:
         print("evals: repair the Hermes install first (`hermes update`, then restart the gateway)", file=sys.stderr)
         return 2
     print(f"evals: {detail}")
+
+    probe_ok, probe_detail = probe_session_record(args.hermes, args.session_probe_timeout, args.model)
+    if not probe_ok:
+        print(f"evals: session probe failed — {probe_detail}", file=sys.stderr)
+        print("evals: use a host where `hermes -z` persists a session record (see docs/EVALS.md)", file=sys.stderr)
+        return 2
+    print(f"evals: {probe_detail}")
 
     arms = ARMS if args.arm == "both" else (args.arm,)
     records: list[dict] = []

@@ -1,11 +1,12 @@
 {
   "id": "poteto-routing",
   "skill": "poteto-mode",
-  "prompt": "Refactor the retry logic in payments.ts to be idempotent. Plan first, then execute.",
-  "expect": {
-    "must_mention": ["poteto-mode", "delegate|delegation|delegates"],
-    "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"],
-    "gates": ["plan", "verify"]
+  "prompt": "Refactor the retry logic in {PROJECT}/payments.ts to be idempotent. Plan first, then execute.",
+  "fixtures": {
+    "payments.ts": "type Charge = (token: string) => Promise<string>;\n\nexport async function chargeWithRetry(\n  charge: Charge,\n  token: string,\n): Promise<string> {\n  for (let attempt = 0; attempt < 3; attempt++) {\n    try {\n      return await charge(token);\n    } catch (error) {\n      if (attempt === 2) throw error;\n    }\n  }\n  throw new Error(\"unreachable\");\n}\n"
   },
-  "process": {"gates": ["no_banned_tool"]}
+  "expect": {
+    "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"]
+  },
+  "process": {"gates": ["no_banned_tool", "verify_before_claim"]}
 }

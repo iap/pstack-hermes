@@ -29,11 +29,24 @@ python3 tools/evals/install_smoke.py --keep         # keep the temp HERMES_HOME
 uv run --frozen pytest -q tools/tests/test_evals.py tools/tests/test_install_smoke.py
 ```
 
+## Isolation
+
+The skill arm registers a per-run copy of `skills/` inside the isolated
+`HERMES_HOME` (node_modules and caches excluded), never the checkout path;
+baseline arms prune both paths from the copied config. A live run that edits a
+skill edits the copy — `git status` should stay clean after a sweep.
+
 ## Add a golden task
 
 Drop `golden/<id>.json` with `prompt`, `expect.must_mention`,
 `expect.must_not_mention` (Cursor vocab belongs here), and `gates`
 (concepts the response must name, e.g. plan/verify/evidence).
+
+Prompts that touch files need `fixtures`: a map of relative path to file
+contents, written into the run's empty temp project before the model starts.
+Use `{PROJECT}` in the prompt for that project's absolute path. Prefer
+`process.gates` over text checks for behavior — a correct final answer need
+not name the skill or the tools it used.
 
 ## Known limitation: oneshot cwd
 
