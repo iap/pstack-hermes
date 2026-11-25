@@ -326,23 +326,36 @@ def check_outcomes(case: dict, project: Path) -> list[str]:
     return failures
 
 
-def run_protected_tests(case: dict, project: Path) -> list[str]:
-    """Run the original test files against the agent's result, not its edits to them."""
+def run_protected_tests(case: dict, project: Path, protected: Path) -> list[str]:
+    """Run original tests against the agent's result from an agent-unwritable tree."""
     names = case.get("verify_tests", [])
     if not names:
         return []
+    fixtures = case.get("fixtures", {})
+    changed = set(case.get("expect", {}).get("files_changed", []))
+    protected.mkdir(parents=True, exist_ok=True)
+    for name, original in fixtures.items():
+        target = _project_path(protected, name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if name in changed:
+            source = _project_path(project, name)
+            if not source.is_file():
+                return [f"protected test: missing result {name}"]
+            target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            target.write_text(original, encoding="utf-8")
     for name in names:
-        original = case.get("fixtures", {}).get(name)
-        if original is None:
+        if name not in fixtures:
             return [f"protected test: no fixture for {name}"]
-        _project_path(project, name).write_text(original, encoding="utf-8")
+    env = {**os.environ, "PYTHONPATH": str(protected)}
     try:
         proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", *names],
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *names],
             capture_output=True,
             text=True,
             timeout=120,
-            cwd=str(project),
+            cwd=str(protected),
+            env=env,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return [f"protected test: {exc}"]
@@ -402,7 +415,7 @@ def run_case(
             process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
         try:
             outcome_failures = check_outcomes(case, project)
-            outcome_failures += run_protected_tests(case, project)
+            outcome_failures += run_protected_tests(case, project, td / "protected")
         except Exception as exc:
             return "error", [f"outcome check error: {exc}"], []
 

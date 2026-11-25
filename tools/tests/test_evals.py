@@ -493,15 +493,16 @@ def test_routing_rubric_contract():
 def test_protected_tests_restore_the_fixture_and_check_the_result(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
+    protected = tmp_path / "protected"
     test = "def test_ok():\n    assert True\n"
     case = {"fixtures": {"test_payments.py": test}, "verify_tests": ["test_payments.py"]}
-    (project / "test_payments.py").write_text("tampered", encoding="utf-8")
+    (project / "pytest.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
 
-    assert eval_run.run_protected_tests(case, project) == []
-    assert (project / "test_payments.py").read_text(encoding="utf-8") == test
+    assert eval_run.run_protected_tests(case, project, protected) == []
+    assert (protected / "test_payments.py").read_text(encoding="utf-8") == test
 
     case["fixtures"]["test_payments.py"] = "def test_bad():\n    assert False\n"
-    failures = eval_run.run_protected_tests(case, project)
+    failures = eval_run.run_protected_tests(case, project, protected)
     assert failures
     assert "protected test failed" in failures[0]
 

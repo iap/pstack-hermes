@@ -215,6 +215,9 @@ def load_all_tool_calls(db_path: Path) -> ToolCalls | None:
         return None
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return None
+    try:
         rows = conn.execute(
             "SELECT role, content, tool_calls, tool_name, tool_call_id FROM messages ORDER BY id"
         ).fetchall()
