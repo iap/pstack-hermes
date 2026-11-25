@@ -90,6 +90,9 @@ session record (`$HERMES_HOME/state.db`):
   gate `unavailable`, never a pass. Tool names and argument keys are compared
   case-insensitively, so prose formatting cannot hide a call. The loader grades
   the root session, not a later `delegate_task` child session.
+- `verification_present` — a passing test command must exist even when the
+  reply makes no tests-pass claim. It grades the final test attempt across the
+  root **and delegate child** sessions; a masked final attempt is `unavailable`.
 
 `unavailable` is reported as a runner error, never folded into a pass: a grader
 that cannot see the evidence says so. These gates are unit-tested against

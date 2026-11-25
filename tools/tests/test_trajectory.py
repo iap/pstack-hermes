@@ -629,6 +629,43 @@ def test_verification_present_requires_a_passing_test_command():
     assert trajectory._verification_present(masked)["status"] == "unavailable"
 
 
+def test_verification_present_sees_delegate_child_calls(tmp_path):
+    db = tmp_path / "state.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, "
+        "content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO sessions VALUES (?, ?, ?)",
+        [("parent", None, 1.0), ("child", "parent", 2.0)],
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, tool_calls) VALUES ('parent','assistant',?)",
+        (json.dumps([{"function": {"name": "delegate_task", "arguments": "{}"}}]),),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, tool_calls) VALUES ('child','assistant',?)",
+        (json.dumps([{"id": "c1", "call_id": "c1", "type": "function", "function": {"name": "terminal", "arguments": json.dumps({"command": "pytest -q"})}}]),),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, content, tool_name, tool_call_id) "
+        "VALUES ('child','tool',?,'terminal','c1')",
+        (json.dumps({"exit_code": 0}),),
+    )
+    conn.commit()
+    conn.close()
+
+    all_calls = trajectory.load_all_tool_calls(db)
+    root = trajectory.load_tool_calls(db)
+
+    assert [call["name"] for call in root] == ["delegate_task"]
+    assert [call["name"] for call in all_calls] == ["delegate_task", "terminal"]
+    result = trajectory.grade({"gates": ["verification_present"]}, root, "done", tmp_path, all_calls)
+    assert result[0]["status"] == "pass"
+
+
 def test_verification_present_is_unavailable_with_unparseable_records():
     calls = trajectory.ToolCalls(
         [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}],

@@ -205,6 +205,28 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
     return ToolCalls(calls, parse_errors)
 
 
+def load_all_tool_calls(db_path: Path) -> ToolCalls | None:
+    """Tool calls from every session, including delegate children."""
+    if not db_path.is_file():
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        ids = [row[0] for row in conn.execute("SELECT id FROM sessions ORDER BY started_at, id")]
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+    if not ids:
+        return None
+    calls = ToolCalls()
+    for session_id in ids:
+        part = load_tool_calls(db_path, session_id)
+        if part is not None:
+            calls.extend(part)
+            calls.parse_errors.extend(part.parse_errors)
+    return calls
+
+
 def _verification_segment(command: str) -> str | None:
     """The last shell segment when it is a test run, else None.
 
@@ -485,7 +507,13 @@ def _no_banned_tool(calls: list[dict] | None) -> dict:
     }
 
 
-def grade(expectations: dict, calls: list[dict], final_text: str, project: Path) -> list[dict]:
+def grade(
+    expectations: dict,
+    calls: list[dict],
+    final_text: str,
+    project: Path,
+    all_calls: list[dict] | None = None,
+) -> list[dict]:
     """Grade the declared gates. Unknown gate names are a harness error."""
     results = []
     for gate in expectations.get("gates", []):
@@ -494,7 +522,7 @@ def grade(expectations: dict, calls: list[dict], final_text: str, project: Path)
         elif gate == "verify_before_claim":
             results.append(_verify_before_claim(calls, final_text))
         elif gate == "verification_present":
-            results.append(_verification_present(calls))
+            results.append(_verification_present(all_calls if all_calls is not None else calls))
         elif gate == "no_banned_tool":
             results.append(_no_banned_tool(calls))
         else:

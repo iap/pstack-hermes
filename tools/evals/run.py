@@ -39,7 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from trajectory import grade as grade_trajectory
-from trajectory import load_tool_calls
+from trajectory import load_all_tool_calls, load_tool_calls
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
@@ -373,7 +373,8 @@ def run_case(
             calls = load_tool_calls(home / "state.db")
             if calls is None:
                 return "error", ["process: no readable session record"], []
-            process = grade_trajectory(case["process"], calls, proc.stdout, project)
+            all_calls = load_all_tool_calls(home / "state.db")
+            process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
         try:
             outcome_failures = check_outcomes(case, project)
         except Exception as exc:

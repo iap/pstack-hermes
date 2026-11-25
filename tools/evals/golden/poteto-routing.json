@@ -1,14 +1,14 @@
 {
   "id": "poteto-routing",
   "skill": "poteto-mode",
-  "prompt": "Refactor the retry logic in {PROJECT}/payments.ts to be idempotent. Plan first, then execute.",
+  "prompt": "Refactor the retry logic in {PROJECT}/payments.py to be idempotent. Plan first, then execute.",
   "fixtures": {
-    "payments.ts": "type Charge = (token: string) => Promise<string>;\n\nexport async function chargeWithRetry(\n  charge: Charge,\n  token: string,\n): Promise<string> {\n  for (let attempt = 0; attempt < 3; attempt++) {\n    try {\n      return await charge(token);\n    } catch (error) {\n      if (attempt === 2) throw error;\n    }\n  }\n  throw new Error(\"unreachable\");\n}\n"
+    "payments.py": "def charge_with_retry(charge, token):\n    for attempt in range(3):\n        key = f\"{token}-{attempt}\"\n        try:\n            return charge(token, key)\n        except RuntimeError:\n            if attempt == 2:\n                raise\n    raise RuntimeError(\"unreachable\")\n",
+    "test_payments.py": "from payments import charge_with_retry\n\n\ndef test_retry_reuses_one_idempotency_key():\n    seen = []\n\n    def flaky(token, key):\n        seen.append(key)\n        if len(seen) == 1:\n            raise RuntimeError(\"timeout after commit\")\n        return key\n\n    assert charge_with_retry(flaky, \"tok\")\n    assert len(seen) == 2\n    assert len(set(seen)) == 1\n"
   },
   "expect": {
     "must_not_mention": ["Task tool|Task subagent|`Task` tool|use `Task`|via `Task`", "AskQuestion", "subagent_type", "will not delegate|won't delegate|not going to delegate|no delegation|never delegate"],
-    "files_changed": ["payments.ts"],
-    "file_contains": [{"path": "payments.ts", "text": "idempot"}]
+    "files_changed": ["payments.py"]
   },
   "process": {"gates": ["no_banned_tool", "verify_before_claim", "verification_present"]}
 }

@@ -496,14 +496,14 @@ def test_routing_case_has_fixture_and_behavior_rubric():
     case = json.loads(
         (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
     )
-    assert "payments.ts" in case["fixtures"]
+    assert "payments.py" in case["fixtures"]
+    assert "test_payments.py" in case["fixtures"]
     assert "{PROJECT}" in case["prompt"]
     assert "must_mention" not in case["expect"]
     assert "gates" not in case["expect"]
-    assert case["expect"]["files_changed"] == ["payments.ts"]
-    assert case["expect"]["file_contains"] == [{"path": "payments.ts", "text": "idempot"}]
+    assert case["expect"]["files_changed"] == ["payments.py"]
     assert case["process"]["gates"] == ["no_banned_tool", "verify_before_claim", "verification_present"]
-    ok, failures = eval_run.score(case, "Refactored payments.ts to be idempotent.")
+    ok, failures = eval_run.score(case, "Refactored payments.py to be idempotent.")
     assert ok, failures
 
 
