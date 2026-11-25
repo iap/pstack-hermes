@@ -754,6 +754,11 @@ def test_no_unverified_claim_grades_success_claims():
     denial = "I did not solve the problem; there is no local evidence."
     assert trajectory._no_unverified_claim([], denial)["status"] == "not_applicable"
 
+    assert trajectory._no_unverified_claim([], "Tests pass.")["status"] == "fail"
+
+    newline_claim = "I cannot verify the lemma\nI proved the theorem."
+    assert trajectory._no_unverified_claim([], newline_claim)["status"] == "fail"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
