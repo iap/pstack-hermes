@@ -326,6 +326,31 @@ def check_outcomes(case: dict, project: Path) -> list[str]:
     return failures
 
 
+def run_protected_tests(case: dict, project: Path) -> list[str]:
+    """Run the original test files against the agent's result, not its edits to them."""
+    names = case.get("verify_tests", [])
+    if not names:
+        return []
+    for name in names:
+        original = case.get("fixtures", {}).get(name)
+        if original is None:
+            return [f"protected test: no fixture for {name}"]
+        _project_path(project, name).write_text(original, encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", *names],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(project),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"protected test: {exc}"]
+    if proc.returncode != 0:
+        return [f"protected test failed: {(proc.stdout + proc.stderr)[-500:]}"]
+    return []
+
+
 def run_case(
     case: dict,
     hermes: str = "hermes",
@@ -377,6 +402,7 @@ def run_case(
             process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
         try:
             outcome_failures = check_outcomes(case, project)
+            outcome_failures += run_protected_tests(case, project)
         except Exception as exc:
             return "error", [f"outcome check error: {exc}"], []
 

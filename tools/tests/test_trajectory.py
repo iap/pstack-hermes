@@ -629,6 +629,51 @@ def test_verification_present_requires_a_passing_test_command():
     assert trajectory._verification_present(masked)["status"] == "unavailable"
 
 
+def test_all_calls_preserve_cross_session_order(tmp_path):
+    db = tmp_path / "state.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, "
+        "content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO sessions VALUES (?, ?, ?)",
+        [("parent", None, 1.0), ("child", "parent", 2.0)],
+    )
+    for index, (session, exit_code) in enumerate([("parent", 0), ("child", 1)]):
+        call_id = f"c{index}"
+        conn.execute(
+            "INSERT INTO messages (session_id, role, tool_calls) VALUES (?, 'assistant', ?)",
+            (
+                session,
+                json.dumps(
+                    [
+                        {
+                            "id": call_id,
+                            "call_id": call_id,
+                            "function": {
+                                "name": "terminal",
+                                "arguments": json.dumps({"command": "pytest -q"}),
+                            },
+                        }
+                    ]
+                ),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO messages (session_id, role, content, tool_name, tool_call_id) "
+            "VALUES (?, 'tool', ?, 'terminal', ?)",
+            (session, json.dumps({"exit_code": exit_code}), call_id),
+        )
+    conn.commit()
+    conn.close()
+
+    calls = trajectory.load_all_tool_calls(db)
+
+    assert [call["exit_code"] for call in calls if call["name"] == "terminal"] == [0, 1]
+
+
 def test_verification_present_sees_delegate_child_calls(tmp_path):
     db = tmp_path / "state.db"
     conn = sqlite3.connect(db)

@@ -490,6 +490,22 @@ def test_routing_rubric_contract():
         assert ok is expected, f"{name}: expected {expected}, got {ok} ({failures})"
 
 
+def test_protected_tests_restore_the_fixture_and_check_the_result(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    test = "def test_ok():\n    assert True\n"
+    case = {"fixtures": {"test_payments.py": test}, "verify_tests": ["test_payments.py"]}
+    (project / "test_payments.py").write_text("tampered", encoding="utf-8")
+
+    assert eval_run.run_protected_tests(case, project) == []
+    assert (project / "test_payments.py").read_text(encoding="utf-8") == test
+
+    case["fixtures"]["test_payments.py"] = "def test_bad():\n    assert False\n"
+    failures = eval_run.run_protected_tests(case, project)
+    assert failures
+    assert "protected test failed" in failures[0]
+
+
 def test_routing_case_has_fixture_and_behavior_rubric():
     import json
 
@@ -502,6 +518,7 @@ def test_routing_case_has_fixture_and_behavior_rubric():
     assert "must_mention" not in case["expect"]
     assert "gates" not in case["expect"]
     assert case["expect"]["files_changed"] == ["payments.py"]
+    assert case["verify_tests"] == ["test_payments.py"]
     assert case["process"]["gates"] == ["no_banned_tool", "verify_before_claim", "verification_present"]
     ok, failures = eval_run.score(case, "Refactored payments.py to be idempotent.")
     assert ok, failures

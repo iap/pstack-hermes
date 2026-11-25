@@ -120,36 +120,7 @@ def _root_session_id(conn: sqlite3.Connection) -> str | None:
     return row[0] if row else None
 
 
-def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls | None:
-    """Ordered tool calls from one session (default: root), or None when unreadable.
-
-    Each item: {"name": str, "args": dict, "exit_code": int | None}.
-    ``exit_code`` is filled from the matching terminal result when present.
-    ``parse_errors`` records rows whose calls or arguments could not be read.
-    """
-    if not db_path.is_file():
-        return None
-    try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    except sqlite3.Error:
-        return None
-    try:
-        if session_id is None:
-            session_id = _root_session_id(conn)
-        if session_id is None:
-            # A database with no session is not an empty trajectory: the run
-            # left no record, and a process gate must not read that as clean.
-            return None
-        rows = conn.execute(
-            "SELECT role, content, tool_calls, tool_name, tool_call_id "
-            "FROM messages WHERE session_id = ? ORDER BY id",
-            (session_id,),
-        ).fetchall()
-    except sqlite3.Error:
-        return None
-    finally:
-        conn.close()
-
+def _parse_message_rows(rows) -> ToolCalls:
     exits: dict[str, int] = {}
     for role, content, _calls, tool_name, call_id in rows:
         if role != "tool" or not call_id or tool_name != "terminal":
@@ -205,26 +176,55 @@ def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls |
     return ToolCalls(calls, parse_errors)
 
 
-def load_all_tool_calls(db_path: Path) -> ToolCalls | None:
-    """Tool calls from every session, including delegate children."""
+def load_tool_calls(db_path: Path, session_id: str | None = None) -> ToolCalls | None:
+    """Ordered tool calls from one session (default: root), or None when unreadable.
+
+    Each item: {"name": str, "args": dict, "exit_code": int | None}.
+    ``exit_code`` is filled from the matching terminal result when present.
+    ``parse_errors`` records rows whose calls or arguments could not be read.
+    """
     if not db_path.is_file():
         return None
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        ids = [row[0] for row in conn.execute("SELECT id FROM sessions ORDER BY started_at, id")]
+    except sqlite3.Error:
+        return None
+    try:
+        if session_id is None:
+            session_id = _root_session_id(conn)
+        if session_id is None:
+            # A database with no session is not an empty trajectory: the run
+            # left no record, and a process gate must not read that as clean.
+            return None
+        rows = conn.execute(
+            "SELECT role, content, tool_calls, tool_name, tool_call_id "
+            "FROM messages WHERE session_id = ? ORDER BY id",
+            (session_id,),
+        ).fetchall()
     except sqlite3.Error:
         return None
     finally:
         conn.close()
-    if not ids:
+
+    return _parse_message_rows(rows)
+
+
+def load_all_tool_calls(db_path: Path) -> ToolCalls | None:
+    """Tool calls from every session in global message order, including children."""
+    if not db_path.is_file():
         return None
-    calls = ToolCalls()
-    for session_id in ids:
-        part = load_tool_calls(db_path, session_id)
-        if part is not None:
-            calls.extend(part)
-            calls.parse_errors.extend(part.parse_errors)
-    return calls
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        rows = conn.execute(
+            "SELECT role, content, tool_calls, tool_name, tool_call_id FROM messages ORDER BY id"
+        ).fetchall()
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+    if not rows:
+        return None
+    return _parse_message_rows(rows)
 
 
 def _verification_segment(command: str) -> str | None:

@@ -50,7 +50,9 @@ not name the skill or the tools it used. Add `expect.files_changed` (paths that
 must differ from their fixture baseline) and `expect.file_contains`
 (`{path, text}` pairs) so a run cannot pass by delegating unrelated work.
 `process.gates: ["verification_present"]` requires a passing test command even
-when the reply makes no tests-pass claim.
+when the reply makes no tests-pass claim, and reads delegate-child sessions.
+`verify_tests` lists fixture test files restored from their original contents
+and run after the agent finishes, so edits to the tests cannot weaken the case.
 
 ## Known limitation: oneshot cwd
 
