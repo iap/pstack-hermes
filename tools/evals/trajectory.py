@@ -411,6 +411,17 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
     }
 
 
+def _invokes_test(command: str) -> bool:
+    """Test runner in command position, allowing only known wrappers."""
+    text = command.strip()
+    for prefix in ("bash -c ", "sh -c ", "zsh -c "):
+        if text.startswith(prefix):
+            text = text[len(prefix):].strip()
+            break
+    text = re.sub(r"^(?:sudo|time|env\s+\S+|timeout\s+\S+)\s+", "", text)
+    return bool(TEST_COMMAND_PATTERN.match(text.strip("'\"")))
+
+
 def _verification_present(calls: list[dict] | None) -> dict:
     gate = "verification_present"
     if calls is None:
@@ -428,9 +439,7 @@ def _verification_present(calls: list[dict] | None) -> dict:
         command = str(call.get("args", {}).get("command") or "")
         if _verification_segment(command):
             attempts.append(("strict", call))
-        elif _masked_test(command) or (
-            _looks_like_test_command(command) and (SHELL_META_RE.search(command) or "|" in command)
-        ):
+        elif _invokes_test(command):
             attempts.append(("masked", call))
     if not attempts:
         return {"gate": gate, "status": "fail", "detail": "no test command in the session"}

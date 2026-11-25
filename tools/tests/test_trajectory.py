@@ -655,3 +655,9 @@ def test_verification_present_grades_the_final_test_attempt():
 
     passing_then_search = [call("pytest -q", 0), call("grep pytest README", 0)]
     assert trajectory._verification_present(passing_then_search)["status"] == "pass"
+
+    passing_then_piped_search = [call("pytest -q", 0), call("grep pytest README | head", 0)]
+    assert trajectory._verification_present(passing_then_piped_search)["status"] == "pass"
+
+    for wrapped in ("bash -c 'pytest -q'", "timeout 60 pytest -q", "pytest -q | tee out"):
+        assert trajectory._verification_present([call(wrapped, 0)])["status"] == "unavailable"
