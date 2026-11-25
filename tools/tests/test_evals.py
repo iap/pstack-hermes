@@ -88,6 +88,34 @@ def test_main_selects_offline_and_all_arms(monkeypatch):
     assert seen == list(eval_run.ALL_ARMS)
 
 
+def test_main_fails_on_offline_rubric_failure(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    monkeypatch.setattr(
+        eval_run,
+        "run_case",
+        lambda case, hermes="hermes", arm="skill", model="", timeout=300: (
+            ("fail", ["no_unverified_claim"], []) if arm == eval_run.OFFLINE_ARM else ("pass", [], [])
+        ),
+    )
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", "all"]) == 1
+
+
+def test_main_errors_on_offline_runner_error(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    monkeypatch.setattr(
+        eval_run,
+        "run_case",
+        lambda case, hermes="hermes", arm="skill", model="", timeout=300: (
+            ("error", ["runner error"], []) if arm == eval_run.OFFLINE_ARM else ("pass", [], [])
+        ),
+    )
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", eval_run.OFFLINE_ARM]) == 2
+
+
 def test_run_case_seeds_fixture_before_hermes(monkeypatch, tmp_path):
     import subprocess
 

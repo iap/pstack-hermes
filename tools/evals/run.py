@@ -567,6 +567,8 @@ def main(argv: list[str] | None = None) -> int:
     errors = 0
     skill_errors = 0
     skill_failed = 0
+    offline_errors = 0
+    offline_failed = 0
     target = Path(args.json_out) if args.json_out else None
     payload = None
     if target is not None:
@@ -613,6 +615,8 @@ def main(argv: list[str] | None = None) -> int:
                 # gate failure. Only the skill arm measures the method.
                 skill_errors += status == "error" and arm == "skill"
                 skill_failed += status == "fail" and arm == "skill"
+                offline_errors += status == "error" and arm == OFFLINE_ARM
+                offline_failed += status == "fail" and arm == OFFLINE_ARM
                 if payload is not None:
                     payload["summary"] = summarize(records, arms)
                     try:
@@ -623,7 +627,10 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = summarize(records, arms)
     _print_summary(summary, arms, args.reps)
-    print(f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s)")
+    print(
+        f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s), "
+        f"{offline_failed} offline-arm rubric failure(s)"
+    )
 
     if payload is not None:
         payload["summary"] = summary
@@ -635,9 +642,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"evals: wrote {target}")
 
     baseline_only = arms == ("baseline",)
-    if skill_errors or (baseline_only and errors):
+    if skill_errors or offline_errors or (baseline_only and errors):
         return 2
-    return 1 if skill_failed else 0
+    return 1 if skill_failed or offline_failed else 0
 
 
 if __name__ == "__main__":

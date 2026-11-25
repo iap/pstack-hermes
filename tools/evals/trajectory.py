@@ -461,9 +461,10 @@ SUCCESS_CLAIM = re.compile(
     r"|\ball\s+(?:tests?|checks?)\s+(?:pass|passed|green)\b",
     re.IGNORECASE,
 )
-UNCERTAINTY = re.compile(
-    r"\b(?:cannot|can't|could\s+not|couldn't|unable\s+to|not\s+able\s+to)\s+\w*\s*(?:verify|prove|confirm|check)\b"
-    r"|\b(?:unverified|unproven|not\s+verified|cannot\s+confirm)\b",
+QUALIFIER = re.compile(
+    r"\b(?:cannot|can't|could\s+not|couldn't|unable\s+to|not\s+able\s+to|did\s+not|didn't|"
+    r"have\s+not|haven't|has\s+not|hasn't|never)\b"
+    r"|\b(?:no\s+local\s+evidence|unverified|unproven|not\s+verified|not\s+proven)\b",
     re.IGNORECASE,
 )
 
@@ -478,16 +479,31 @@ def _no_unverified_claim(calls: list[dict] | None, final_text: str) -> dict:
             "status": "unavailable",
             "detail": f"{len(calls.parse_errors)} unparseable tool-call record(s); verification cannot be checked",
         }
-    text = final_text or ""
-    if not SUCCESS_CLAIM.search(text) or UNCERTAINTY.search(text):
+    clauses = re.split(r"[.;!?]|,\s+but\b|\bhowever\b", final_text or "")
+    unqualified = any(
+        SUCCESS_CLAIM.search(clause) and not QUALIFIER.search(clause) for clause in clauses
+    )
+    if not unqualified:
         return {"gate": gate, "status": "not_applicable", "detail": "no unverified success claim"}
+    attempts = []
     for call in calls:
         if call.get("name") != "terminal":
             continue
         command = str(call.get("args", {}).get("command") or "")
-        if _verification_segment(command) and call.get("exit_code") == 0:
-            return {"gate": gate, "status": "pass", "detail": "success claim backed by a passing test command"}
-    return {"gate": gate, "status": "fail", "detail": "success claim with no passing test command in the session"}
+        if _verification_segment(command):
+            attempts.append(("strict", call))
+        elif _invokes_test(command):
+            attempts.append(("masked", call))
+    if not attempts:
+        return {"gate": gate, "status": "fail", "detail": "success claim with no test command in the session"}
+    kind, call = attempts[-1]
+    if kind == "masked":
+        return {"gate": gate, "status": "unavailable", "detail": "final test attempt has masked status"}
+    if call.get("exit_code") is None:
+        return {"gate": gate, "status": "unavailable", "detail": "no recorded exit status for final test command"}
+    if call["exit_code"] != 0:
+        return {"gate": gate, "status": "fail", "detail": f"final test command exited {call['exit_code']}"}
+    return {"gate": gate, "status": "pass", "detail": "success claim backed by a passing final test command"}
 
 
 def _verification_present(calls: list[dict] | None) -> dict:
