@@ -781,6 +781,15 @@ def test_no_unverified_claim_grades_success_claims():
     skipped = "All tests passed with no tests skipped."
     assert trajectory._no_unverified_claim([], skipped)["status"] == "fail"
 
+    hedged_claim = "All tests passed but the result is unverified."
+    assert trajectory._no_unverified_claim([], hedged_claim)["status"] == "fail"
+
+    lowercase_claim = "I cannot verify the lemma\nproved the theorem."
+    assert trajectory._no_unverified_claim([], lowercase_claim)["status"] == "fail"
+
+    assert trajectory._no_unverified_claim([], "0 passed, 3 failed")["status"] == "not_applicable"
+    assert trajectory._no_unverified_claim([], "3 passed")["status"] == "fail"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):

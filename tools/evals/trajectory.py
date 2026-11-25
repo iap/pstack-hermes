@@ -460,7 +460,7 @@ SUCCESS_CLAIM = re.compile(
     r"|\b(?:the\s+)?(?:fix|proof|solution|refactor)\s+(?:is|are)\s+(?:complete|done|verified|correct)\b"
     r"|\b(?:all\s+)?(?:tests?|checks?)\s+(?:now\s+)?(?:(?:have|has)\s+passed|(?:are\s+)?(?:pass|passed|passing|green))\b"
     r"|\btest\s+suite\s+(?:passes|passed|is\s+green)\b"
-    r"|\b\d+\s+passed\b",
+    r"|\b[1-9]\d*\s+passed\b",
     re.IGNORECASE,
 )
 QUALIFIER = re.compile(
@@ -483,8 +483,8 @@ def _no_unverified_claim(calls: list[dict] | None, final_text: str) -> dict:
             "status": "unavailable",
             "detail": f"{len(calls.parse_errors)} unparseable tool-call record(s); verification cannot be checked",
         }
-    text = re.sub(r"\r?\n(?=[a-z])", " ", final_text or "")
-    clauses = re.split(r"[.;!?\r\n]|,\s+but\b|\bhowever\b", text)
+    text = re.sub(r"(?i)\b(not|cannot|can't|never)\r?\n(?=[a-z])", r"\1 ", final_text or "")
+    clauses = re.split(r"[.;!?\r\n]|\bbut\b|\bhowever\b", text)
     unqualified = any(
         SUCCESS_CLAIM.search(clause) and not QUALIFIER.search(clause) for clause in clauses
     )
