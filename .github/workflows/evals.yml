@@ -7,16 +7,49 @@ name: evals
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner label with hermes and a configured home (hosted ubuntu-latest always fails the guard)"
+        type: string
+        default: ubuntu-latest
+      tasks:
+        description: "Comma-separated golden case ids (blank = every case, requires reps=1)"
+        type: string
+        default: poteto-routing
+      arm:
+        description: "Which arms to run"
+        type: choice
+        options:
+          - both
+          - skill
+          - baseline
+        default: both
+      reps:
+        description: "Runs per case (3 minimum before calling a delta real)"
+        type: number
+        default: 3
+      timeout:
+        description: "Per-case seconds (skill arm needs more than 420s)"
+        type: number
+        default: 1200
+      model:
+        description: "Provider model slug (blank = runner default)"
+        type: string
+        default: ""
+      lifecycle:
+        description: "Also run the installed-user lifecycle"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   golden:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     # The golden tasks can take 15 minutes; the lifecycle install adds a clone,
     # an install, a remove, a pinned reinstall and an update on top of that.
-    timeout-minutes: 45
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -41,11 +74,78 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Run golden-task evals
-        run: uv run --frozen python tools/evals/run.py
+      - name: Reject infeasible sweep inputs
+        shell: bash
+        env:
+          TASKS: ${{ inputs.tasks }}
+          REPS: ${{ inputs.reps }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TASKS" ] && [ "$REPS" -gt 1 ]; then
+            echo "::error::blank tasks with reps>1 exceeds the job budget; name a case or use reps=1"
+            exit 1
+          fi
 
-      # The lifecycle half: the golden tasks prove the method, this proves the
-      # artifact users receive installs, removes, re-pins and updates. Same
-      # runner requirement (hermes + a configured home), same fail-closed guard.
+      - name: Run golden-task evals
+        shell: bash
+        env:
+          TASKS: ${{ inputs.tasks }}
+          ARM: ${{ inputs.arm }}
+          REPS: ${{ inputs.reps }}
+          TIMEOUT: ${{ inputs.timeout }}
+          MODEL: ${{ inputs.model }}
+        run: |
+          set -euo pipefail
+          args=(--arm "$ARM" --reps "$REPS" --timeout "$TIMEOUT" --json-out "$RUNNER_TEMP/sweep.json")
+          if [ -n "$TASKS" ]; then
+            args+=(--tasks "$TASKS")
+          fi
+          if [ -n "$MODEL" ]; then
+            args+=(--model "$MODEL")
+          fi
+          uv run --frozen python tools/evals/run.py "${args[@]}"
+
+      - name: Publish sweep summary
+        if: always()
+        shell: bash
+        run: |
+          uv run --frozen python - "$RUNNER_TEMP/sweep.json" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          src, out = Path(sys.argv[1]), Path(sys.argv[2])
+          if not src.is_file():
+              with out.open("a", encoding="utf-8") as fh:
+                  fh.write("evals: no sweep record to summarize\n")
+              raise SystemExit(0)
+          data = json.loads(src.read_text(encoding="utf-8"))
+
+          def rate(cell):
+              scored = cell.get("total", 0) - cell.get("error", 0)
+              return cell.get("pass", 0) / scored * 100 if scored else None
+
+          lines = ["| case | skill | baseline | delta |", "|---|---|---|---|"]
+          for row in data.get("summary", []):
+              def cell(arm):
+                  c = row.get(arm, {"pass": 0, "total": 0, "error": 0})
+                  return f"{c['pass']}/{c['total']}" + (f" ({c['error']} error)" if c["error"] else "")
+              skill, base = row.get("skill", {}), row.get("baseline", {})
+              s, b = rate(skill), rate(base)
+              delta = f"{s - b:+.0f}pp" if s is not None and b is not None else "n/a"
+              lines.append(f"| {row['case']} | {cell('skill')} | {cell('baseline')} | {delta} |")
+          with out.open("a", encoding="utf-8") as fh:
+              fh.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload sweep record
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evals-sweep
+          path: ${{ runner.temp }}/sweep.json
+          if-no-files-found: warn
+
       - name: Installed-user lifecycle
+        if: ${{ inputs.lifecycle }}
         run: uv run --frozen python tools/evals/install_smoke.py

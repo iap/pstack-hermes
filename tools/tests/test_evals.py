@@ -53,7 +53,138 @@ def test_build_argv_baseline_arm_omits_skill_flags():
     assert argv == ["hermes", "-z", "do it"]
 
 
-def test_seed_home_skill_arm_registers_checkout_skills(tmp_path):
+def test_build_argv_resolves_project_token():
+    argv = eval_run.build_argv(
+        {"prompt": "edit {PROJECT}/payments.ts"}, "hermes", "skill", "", Path("/tmp/eval-project")
+    )
+    assert argv[2] == "edit /tmp/eval-project/payments.ts"
+
+
+def test_run_case_seeds_fixture_before_hermes(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["fixture"] = Path(argv[2]).parent.joinpath("payments.ts").read_text(encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    case = {
+        "id": "demo",
+        "prompt": "{PROJECT}/payments.ts",
+        "fixtures": {"payments.ts": "export const ok = true;\n"},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "pass", failures
+    assert seen["argv"][2].endswith("/payments.ts")
+    assert "export const ok = true;" in seen["fixture"]
+
+
+def test_run_case_fails_when_fixture_is_unchanged(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    monkeypatch.setattr(
+        eval_run.subprocess,
+        "run",
+        lambda argv, **k: subprocess.CompletedProcess(argv, 0, stdout="done", stderr=""),
+    )
+    case = {
+        "id": "demo",
+        "prompt": "do it",
+        "fixtures": {"payments.ts": "original\n"},
+        "expect": {"files_changed": ["payments.ts"]},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "fail"
+    assert any("payments.ts unchanged" in line for line in failures)
+
+
+def test_run_case_detects_a_changed_fixture(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+
+    def fake_run(argv, **k):
+        target = Path(argv[2]).parent / "payments.ts"
+        target.write_text("idempotent retry\n", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, stdout="done", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    case = {
+        "id": "demo",
+        "prompt": "{PROJECT}/payments.ts",
+        "fixtures": {"payments.ts": "original\n"},
+        "expect": {
+            "files_changed": ["payments.ts"],
+            "file_contains": [{"path": "payments.ts", "text": "idempotent"}],
+        },
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "pass", failures
+
+
+def test_run_case_rejects_a_failed_all_session_read(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    def fake_run(argv, **k):
+        _fake_session_db(Path(k["env"]["HERMES_HOME"]), [])
+        return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    monkeypatch.setattr(eval_run, "load_all_tool_calls", lambda *a, **k: None)
+    case = {
+        "id": "demo",
+        "prompt": "do it",
+        "process": {"gates": ["verification_present"]},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "error"
+    assert any("all-session record" in line for line in failures)
+
+
+def test_run_case_rejects_fixture_path_escape(monkeypatch, tmp_path):
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    case = {
+        "id": "demo",
+        "prompt": "do it",
+        "fixtures": {"../escape.txt": "nope\n"},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "error"
+    assert any("escapes project" in line for line in failures)
+
+
+def test_seed_home_skill_arm_registers_a_snapshot_not_the_checkout(tmp_path):
     active = tmp_path / "active"
     active.mkdir()
     (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
@@ -63,20 +194,40 @@ def test_seed_home_skill_arm_registers_checkout_skills(tmp_path):
 
     import yaml
 
-    data = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8"))
-    assert eval_run.CHECKOUT_SKILLS in data["skills"]["external_dirs"]
+    dirs = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8"))["skills"]["external_dirs"]
+    assert eval_run.CHECKOUT_SKILLS not in dirs
+    assert dirs == [str(home / eval_run.SKILL_SNAPSHOT)]
+    assert (home / eval_run.SKILL_SNAPSHOT / "poteto-mode" / "SKILL.md").is_file()
+    shim = home / eval_run.SKILL_SNAPSHOT / "poteto-mode" / "scripts" / "check-plan.mjs"
+    assert (shim.parent / "../../../scripts/check-plan.mjs").resolve() == (home / "scripts" / "check-plan.mjs").resolve()
+    assert (home / "scripts" / "check-plan.mjs").is_file()
+
+
+def test_skill_snapshot_cannot_modify_the_checkout(tmp_path):
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    home = tmp_path / "home"
+
+    eval_run.seed_home(home, active, register_checkout_skills=True)
+
+    original = (eval_run.ROOT / "skills" / "poteto-mode" / "SKILL.md").read_bytes()
+    (home / eval_run.SKILL_SNAPSHOT / "poteto-mode" / "SKILL.md").write_text("tampered", encoding="utf-8")
+    assert (eval_run.ROOT / "skills" / "poteto-mode" / "SKILL.md").read_bytes() == original
 
 
 def test_seed_home_baseline_arm_prunes_checkout_skills_but_keeps_others(tmp_path):
     active = tmp_path / "active"
     active.mkdir()
+    home = tmp_path / "home"
+    snapshot = home / eval_run.SKILL_SNAPSHOT
     (active / "config.yaml").write_text(
         "skills:\n  external_dirs:\n"
         f"    - {eval_run.CHECKOUT_SKILLS}\n"
+        f"    - {snapshot}\n"
         "    - /opt/other-skills\n",
         encoding="utf-8",
     )
-    home = tmp_path / "home"
 
     eval_run.seed_home(home, active, register_checkout_skills=False)
 
@@ -85,6 +236,7 @@ def test_seed_home_baseline_arm_prunes_checkout_skills_but_keeps_others(tmp_path
     data = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8"))
     dirs = data["skills"]["external_dirs"]
     assert eval_run.CHECKOUT_SKILLS not in dirs
+    assert str(snapshot) not in dirs
     assert "/opt/other-skills" in dirs
 
 
@@ -185,6 +337,8 @@ def _fake_session_db(home, calls):
         "role TEXT, content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
     )
     conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1','user','do it')")
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1','assistant','ok')")
     for index, (name, args, exit_code) in enumerate(calls):
         call_id = f"c{index}"
         payload = [{"call_id": call_id, "function": {"name": name, "arguments": json.dumps(args)}}]
@@ -361,6 +515,57 @@ def test_routing_rubric_contract():
         assert ok is expected, f"{name}: expected {expected}, got {ok} ({failures})"
 
 
+def test_protected_tests_restore_the_fixture_and_check_the_result(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    protected = tmp_path / "protected"
+    test = "def test_ok():\n    assert True\n"
+    case = {"fixtures": {"test_payments.py": test}, "verify_tests": ["test_payments.py"]}
+    (project / "pytest.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+
+    assert eval_run.run_protected_tests(case, project, protected) == []
+    assert (protected / "test_payments.py").read_text(encoding="utf-8") == test
+
+    case["fixtures"]["test_payments.py"] = "def test_bad():\n    assert False\n"
+    failures = eval_run.run_protected_tests(case, project, protected)
+    assert failures
+    assert "protected test failed" in failures[0]
+
+
+def test_protected_test_wins_over_files_changed_overlap(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    protected = tmp_path / "protected"
+    original = "def test_ok():\n    assert True\n"
+    case = {
+        "fixtures": {"test_payments.py": original},
+        "verify_tests": ["test_payments.py"],
+        "expect": {"files_changed": ["test_payments.py"]},
+    }
+    (project / "test_payments.py").write_text("def test_bad():\n    assert False\n", encoding="utf-8")
+
+    assert eval_run.run_protected_tests(case, project, protected) == []
+    assert (protected / "test_payments.py").read_text(encoding="utf-8") == original
+
+
+def test_routing_case_has_fixture_and_behavior_rubric():
+    import json
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "poteto-routing.json").read_text()
+    )
+    assert "payments.py" in case["fixtures"]
+    assert "test_payments.py" in case["fixtures"]
+    assert "{PROJECT}" in case["prompt"]
+    assert "must_mention" not in case["expect"]
+    assert "gates" not in case["expect"]
+    assert case["expect"]["files_changed"] == ["payments.py"]
+    assert case["verify_tests"] == ["test_payments.py"]
+    assert case["process"]["gates"] == ["no_banned_tool", "verify_before_claim", "verification_present"]
+    ok, failures = eval_run.score(case, "Refactored payments.py to be idempotent.")
+    assert ok, failures
+
+
 def test_build_env_is_isolated_and_marks_a_supervised_child(tmp_path):
     before = dict(__import__("os").environ)
 
@@ -378,6 +583,7 @@ def test_tasks_filter_rejects_an_unknown_id(capsys):
 
 def test_tasks_filter_runs_only_the_named_case(monkeypatch):
     monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     seen = []
 
     def fake_run(case, hermes="hermes", arm="skill", model="", timeout=300):
@@ -554,6 +760,73 @@ def test_preflight_timeout_is_configurable(monkeypatch):
     assert seen["timeout"] == 120
 
 
+def test_session_probe_accepts_a_recorded_run(monkeypatch):
+    import subprocess
+
+    seen = {}
+
+    def fake_run(argv, **k):
+        seen["argv"] = argv
+        _fake_session_db(Path(k["env"]["HERMES_HOME"]), [])
+        return subprocess.CompletedProcess(argv, 0, stdout="OK\n", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+    ok, detail = eval_run.probe_session_record("hermes", model="vendor/model:free")
+
+    assert ok, detail
+    assert detail == "one-shot session record readable"
+    assert seen["argv"][-2:] == ["-m", "vendor/model:free"]
+
+
+def test_session_probe_rejects_a_host_without_session_records(monkeypatch):
+    import subprocess
+
+    monkeypatch.setattr(
+        eval_run.subprocess,
+        "run",
+        lambda argv, **k: subprocess.CompletedProcess(argv, 0, stdout="OK\n", stderr=""),
+    )
+
+    ok, detail = eval_run.probe_session_record("hermes")
+
+    assert not ok
+    assert "no readable user and assistant turn" in detail
+
+
+def test_session_probe_rejects_a_session_without_turns(monkeypatch):
+    import sqlite3
+    import subprocess
+
+    def fake_run(argv, **k):
+        home = Path(k["env"]["HERMES_HOME"])
+        conn = sqlite3.connect(home / "state.db")
+        conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL)")
+        conn.execute("CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT)")
+        conn.execute("INSERT INTO sessions VALUES ('s1', 1.0)")
+        conn.commit()
+        conn.close()
+        return subprocess.CompletedProcess(argv, 0, stdout="OK\n", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+
+    ok, detail = eval_run.probe_session_record("hermes")
+
+    assert not ok
+    assert "no readable user and assistant turn" in detail
+
+
+def test_main_stops_before_cases_when_session_probe_fails(monkeypatch, capsys):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "v"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (False, "no session"))
+    called = []
+    monkeypatch.setattr(eval_run, "run_case", lambda *a, **k: called.append(1))
+
+    assert eval_run.main(["--tasks", "poteto-routing"]) == 2
+    assert called == []
+    assert "session probe failed" in capsys.readouterr().err
+
+
 def test_invalid_timeouts_are_rejected(capsys):
     assert eval_run.main(["--timeout", "0"]) == 2
     assert "--timeout" in capsys.readouterr().err
@@ -561,6 +834,7 @@ def test_invalid_timeouts_are_rejected(capsys):
 
 def test_json_out_records_every_run(monkeypatch, tmp_path):
     monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "Hermes Agent v9"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
 
     def fake_run(case, hermes="hermes", arm="skill", model="", timeout=300):
         if arm == "skill":
@@ -591,6 +865,7 @@ def test_json_out_records_every_run(monkeypatch, tmp_path):
 
 def test_json_out_write_failure_is_an_error(monkeypatch, tmp_path):
     monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "v"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     monkeypatch.setattr(eval_run, "run_case", lambda *a, **k: ("pass", [], []))
     blocker = tmp_path / "blocker"
     blocker.write_text("not a directory", encoding="utf-8")
@@ -602,6 +877,7 @@ def test_json_out_write_failure_is_an_error(monkeypatch, tmp_path):
 
 def test_json_out_failure_keeps_the_previous_sweep(monkeypatch, tmp_path):
     monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "v"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     monkeypatch.setattr(eval_run, "run_case", lambda *a, **k: ("pass", [], []))
     target = tmp_path / "sweep.json"
     target.write_text("previous sweep", encoding="utf-8")

@@ -29,11 +29,30 @@ python3 tools/evals/install_smoke.py --keep         # keep the temp HERMES_HOME
 uv run --frozen pytest -q tools/tests/test_evals.py tools/tests/test_install_smoke.py
 ```
 
+## Isolation
+
+The skill arm registers a per-run copy of `skills/` inside the isolated
+`HERMES_HOME` (node_modules and caches excluded), never the checkout path;
+baseline arms prune both paths from the copied config. A live run that edits a
+skill edits the copy — `git status` should stay clean after a sweep.
+
 ## Add a golden task
 
 Drop `golden/<id>.json` with `prompt`, `expect.must_mention`,
 `expect.must_not_mention` (Cursor vocab belongs here), and `gates`
 (concepts the response must name, e.g. plan/verify/evidence).
+
+Prompts that touch files need `fixtures`: a map of relative path to file
+contents, written into the run's empty temp project before the model starts.
+Use `{PROJECT}` in the prompt for that project's absolute path. Prefer
+`process.gates` over text checks for behavior — a correct final answer need
+not name the skill or the tools it used. Add `expect.files_changed` (paths that
+must differ from their fixture baseline) and `expect.file_contains`
+(`{path, text}` pairs) so a run cannot pass by delegating unrelated work.
+`process.gates: ["verification_present"]` requires a passing test command even
+when the reply makes no tests-pass claim, and reads delegate-child sessions.
+`verify_tests` lists fixture test files restored from their original contents
+and run after the agent finishes, so edits to the tests cannot weaken the case.
 
 ## Known limitation: oneshot cwd
 
@@ -73,6 +92,9 @@ session record (`$HERMES_HOME/state.db`):
   gate `unavailable`, never a pass. Tool names and argument keys are compared
   case-insensitively, so prose formatting cannot hide a call. The loader grades
   the root session, not a later `delegate_task` child session.
+- `verification_present` — a passing test command must exist even when the
+  reply makes no tests-pass claim. It grades the final test attempt across the
+  root **and delegate child** sessions; a masked final attempt is `unavailable`.
 
 `unavailable` is reported as a runner error, never folded into a pass: a grader
 that cannot see the evidence says so. These gates are unit-tested against

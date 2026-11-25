@@ -4,14 +4,15 @@
 Runs each tools/evals/golden/*.json prompt via `hermes -z` with the case's
 skill preloaded (--skills), in an isolated HERMES_HOME seeded from the
 active home's config.yaml/.env (provider access), with skills.external_dirs
-pointing at this checkout's skills/, and cwd in an empty temp project so
-live runs cannot modify the checkout. Rubric-scores the final response:
+pointing at a per-run snapshot of this checkout's skills/, and cwd in an
+empty temp project so live runs cannot write to the checkout. Rubric-scores
+the final response:
 every must_mention must appear, no must_not_mention may appear, every gate
 concept must appear. A non-zero hermes exit or timeout is a runner failure
 (exit 2), never a rubric pass. Exit 0 = all pass; 1 = any rubric failure.
 
 Arms (#212): `--arm skill` (default, unchanged) preloads the case skill and
-registers this checkout's skills; `--arm baseline` does neither, so the same
+registers a per-run snapshot of this checkout's skills; `--arm baseline` does neither, so the same
 prompt runs without the method; `--arm both` runs each case in both arms and
 prints the delta. `--reps N` repeats each case and reports pass counts, because
 a single rep cannot separate a rubric failure from run-to-run variance.
@@ -26,6 +27,7 @@ import argparse
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -37,12 +39,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from trajectory import grade as grade_trajectory
-from trajectory import load_tool_calls
+from trajectory import load_all_tool_calls, load_tool_calls
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
 CHECKOUT_SKILLS = str(ROOT / "skills")
+SKILL_SNAPSHOT = "eval-skills"
+PROJECT_TOKEN = "{PROJECT}"
 
 
 def load_golden(directory: Path = GOLDEN_DIR) -> list[dict]:
@@ -72,14 +76,22 @@ def score(case: dict, response: str) -> tuple[bool, list[str]]:
 
 
 def build_argv(
-    case: dict, hermes: str = "hermes", arm: str = "skill", model: str = ""
+    case: dict,
+    hermes: str = "hermes",
+    arm: str = "skill",
+    model: str = "",
+    project: Path | None = None,
 ) -> list[str]:
     """Command for one run. The baseline arm must not preload a skill.
 
     ``model`` pins the run to one provider model so a sweep is comparable; an
-    empty value leaves the host's configured default in place.
+    empty value leaves the host's configured default in place. ``project``
+    resolves the ``{PROJECT}`` token so prompts can name absolute fixture paths.
     """
-    argv = [hermes, "-z", case["prompt"]]
+    prompt = case["prompt"]
+    if project is not None:
+        prompt = prompt.replace(PROJECT_TOKEN, str(project))
+    argv = [hermes, "-z", prompt]
     skill = case.get("skill", "")
     if arm == "skill" and skill:
         argv += ["--skills", skill]
@@ -133,6 +145,63 @@ def preflight(hermes: str = "hermes", timeout: float = 60.0) -> tuple[bool, str]
     return True, (proc.stdout or proc.stderr).strip().splitlines()[0] if (proc.stdout or proc.stderr).strip() else "ok"
 
 
+def session_has_turns(db_path: Path) -> bool:
+    """True only when the record holds both a user turn and an assistant turn."""
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return False
+    try:
+        roles = {row[0] for row in conn.execute("SELECT DISTINCT role FROM messages")}
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+    return "user" in roles and "assistant" in roles
+
+
+def probe_session_record(
+    hermes: str = "hermes", timeout: float = 180.0, model: str = ""
+) -> tuple[bool, str]:
+    """Prove a one-shot run leaves a readable session record.
+
+    ``--version`` passes on hosts where every turn is executed by a gateway
+    that never persists a session; grading then reports "no readable session
+    record" for every case. Probe before a sweep so such a host fails in
+    seconds instead of hours.
+    """
+    with tempfile.TemporaryDirectory(prefix="pstack-probe-") as home_dir:
+        home = Path(home_dir)
+        active = os.environ.get("HERMES_HOME")
+        active_home = Path(active) if active else Path.home() / ".hermes"
+        try:
+            seed_home(home, active_home if active_home.is_dir() else None, register_checkout_skills=False)
+        except Exception as exc:
+            return False, f"session probe seed failed: {exc}"
+        env = build_env(home)
+        argv = [hermes, "-z", "Reply with OK"]
+        if model:
+            argv += ["-m", model]
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"session probe failed: {exc}"
+        if proc.returncode != 0:
+            tail = (proc.stdout + proc.stderr).strip()[-300:]
+            return False, f"session probe exited {proc.returncode}: {tail}"
+        db = home / "state.db"
+        for _ in range(5):
+            if session_has_turns(db) and load_tool_calls(db) is not None:
+                break
+            time.sleep(0.1)
+        else:
+            return False, (
+                "session probe left no readable user and assistant turn; "
+                "the gateway is not persisting one-shot turns for this HERMES_HOME"
+            )
+    return True, "one-shot session record readable"
+
+
 def build_env(home: Path) -> dict[str, str]:
     """Environment for one eval run.
 
@@ -153,13 +222,15 @@ def seed_home(
     active_home: Path | None,
     register_checkout_skills: bool = True,
 ) -> None:
-    """Copy provider config into the isolated home; optionally register checkout skills.
+    """Copy provider config into the isolated home; optionally register skills.
 
-    Baseline arms pass ``register_checkout_skills=False``: the checkout path is
-    removed from ``skills.external_dirs`` (if the copied config already lists
-    it) and never appended. Note this only removes *this checkout*; a skill
-    installed in the active home's own config is inherited on purpose, so keep
-    the eval host free of pstack installs when a clean baseline matters.
+    The skill arm copies this checkout's skills into ``<home>/eval-skills`` and
+    registers *that* path: a live run can edit the snapshot, never the package
+    under test. Baseline arms register nothing and prune both the checkout path
+    and any snapshot path from the copied config. Note this only removes *this
+    checkout*; a skill installed in the active home's own config is inherited
+    on purpose, so keep the eval host free of pstack installs when a clean
+    baseline matters.
     """
     home.mkdir(parents=True, exist_ok=True)
     config = home / "config.yaml"
@@ -188,20 +259,109 @@ def seed_home(
     try:
         import yaml
     except ImportError as exc:
-        raise RuntimeError("PyYAML is required to register checkout skills") from exc
+        raise RuntimeError("PyYAML is required to register eval skills") from exc
     data = {}
     if config.is_file():
         data = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
     skills = data.setdefault("skills", {})
     dirs = skills.setdefault("external_dirs", [])
+    snapshot = str(home / SKILL_SNAPSHOT)
+    dirs = [d for d in dirs if d not in (CHECKOUT_SKILLS, snapshot)]
     if register_checkout_skills:
-        if CHECKOUT_SKILLS not in dirs:
-            dirs.append(CHECKOUT_SKILLS)
-    else:
-        # Remove every occurrence: a config that lists the checkout twice would
-        # otherwise keep the method discoverable in the control arm.
-        skills["external_dirs"] = [d for d in dirs if d != CHECKOUT_SKILLS]
+        target = home / SKILL_SNAPSHOT
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(
+            ROOT / "skills",
+            target,
+            ignore=shutil.ignore_patterns("node_modules", "__pycache__", ".pytest_cache", ".DS_Store"),
+        )
+        scripts_dst = home / "scripts"
+        if scripts_dst.exists():
+            shutil.rmtree(scripts_dst)
+        shutil.copytree(
+            ROOT / "scripts",
+            scripts_dst,
+            ignore=shutil.ignore_patterns("node_modules", "__pycache__", ".pytest_cache", ".DS_Store"),
+        )
+        dirs.append(snapshot)
+    skills["external_dirs"] = dirs
     config.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+
+def _project_path(project: Path, relative: str) -> Path:
+    target = (project / relative).resolve()
+    if not target.is_relative_to(project.resolve()):
+        raise ValueError(f"path escapes project: {relative}")
+    return target
+
+
+def seed_fixtures(project: Path, case: dict) -> None:
+    """Write a case's fixtures into the temp project before the run."""
+    for relative, content in case.get("fixtures", {}).items():
+        target = _project_path(project, relative)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+
+
+def check_outcomes(case: dict, project: Path) -> list[str]:
+    """Assert the run changed and completed the fixture work, not just talked."""
+    expect = case.get("expect", {})
+    failures: list[str] = []
+    for relative in expect.get("files_changed", []):
+        target = _project_path(project, relative)
+        original = case.get("fixtures", {}).get(relative)
+        if original is None:
+            failures.append(f"files_changed: no fixture baseline for {relative}")
+        elif not target.is_file():
+            failures.append(f"files_changed: missing {relative}")
+        elif target.read_text(encoding="utf-8") == original:
+            failures.append(f"files_changed: {relative} unchanged")
+    for item in expect.get("file_contains", []):
+        target = _project_path(project, item["path"])
+        if not target.is_file():
+            failures.append(f"file_contains: missing {item['path']}")
+        elif item["text"].lower() not in target.read_text(encoding="utf-8").lower():
+            failures.append(f"file_contains: {item['path']} lacks {item['text']}")
+    return failures
+
+
+def run_protected_tests(case: dict, project: Path, protected: Path) -> list[str]:
+    """Run original tests against the agent's result from an agent-unwritable tree."""
+    names = case.get("verify_tests", [])
+    if not names:
+        return []
+    fixtures = case.get("fixtures", {})
+    changed = set(case.get("expect", {}).get("files_changed", []))
+    protected.mkdir(parents=True, exist_ok=True)
+    for name, original in fixtures.items():
+        target = _project_path(protected, name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if name in changed and name not in names:
+            source = _project_path(project, name)
+            if not source.is_file():
+                return [f"protected test: missing result {name}"]
+            target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            target.write_text(original, encoding="utf-8")
+    for name in names:
+        if name not in fixtures:
+            return [f"protected test: no fixture for {name}"]
+    env = {**os.environ, "PYTHONPATH": str(protected)}
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *names],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(protected),
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"protected test: {exc}"]
+    if proc.returncode != 0:
+        return [f"protected test failed: {(proc.stdout + proc.stderr)[-500:]}"]
+    return []
 
 
 def run_case(
@@ -209,7 +369,7 @@ def run_case(
     hermes: str = "hermes",
     arm: str = "skill",
     model: str = "",
-    timeout: float = 300,
+    timeout: float = 1200,
 ) -> tuple[str, list[str], list[dict]]:
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
     active = os.environ.get("HERMES_HOME")
@@ -217,12 +377,14 @@ def run_case(
     # Hermes may still be flushing state when the case returns; a cleanup race
     # must not abort the sweep (observed: OSError 66 'workspace').
     td = Path(tempfile.mkdtemp(prefix="pstack-eval-"))
+    outcome_failures: list[str] = []
     try:
         home = td / "home"
         project = td / "project"
         project.mkdir(parents=True)
         env = build_env(home)
         try:
+            seed_fixtures(project, case)
             seed_home(
                 home,
                 active_home if active_home.is_dir() else None,
@@ -232,7 +394,7 @@ def run_case(
             return "error", [f"seed error: {exc}"], []
         try:
             proc = subprocess.run(
-                build_argv(case, hermes, arm, model),
+                build_argv(case, hermes, arm, model, project),
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -249,7 +411,18 @@ def run_case(
             calls = load_tool_calls(home / "state.db")
             if calls is None:
                 return "error", ["process: no readable session record"], []
-            process = grade_trajectory(case["process"], calls, proc.stdout, project)
+            all_calls = load_all_tool_calls(home / "state.db")
+            if all_calls is None and any(
+                gate in ("verification_present", "verify_before_claim")
+                for gate in case["process"]["gates"]
+            ):
+                return "error", ["process: no readable all-session record"], []
+            process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
+        try:
+            outcome_failures = check_outcomes(case, project)
+            outcome_failures += run_protected_tests(case, project, td / "protected")
+        except Exception as exc:
+            return "error", [f"outcome check error: {exc}"], []
 
     finally:
         if not cleanup(td):
@@ -259,13 +432,14 @@ def run_case(
         tail = (proc.stdout + proc.stderr)[-500:]
         return "error", [f"hermes exited {proc.returncode}: {tail}"], []
     ok, failures = score(case, proc.stdout)
+    failures = outcome_failures + failures
     unavailable = [p for p in process if p["status"] == "unavailable"]
     if unavailable:
         return "error", [f"process {p['gate']}: {p['detail']}" for p in unavailable], process
     process_fail = [p for p in process if p["status"] == "fail"]
     for result in process_fail:
         failures.append(f"{result['gate']}: {result['detail']}")
-    return ("pass" if ok and not process_fail else "fail"), failures, process
+    return ("pass" if ok and not process_fail and not outcome_failures else "fail"), failures, process
 
 
 def summarize(records: list[dict], arms: tuple[str, ...]) -> list[dict]:
@@ -312,6 +486,21 @@ def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
     print(f"evals: {reps} rep(s) per case")
 
 
+def write_sweep(payload: dict, target: Path) -> None:
+    """Replace the record atomically so an interrupted sweep keeps its last write."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.with_name(target.name + ".tmp")
+    try:
+        temp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        os.replace(temp, target)
+    except OSError:
+        try:
+            temp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--golden", default=str(GOLDEN_DIR))
@@ -325,9 +514,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
     ap.add_argument("--model", default="", help="pin every run to this provider model")
-    ap.add_argument("--timeout", type=float, default=300, help="per-case seconds (default 300)")
+    ap.add_argument("--timeout", type=float, default=1200, help="per-case seconds (default 1200)")
     ap.add_argument(
         "--preflight-timeout", type=float, default=60, help="seconds for the --version probe (default 60)"
+    )
+    ap.add_argument(
+        "--session-probe-timeout", type=float, default=180, help="seconds for the one-shot session probe (default 180)"
     )
     ap.add_argument("--json-out", default="", help="write the sweep (records + summary) to this path")
     args = ap.parse_args(argv)
@@ -335,8 +527,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.reps < 1:
         print("evals: --reps must be >= 1", file=sys.stderr)
         return 2
-    if args.timeout <= 0 or args.preflight_timeout <= 0:
-        print("evals: --timeout and --preflight-timeout must be > 0", file=sys.stderr)
+    if args.timeout <= 0 or args.preflight_timeout <= 0 or args.session_probe_timeout <= 0:
+        print("evals: --timeout, --preflight-timeout and --session-probe-timeout must be > 0", file=sys.stderr)
         return 2
     cases = load_golden(Path(args.golden))
     wanted = [task.strip() for task in args.tasks.split(",") if task.strip()]
@@ -357,11 +549,36 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"evals: {detail}")
 
+    probe_ok, probe_detail = probe_session_record(args.hermes, args.session_probe_timeout, args.model)
+    if not probe_ok:
+        print(f"evals: session probe failed — {probe_detail}", file=sys.stderr)
+        print("evals: use a host where `hermes -z` persists a session record (see docs/EVALS.md)", file=sys.stderr)
+        return 2
+    print(f"evals: {probe_detail}")
+
     arms = ARMS if args.arm == "both" else (args.arm,)
     records: list[dict] = []
     errors = 0
     skill_errors = 0
     skill_failed = 0
+    target = Path(args.json_out) if args.json_out else None
+    payload = None
+    if target is not None:
+        payload = {
+            "schema_version": "1",
+            "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "hermes": detail,
+            "model": args.model,
+            "arms": list(arms),
+            "reps": args.reps,
+            "records": records,
+            "summary": summarize(records, arms),
+        }
+        try:
+            write_sweep(payload, target)
+        except OSError as exc:
+            print(f"evals: could not write {target}: {exc}", file=sys.stderr)
+            return 2
 
     for case in cases:
         for arm in arms:
@@ -390,35 +607,23 @@ def main(argv: list[str] | None = None) -> int:
                 # gate failure. Only the skill arm measures the method.
                 skill_errors += status == "error" and arm == "skill"
                 skill_failed += status == "fail" and arm == "skill"
+                if payload is not None:
+                    payload["summary"] = summarize(records, arms)
+                    try:
+                        write_sweep(payload, target)
+                    except OSError as exc:
+                        print(f"evals: could not write {target}: {exc}", file=sys.stderr)
+                        return 2
 
     summary = summarize(records, arms)
     _print_summary(summary, arms, args.reps)
     print(f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s)")
 
-    if args.json_out:
-        payload = {
-            "schema_version": "1",
-            "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            "hermes": detail,
-            "model": args.model,
-            "arms": list(arms),
-            "reps": args.reps,
-            "records": records,
-            "summary": summary,
-        }
-        target = Path(args.json_out)
-        temp = target.with_name(target.name + ".tmp")
+    if payload is not None:
+        payload["summary"] = summary
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            # Write beside the target and replace atomically: a failed write
-            # must not truncate a sweep recorded earlier.
-            temp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-            os.replace(temp, target)
+            write_sweep(payload, target)
         except OSError as exc:
-            try:
-                temp.unlink(missing_ok=True)
-            except OSError:
-                pass  # the parent path may itself be unusable; nothing to clean
             print(f"evals: could not write {target}: {exc}", file=sys.stderr)
             return 2
         print(f"evals: wrote {target}")

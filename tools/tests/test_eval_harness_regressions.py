@@ -71,6 +71,7 @@ def test_bare_test_commands_still_verify():
 
 def test_baseline_runner_error_is_data_not_a_gate_failure(monkeypatch):
     monkeypatch.setattr(run, "preflight", lambda *a, **k: (True, "hermes ok"))
+    monkeypatch.setattr(run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     monkeypatch.setattr(
         run,
         "load_golden",
@@ -88,6 +89,7 @@ def test_baseline_runner_error_is_data_not_a_gate_failure(monkeypatch):
 
 def test_skill_arm_runner_error_still_fails_the_sweep(monkeypatch):
     monkeypatch.setattr(run, "preflight", lambda *a, **k: (True, "hermes ok"))
+    monkeypatch.setattr(run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     monkeypatch.setattr(
         run,
         "load_golden",
@@ -157,6 +159,7 @@ def test_accepted_retry_after_rejection_is_graded():
 def test_baseline_only_sweep_with_errors_exits_nonzero(monkeypatch):
     """A baseline-only sweep with runner errors has no measurement at all."""
     monkeypatch.setattr(run, "preflight", lambda *a, **k: (True, "hermes ok"))
+    monkeypatch.setattr(run, "probe_session_record", lambda *a, **k: (True, "session ok"))
     monkeypatch.setattr(
         run,
         "load_golden",

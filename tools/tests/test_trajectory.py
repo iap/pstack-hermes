@@ -616,3 +616,139 @@ def test_grading_uses_root_session_not_a_later_delegate_child(tmp_path):
 
     assert [call["name"] for call in calls] == ["delegate_task"]
     assert _no_banned_result(tmp_path, calls)["status"] == "pass"
+
+
+def test_verification_present_requires_a_passing_test_command():
+    passing = [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}]
+    assert trajectory._verification_present(passing)["status"] == "pass"
+
+    unrelated = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+    assert trajectory._verification_present(unrelated)["status"] == "fail"
+
+    masked = [{"name": "terminal", "args": {"command": "pytest -q || true"}, "exit_code": 0}]
+    assert trajectory._verification_present(masked)["status"] == "unavailable"
+
+
+def test_all_calls_preserve_cross_session_order(tmp_path):
+    db = tmp_path / "state.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, "
+        "content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO sessions VALUES (?, ?, ?)",
+        [("parent", None, 1.0), ("child", "parent", 2.0)],
+    )
+    for index, (session, exit_code) in enumerate([("parent", 0), ("child", 1)]):
+        call_id = f"c{index}"
+        conn.execute(
+            "INSERT INTO messages (session_id, role, tool_calls) VALUES (?, 'assistant', ?)",
+            (
+                session,
+                json.dumps(
+                    [
+                        {
+                            "id": call_id,
+                            "call_id": call_id,
+                            "function": {
+                                "name": "terminal",
+                                "arguments": json.dumps({"command": "pytest -q"}),
+                            },
+                        }
+                    ]
+                ),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO messages (session_id, role, content, tool_name, tool_call_id) "
+            "VALUES (?, 'tool', ?, 'terminal', ?)",
+            (session, json.dumps({"exit_code": exit_code}), call_id),
+        )
+    conn.commit()
+    conn.close()
+
+    calls = trajectory.load_all_tool_calls(db)
+
+    assert [call["exit_code"] for call in calls if call["name"] == "terminal"] == [0, 1]
+
+
+def test_verification_present_sees_delegate_child_calls(tmp_path):
+    db = tmp_path / "state.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, started_at REAL)")
+    conn.execute(
+        "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, "
+        "content TEXT, tool_calls TEXT, tool_name TEXT, tool_call_id TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO sessions VALUES (?, ?, ?)",
+        [("parent", None, 1.0), ("child", "parent", 2.0)],
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, tool_calls) VALUES ('parent','assistant',?)",
+        (json.dumps([{"function": {"name": "delegate_task", "arguments": "{}"}}]),),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, tool_calls) VALUES ('child','assistant',?)",
+        (json.dumps([{"id": "c1", "call_id": "c1", "type": "function", "function": {"name": "terminal", "arguments": json.dumps({"command": "pytest -q"})}}]),),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, content, tool_name, tool_call_id) "
+        "VALUES ('child','tool',?,'terminal','c1')",
+        (json.dumps({"exit_code": 0}),),
+    )
+    conn.commit()
+    conn.close()
+
+    all_calls = trajectory.load_all_tool_calls(db)
+    root = trajectory.load_tool_calls(db)
+
+    assert [call["name"] for call in root] == ["delegate_task"]
+    assert [call["name"] for call in all_calls] == ["delegate_task", "terminal"]
+    result = trajectory.grade({"gates": ["verification_present"]}, root, "done", tmp_path, all_calls)
+    assert result[0]["status"] == "pass"
+
+    claim = trajectory._verify_before_claim(root, "pytest: 1 passed", all_calls)
+    assert claim["status"] == "pass"
+
+
+def test_verification_present_is_unavailable_with_unparseable_records():
+    calls = trajectory.ToolCalls(
+        [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}],
+        ["tool_calls row"],
+    )
+    assert trajectory._verification_present(calls)["status"] == "unavailable"
+
+
+def test_verification_present_grades_the_final_test_attempt():
+    def call(command, exit_code):
+        return {"name": "terminal", "args": {"command": command}, "exit_code": exit_code}
+
+    red_then_green = [call("pytest -q", 1), call("pytest -q", 0)]
+    assert trajectory._verification_present(red_then_green)["status"] == "pass"
+
+    green_then_red = [call("pytest -q", 0), call("pytest -q", 1)]
+    assert trajectory._verification_present(green_then_red)["status"] == "fail"
+
+    masked_then_clean = [call("pytest -q | tee out", 0), call("pytest -q", 0)]
+    assert trajectory._verification_present(masked_then_clean)["status"] == "pass"
+
+    clean_then_masked = [call("pytest -q", 0), call("pytest -q | tee out", 0)]
+    assert trajectory._verification_present(clean_then_masked)["status"] == "unavailable"
+
+    passing_then_search = [call("pytest -q", 0), call("grep pytest README", 0)]
+    assert trajectory._verification_present(passing_then_search)["status"] == "pass"
+
+    passing_then_piped_search = [call("pytest -q", 0), call("grep pytest README | head", 0)]
+    assert trajectory._verification_present(passing_then_piped_search)["status"] == "pass"
+
+    for wrapped in ("bash -c 'pytest -q'", "timeout 60 pytest -q", "pytest -q | tee out"):
+        assert trajectory._verification_present([call(wrapped, 0)])["status"] == "unavailable"
+
+    prefixed_masked = [call("pytest -q", 0), call("cd project && pytest -q | tee out", 0)]
+    assert trajectory._verification_present(prefixed_masked)["status"] == "unavailable"
+
+    async_test = [call("pytest -q &", 0)]
+    assert trajectory._verification_present(async_test)["status"] == "unavailable"
