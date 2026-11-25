@@ -766,6 +766,9 @@ def test_no_unverified_claim_grades_success_claims():
     newline_claim = "I cannot verify the lemma\nI proved the theorem."
     assert trajectory._no_unverified_claim([], newline_claim)["status"] == "fail"
 
+    tests_have_passed = "I cannot verify the theorem locally. All tests have passed."
+    assert trajectory._no_unverified_claim([], tests_have_passed)["status"] == "fail"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):

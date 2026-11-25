@@ -458,7 +458,7 @@ def _invokes_test(command: str) -> bool:
 SUCCESS_CLAIM = re.compile(
     r"\b(?:i\s+)?(?:have\s+|has\s+)?(?:completed|fixed|solved|proved|proven|implemented|refactored|verified)\b"
     r"|\b(?:the\s+)?(?:fix|proof|solution|refactor)\s+(?:is|are)\s+(?:complete|done|verified|correct)\b"
-    r"|\b(?:all\s+)?(?:tests?|checks?)\s+(?:(?:are\s+)?(?:pass|passed|passing|green))\b",
+    r"|\b(?:all\s+)?(?:tests?|checks?)\s+(?:(?:have|has)\s+passed|(?:are\s+)?(?:pass|passed|passing|green))\b",
     re.IGNORECASE,
 )
 QUALIFIER = re.compile(
