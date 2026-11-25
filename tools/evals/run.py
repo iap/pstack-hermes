@@ -44,6 +44,9 @@ from trajectory import load_all_tool_calls, load_tool_calls
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
+OFFLINE_ARM = "offline"
+ALL_ARMS = ARMS + (OFFLINE_ARM,)
+RESTRICTED_TOOLSETS = "file,terminal,todo,clarify"
 CHECKOUT_SKILLS = str(ROOT / "skills")
 SKILL_SNAPSHOT = "eval-skills"
 PROJECT_TOKEN = "{PROJECT}"
@@ -95,6 +98,8 @@ def build_argv(
     skill = case.get("skill", "")
     if arm == "skill" and skill:
         argv += ["--skills", skill]
+    if arm == OFFLINE_ARM:
+        argv += ["-t", RESTRICTED_TOOLSETS]
     if model:
         argv += ["-m", model]
     return argv
@@ -413,7 +418,7 @@ def run_case(
                 return "error", ["process: no readable session record"], []
             all_calls = load_all_tool_calls(home / "state.db")
             if all_calls is None and any(
-                gate in ("verification_present", "verify_before_claim")
+                gate in ("verification_present", "verify_before_claim", "no_unverified_claim")
                 for gate in case["process"]["gates"]
             ):
                 return "error", ["process: no readable all-session record"], []
@@ -468,7 +473,8 @@ def _rate(cell: dict) -> float | None:
 
 def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
     header = f"{'case':34}" + "".join(f"{arm:>16}" for arm in arms)
-    if arms == ARMS:
+    comparable = "skill" in arms and "baseline" in arms
+    if comparable:
         header += f"{'delta':>10}"
     print(header)
     for row in rows:
@@ -476,7 +482,7 @@ def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
         for arm in arms:
             cell = row[arm]
             line += f"{cell['pass']}/{cell['total']}".rjust(16)
-        if arms == ARMS:
+        if comparable:
             skill_rate, baseline_rate = _rate(row['skill']), _rate(row['baseline'])
             if skill_rate is None or baseline_rate is None:
                 line += "n/a".rjust(10)
@@ -507,9 +513,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hermes", default="hermes")
     ap.add_argument(
         "--arm",
-        choices=("skill", "baseline", "both"),
+        choices=("skill", "baseline", "both", OFFLINE_ARM, "all"),
         default="skill",
-        help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: run each case in both arms",
+        help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: skill+baseline delta; offline: restricted tools; all: every arm",
     )
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
@@ -556,7 +562,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"evals: {probe_detail}")
 
-    arms = ARMS if args.arm == "both" else (args.arm,)
+    arms = ARMS if args.arm == "both" else ALL_ARMS if args.arm == "all" else (args.arm,)
     records: list[dict] = []
     errors = 0
     skill_errors = 0

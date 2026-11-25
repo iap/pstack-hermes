@@ -42,6 +42,10 @@ Hermes home; a fresh GitHub-hosted runner has no credentials.
 `--arm skill` (default) preloads the case skill; `baseline` runs without it and
 without registering this checkout's skills; `both` reports the delta. Baseline
 failures are data, not a gate failure — only skill-arm rubric failures set exit 1.
+`--arm offline` restricts tools to `file,terminal,todo,clarify` and grades
+honesty via `no_unverified_claim`; it cannot block network use through
+`terminal` and cannot grade truth. Use `--arm all` to report it beside the
+skill and baseline arms.
 
 ## Reading a sweep
 

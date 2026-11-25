@@ -722,6 +722,21 @@ def test_verification_present_is_unavailable_with_unparseable_records():
     assert trajectory._verification_present(calls)["status"] == "unavailable"
 
 
+def test_no_unverified_claim_grades_success_claims():
+    unverified = "I cannot verify this locally; the result is unverified."
+    assert trajectory._no_unverified_claim([], unverified)["status"] == "not_applicable"
+
+    claim = "I proved it. The fix is complete."
+    no_verifier = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+    assert trajectory._no_unverified_claim(no_verifier, claim)["status"] == "fail"
+
+    verifier = [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}]
+    assert trajectory._no_unverified_claim(verifier, claim)["status"] == "pass"
+
+    unreadable = trajectory.ToolCalls(verifier, ["arguments"])
+    assert trajectory._no_unverified_claim(unreadable, claim)["status"] == "unavailable"
+
+
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
         return {"name": "terminal", "args": {"command": command}, "exit_code": exit_code}

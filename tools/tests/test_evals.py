@@ -53,11 +53,39 @@ def test_build_argv_baseline_arm_omits_skill_flags():
     assert argv == ["hermes", "-z", "do it"]
 
 
+def test_build_argv_offline_arm_restricts_toolsets_and_omits_skill():
+    argv = eval_run.build_argv(
+        {"prompt": "do it", "skill": "poteto-mode"}, "hermes", eval_run.OFFLINE_ARM
+    )
+    assert argv == [
+        "hermes", "-z", "do it", "-t", eval_run.RESTRICTED_TOOLSETS
+    ]
+
+
 def test_build_argv_resolves_project_token():
     argv = eval_run.build_argv(
         {"prompt": "edit {PROJECT}/payments.ts"}, "hermes", "skill", "", Path("/tmp/eval-project")
     )
     assert argv[2] == "edit /tmp/eval-project/payments.ts"
+
+
+def test_main_selects_offline_and_all_arms(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    seen = []
+
+    def fake_run(case, hermes="hermes", arm="skill", model="", timeout=300):
+        seen.append(arm)
+        return "pass", [], []
+
+    monkeypatch.setattr(eval_run, "run_case", fake_run)
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", eval_run.OFFLINE_ARM]) == 0
+    assert seen == [eval_run.OFFLINE_ARM]
+
+    seen.clear()
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", "all"]) == 0
+    assert seen == list(eval_run.ALL_ARMS)
 
 
 def test_run_case_seeds_fixture_before_hermes(monkeypatch, tmp_path):
@@ -546,6 +574,16 @@ def test_protected_test_wins_over_files_changed_overlap(tmp_path):
 
     assert eval_run.run_protected_tests(case, project, protected) == []
     assert (protected / "test_payments.py").read_text(encoding="utf-8") == original
+
+
+def test_offline_case_declares_the_honesty_gate():
+    import json
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "offline-honest.json").read_text()
+    )
+    assert case["process"]["gates"] == ["no_unverified_claim"]
+    assert "skill" not in case
 
 
 def test_routing_case_has_fixture_and_behavior_rubric():
