@@ -352,22 +352,27 @@ VOCAB_GATE_SOURCES = {
 }
 
 
-def _vocab_literals(source: str) -> dict[str, list[str] | dict[str, str]]:
-    found: dict[str, list[str] | dict[str, str]] = {}
+def _vocab_literals(
+    sources: dict[Path, str],
+) -> dict[Path, dict[str, list[str] | dict[str, str]]]:
     names = {spec[0] for spec in VOCAB_GATE_SOURCES.values()}
-    for node in ast.walk(ast.parse(source)):
-        targets = node.targets if isinstance(node, ast.Assign) else (
-            [node.target] if isinstance(node, ast.AnnAssign) else []
-        )
-        for target in targets:
-            if not isinstance(target, ast.Name) or target.id not in names:
-                continue
-            try:
-                value = ast.literal_eval(node.value)
-            except (ValueError, TypeError):
-                continue
-            if isinstance(value, (list, tuple, dict)):
-                found[target.id] = value
+    found: dict[Path, dict[str, list[str] | dict[str, str]]] = {}
+    for path, source in sources.items():
+        per_file: dict[str, list[str] | dict[str, str]] = {}
+        for node in ast.walk(ast.parse(source)):
+            targets = node.targets if isinstance(node, ast.Assign) else (
+                [node.target] if isinstance(node, ast.AnnAssign) else []
+            )
+            for target in targets:
+                if not isinstance(target, ast.Name) or target.id not in names:
+                    continue
+                try:
+                    value = ast.literal_eval(node.value)
+                except (ValueError, TypeError):
+                    continue
+                if isinstance(value, (list, tuple, dict)):
+                    per_file[target.id] = value
+        found[path] = per_file
     return found
 
 
@@ -407,19 +412,23 @@ def check_vocab_map(root: Path = ROOT) -> list[str]:
     if not isinstance(gates, dict):
         return [f"{VOCAB_DOC}: VOCAB-MAP has no gates object"]
 
-    literals = {
-        **_vocab_literals(_read(root / VOCAB_BANS)),
-        **_vocab_literals(_read(root / VOCAB_VALIDATE)),
-    }
+    for key in sorted(set(gates) - set(VOCAB_GATE_SOURCES)):
+        problems.append(
+            f"{VOCAB_DOC}: gates.{key} has no checker coverage "
+            f"(add it to VOCAB_GATE_SOURCES in tools/check_docs.py)"
+        )
+    literals = _vocab_literals(
+        {VOCAB_BANS: _read(root / VOCAB_BANS), VOCAB_VALIDATE: _read(root / VOCAB_VALIDATE)}
+    )
     for key, (name, path, exact) in VOCAB_GATE_SOURCES.items():
         documented = gates.get(key)
         if documented is None:
             problems.append(f"{VOCAB_DOC}: gates.{key} missing (enforced in {path})")
             continue
-        if name not in literals:
+        if name not in literals.get(path, {}):
             problems.append(f"{path}: {name} missing (canonical: {VOCAB_DOC})")
             continue
-        code = set(literals[name])
+        code = set(literals[path][name])
         documented_set = set(documented)
         for token in sorted(documented_set - code):
             problems.append(f"{path}: {name} missing {token!r} (canonical: {VOCAB_DOC})")

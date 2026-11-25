@@ -616,5 +616,30 @@ def test_vocab_map_flags_an_unenforced_canonical_alias(tmp_path):
     assert any("tools/validate.py" in p and "create-skill" in p for p in problems)
 
 
+def test_vocab_map_requires_a_gate_constant_in_its_declared_file(tmp_path):
+    bans = "\n".join(
+        line for line in VOCAB_BANS.splitlines() if "DELEGATION_VOCAB_BANS" not in line
+    ) + "\n"
+    validate = VOCAB_VALIDATE + '\nDELEGATION_VOCAB_BANS: tuple[str, ...] = ("`Task`", "subagent_type")\n'
+    root = _vocab_tree(tmp_path, bans=bans, validate=validate)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/bans.py" in p and "DELEGATION_VOCAB_BANS" in p for p in problems)
+
+
+def test_vocab_map_flags_a_gate_key_without_checker_coverage(tmp_path):
+    doc = VOCAB_DOC.replace(
+        '"tools/bans.py:TRANSCRIPT_VOCAB_BANS": ["agent-transcripts"],',
+        '"tools/bans.py:TRANSCRIPT_VOCAB_BANS": ["agent-transcripts"],\n'
+        '    "tools/validate.py:NEW_VOCAB_BANS": ["new-alias"],',
+    )
+    root = _vocab_tree(tmp_path, doc=doc)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("NEW_VOCAB_BANS" in p for p in problems)
+
+
 def test_repository_vocabulary_map_is_clean():
     assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []
