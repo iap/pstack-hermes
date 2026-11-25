@@ -422,7 +422,10 @@ def run_case(
                 for gate in case["process"]["gates"]
             ):
                 return "error", ["process: no readable all-session record"], []
-            process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
+            process = grade_trajectory(
+                case["process"], calls, proc.stdout, project, all_calls,
+                delegation_available=arm != OFFLINE_ARM,
+            )
         try:
             outcome_failures = check_outcomes(case, project)
             outcome_failures += run_protected_tests(case, project, td / "protected")

@@ -722,6 +722,13 @@ def test_verification_present_is_unavailable_with_unparseable_records():
     assert trajectory._verification_present(calls)["status"] == "unavailable"
 
 
+def test_no_banned_tool_is_not_applicable_without_delegation_toolset():
+    calls = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+
+    assert trajectory._no_banned_tool(calls, False)["status"] == "not_applicable"
+    assert trajectory._no_banned_tool(calls)["status"] == "fail"
+
+
 def test_no_unverified_claim_grades_success_claims():
     unverified = "I cannot verify this locally; the result is unverified."
     assert trajectory._no_unverified_claim([], unverified)["status"] == "not_applicable"

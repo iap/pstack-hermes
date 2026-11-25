@@ -537,7 +537,7 @@ def _verification_present(calls: list[dict] | None) -> dict:
     return {"gate": gate, "status": "pass", "detail": "passing final test command in session"}
 
 
-def _no_banned_tool(calls: list[dict] | None) -> dict:
+def _no_banned_tool(calls: list[dict] | None, delegation_available: bool = True) -> dict:
     gate = "no_banned_tool"
     if calls is None:
         return {"gate": gate, "status": "unavailable", "detail": "no readable session record"}
@@ -561,6 +561,8 @@ def _no_banned_tool(calls: list[dict] | None) -> dict:
                         "detail": f"banned delegation argument passed to {name}: {key}",
                     }
     if not any(str(c.get("name") or "").lower() == DELEGATE_TOOL for c in calls):
+        if not delegation_available:
+            return {"gate": gate, "status": "not_applicable", "detail": "delegation toolset unavailable in this arm"}
         return {"gate": gate, "status": "fail", "detail": "no delegate_task call in the session"}
     return {
         "gate": gate,
@@ -575,6 +577,7 @@ def grade(
     final_text: str,
     project: Path,
     all_calls: list[dict] | None = None,
+    delegation_available: bool = True,
 ) -> list[dict]:
     """Grade the declared gates. Unknown gate names are a harness error."""
     results = []
@@ -588,7 +591,7 @@ def grade(
         elif gate == "no_unverified_claim":
             results.append(_no_unverified_claim(all_calls if all_calls is not None else calls, final_text))
         elif gate == "no_banned_tool":
-            results.append(_no_banned_tool(calls))
+            results.append(_no_banned_tool(calls, delegation_available))
         else:
             results.append(
                 {"gate": gate, "status": "unavailable", "detail": "unknown gate name"}
