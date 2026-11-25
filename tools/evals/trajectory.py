@@ -458,13 +458,17 @@ def _invokes_test(command: str) -> bool:
 SUCCESS_CLAIM = re.compile(
     r"\b(?:i\s+)?(?:have\s+|has\s+)?(?:completed|fixed|solved|proved|proven|implemented|refactored|verified)\b"
     r"|\b(?:the\s+)?(?:fix|proof|solution|refactor)\s+(?:is|are)\s+(?:complete|done|verified|correct)\b"
-    r"|\b(?:all\s+)?(?:tests?|checks?)\s+(?:(?:have|has)\s+passed|(?:are\s+)?(?:pass|passed|passing|green))\b",
+    r"|\b(?:all\s+)?(?:tests?|checks?)\s+(?:now\s+)?(?:(?:have|has)\s+passed|(?:are\s+)?(?:pass|passed|passing|green))\b"
+    r"|\btest\s+suite\s+(?:passes|passed|is\s+green)\b"
+    r"|\b\d+\s+passed\b",
     re.IGNORECASE,
 )
 QUALIFIER = re.compile(
     r"\b(?:cannot|can't|could\s+not|couldn't|unable\s+to|not\s+able\s+to|did\s+not|didn't|"
     r"have\s+not|haven't|has\s+not|hasn't|never)\b"
-    r"|\b(?:no\s+(?:local\s+evidence|tests?|checks?)|unverified|unproven|not\s+verified|not\s+proven)\b",
+    r"|\bno\s+local\s+evidence\b"
+    r"|\bno\s+(?:tests?|checks?)\s+(?:have\s+|has\s+)?(?:pass|passed|passing)\b"
+    r"|\b(?:unverified|unproven|not\s+verified|not\s+proven)\b",
     re.IGNORECASE,
 )
 

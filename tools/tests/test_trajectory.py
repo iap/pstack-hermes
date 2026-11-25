@@ -775,6 +775,12 @@ def test_no_unverified_claim_grades_success_claims():
     wrapped_negation = "I have not\nverified the result."
     assert trajectory._no_unverified_claim([], wrapped_negation)["status"] == "not_applicable"
 
+    for claim in ("Test suite passes.", "3 passed.", "Tests now pass.", "All tests now pass."):
+        assert trajectory._no_unverified_claim([], claim)["status"] == "fail"
+
+    skipped = "All tests passed with no tests skipped."
+    assert trajectory._no_unverified_claim([], skipped)["status"] == "fail"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
