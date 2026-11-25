@@ -445,6 +445,7 @@ def _invokes_test(command: str) -> bool:
     """Test runner in command position in any shell segment, allowing known wrappers."""
     for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
         text = segment.strip()
+        text = re.sub(r"^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)+", "", text)
         for prefix in ("bash -c ", "sh -c ", "zsh -c "):
             if text.startswith(prefix):
                 text = text[len(prefix):].strip()

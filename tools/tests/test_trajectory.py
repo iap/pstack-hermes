@@ -790,6 +790,12 @@ def test_no_unverified_claim_grades_success_claims():
     assert trajectory._no_unverified_claim([], "0 passed, 3 failed")["status"] == "not_applicable"
     assert trajectory._no_unverified_claim([], "3 passed")["status"] == "fail"
 
+    assignment_prefixed = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "CI=1 pytest -q"}, "exit_code": 1},
+    ]
+    assert trajectory._no_unverified_claim(assignment_prefixed, claim)["status"] == "unavailable"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
