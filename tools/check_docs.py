@@ -25,6 +25,7 @@ Exit codes: 0 clean; 1 drift found; 2 unreadable input.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -337,6 +338,110 @@ def check_model_map(root: Path = ROOT) -> list[str]:
     return problems
 
 
+VOCAB_DOC = Path("docs") / "hermes-vocabulary.md"
+VOCAB_SKILL = Path("skills") / "hermes-vocabulary" / "SKILL.md"
+VOCAB_BANS = Path("tools") / "bans.py"
+VOCAB_VALIDATE = Path("tools") / "validate.py"
+VOCAB_BEGIN = "<!-- VOCAB-MAP-BEGIN -->"
+VOCAB_END = "<!-- VOCAB-MAP-END -->"
+VOCAB_GATE_SOURCES = {
+    "tools/bans.py:DELEGATION_VOCAB_BANS": ("DELEGATION_VOCAB_BANS", VOCAB_BANS, True),
+    "tools/bans.py:TRANSCRIPT_VOCAB_BANS": ("TRANSCRIPT_VOCAB_BANS", VOCAB_BANS, True),
+    "tools/validate.py:HERMES_ADAPTATION_BANS": ("HERMES_ADAPTATION_BANS", VOCAB_VALIDATE, True),
+    "tools/validate.py:check_phase1:t9_toks": ("t9_toks", VOCAB_VALIDATE, False),
+}
+
+
+def _vocab_literals(source: str) -> dict[str, list[str] | dict[str, str]]:
+    found: dict[str, list[str] | dict[str, str]] = {}
+    names = {spec[0] for spec in VOCAB_GATE_SOURCES.values()}
+    for node in ast.walk(ast.parse(source)):
+        targets = node.targets if isinstance(node, ast.Assign) else (
+            [node.target] if isinstance(node, ast.AnnAssign) else []
+        )
+        for target in targets:
+            if not isinstance(target, ast.Name) or target.id not in names:
+                continue
+            try:
+                value = ast.literal_eval(node.value)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(value, (list, tuple, dict)):
+                found[target.id] = value
+    return found
+
+
+def _vocab_table_rows(text: str) -> list[str]:
+    rows: list[str] = []
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if not cells or cells[0] in {"---", ""} or cells[0].startswith("Use this"):
+            continue
+        rows.append(cells[0])
+    return rows
+
+
+def check_vocab_map(root: Path = ROOT) -> list[str]:
+    """docs/hermes-vocabulary.md owns the mapping; gate lists must agree with it."""
+    problems: list[str] = []
+    for path in (VOCAB_DOC, VOCAB_SKILL, VOCAB_BANS, VOCAB_VALIDATE):
+        if not (root / path).is_file():
+            problems.append(f"{path}: missing")
+    if problems:
+        return problems
+
+    doc_text = _read(root / VOCAB_DOC)
+    if VOCAB_BEGIN not in doc_text or VOCAB_END not in doc_text:
+        return [f"{VOCAB_DOC}: machine-readable VOCAB-MAP block missing"]
+    block = doc_text.split(VOCAB_BEGIN, 1)[1].split(VOCAB_END, 1)[0]
+    match = re.search(r"```json\s*(.*?)\s*```", block, re.S)
+    if not match:
+        return [f"{VOCAB_DOC}: VOCAB-MAP block has no json fence"]
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError as exc:
+        return [f"{VOCAB_DOC}: invalid VOCAB-MAP json: {exc}"]
+    gates = data.get("gates")
+    if not isinstance(gates, dict):
+        return [f"{VOCAB_DOC}: VOCAB-MAP has no gates object"]
+
+    literals = {
+        **_vocab_literals(_read(root / VOCAB_BANS)),
+        **_vocab_literals(_read(root / VOCAB_VALIDATE)),
+    }
+    for key, (name, path, exact) in VOCAB_GATE_SOURCES.items():
+        documented = gates.get(key)
+        if documented is None:
+            problems.append(f"{VOCAB_DOC}: gates.{key} missing (enforced in {path})")
+            continue
+        if name not in literals:
+            problems.append(f"{path}: {name} missing (canonical: {VOCAB_DOC})")
+            continue
+        code = set(literals[name])
+        documented_set = set(documented)
+        for token in sorted(documented_set - code):
+            problems.append(f"{path}: {name} missing {token!r} (canonical: {VOCAB_DOC})")
+        if exact:
+            for token in sorted(code - documented_set):
+                problems.append(
+                    f"{VOCAB_DOC}: gates.{key} missing enforced token {token!r} (update {VOCAB_DOC})"
+                )
+
+    doc_rows = _vocab_table_rows(doc_text.split("## Canonical mapping", 1)[-1].split("## ", 1)[0])
+    skill_rows = _vocab_table_rows(_read(root / VOCAB_SKILL))
+    for index in range(max(len(doc_rows), len(skill_rows))):
+        expected = doc_rows[index] if index < len(doc_rows) else "<missing>"
+        actual = skill_rows[index] if index < len(skill_rows) else "<missing>"
+        if expected != actual:
+            problems.append(
+                f"{VOCAB_SKILL}: row {index + 1} is {actual!r}, canonical is {expected!r} "
+                f"(update {VOCAB_SKILL})"
+            )
+    return problems
+
+
 CHECKS = (
     ("router links resolve", check_router_links),
     ("layout matches .gitattributes", check_layout_manifest),
@@ -344,6 +449,7 @@ CHECKS = (
     ("no stale subdirectory-install route", check_stale_install_route),
     ("release packaging sources exist", check_release_sources),
     ("model panel matches docs/MODELS.md", check_model_map),
+    ("vocabulary map matches gate lists and skill", check_vocab_map),
 )
 
 
