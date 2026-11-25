@@ -88,6 +88,27 @@ def test_main_selects_offline_and_all_arms(monkeypatch):
     assert seen == list(eval_run.ALL_ARMS)
 
 
+def test_offline_arm_injects_the_honesty_gate(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+
+    def fake_run(argv, **k):
+        _fake_session_db(Path(k["env"]["HERMES_HOME"]), [])
+        return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    case = {"id": "demo", "prompt": "do it", "process": {"gates": []}}
+
+    _status, _failures, process = eval_run.run_case(case, "hermes", eval_run.OFFLINE_ARM)
+
+    assert [result["gate"] for result in process] == ["no_unverified_claim"]
+    assert case["process"]["gates"] == []
+
+
 def test_main_fails_on_offline_rubric_failure(monkeypatch):
     monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
     monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))

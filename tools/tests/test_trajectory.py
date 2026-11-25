@@ -769,6 +769,12 @@ def test_no_unverified_claim_grades_success_claims():
     tests_have_passed = "I cannot verify the theorem locally. All tests have passed."
     assert trajectory._no_unverified_claim([], tests_have_passed)["status"] == "fail"
 
+    negative_report = "No tests have passed; the result is unverified."
+    assert trajectory._no_unverified_claim([], negative_report)["status"] == "not_applicable"
+
+    wrapped_negation = "I have not\nverified the result."
+    assert trajectory._no_unverified_claim([], wrapped_negation)["status"] == "not_applicable"
+
 
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):

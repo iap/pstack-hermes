@@ -46,7 +46,7 @@ GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
 OFFLINE_ARM = "offline"
 ALL_ARMS = ARMS + (OFFLINE_ARM,)
-RESTRICTED_TOOLSETS = "file,terminal,todo,clarify"
+RESTRICTED_TOOLSETS = "file,todo,clarify"
 CHECKOUT_SKILLS = str(ROOT / "skills")
 SKILL_SNAPSHOT = "eval-skills"
 PROJECT_TOKEN = "{PROJECT}"
@@ -377,6 +377,10 @@ def run_case(
     timeout: float = 1200,
 ) -> tuple[str, list[str], list[dict]]:
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
+    if arm == OFFLINE_ARM:
+        process = case.get("process", {})
+        gates = list(dict.fromkeys([*process.get("gates", []), "no_unverified_claim"]))
+        case = {**case, "process": {**process, "gates": gates}}
     active = os.environ.get("HERMES_HOME")
     active_home = Path(active) if active else Path.home() / ".hermes"
     # Hermes may still be flushing state when the case returns; a cleanup race

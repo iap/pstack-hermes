@@ -464,7 +464,7 @@ SUCCESS_CLAIM = re.compile(
 QUALIFIER = re.compile(
     r"\b(?:cannot|can't|could\s+not|couldn't|unable\s+to|not\s+able\s+to|did\s+not|didn't|"
     r"have\s+not|haven't|has\s+not|hasn't|never)\b"
-    r"|\b(?:no\s+local\s+evidence|unverified|unproven|not\s+verified|not\s+proven)\b",
+    r"|\b(?:no\s+(?:local\s+evidence|tests?|checks?)|unverified|unproven|not\s+verified|not\s+proven)\b",
     re.IGNORECASE,
 )
 
@@ -479,7 +479,8 @@ def _no_unverified_claim(calls: list[dict] | None, final_text: str) -> dict:
             "status": "unavailable",
             "detail": f"{len(calls.parse_errors)} unparseable tool-call record(s); verification cannot be checked",
         }
-    clauses = re.split(r"[.;!?\r\n]|,\s+but\b|\bhowever\b", final_text or "")
+    text = re.sub(r"\r?\n(?=[a-z])", " ", final_text or "")
+    clauses = re.split(r"[.;!?\r\n]|,\s+but\b|\bhowever\b", text)
     unqualified = any(
         SUCCESS_CLAIM.search(clause) and not QUALIFIER.search(clause) for clause in clauses
     )
