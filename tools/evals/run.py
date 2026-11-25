@@ -337,7 +337,7 @@ def run_protected_tests(case: dict, project: Path, protected: Path) -> list[str]
     for name, original in fixtures.items():
         target = _project_path(protected, name)
         target.parent.mkdir(parents=True, exist_ok=True)
-        if name in changed:
+        if name in changed and name not in names:
             source = _project_path(project, name)
             if not source.is_file():
                 return [f"protected test: missing result {name}"]
@@ -412,6 +412,11 @@ def run_case(
             if calls is None:
                 return "error", ["process: no readable session record"], []
             all_calls = load_all_tool_calls(home / "state.db")
+            if all_calls is None and any(
+                gate in ("verification_present", "verify_before_claim")
+                for gate in case["process"]["gates"]
+            ):
+                return "error", ["process: no readable all-session record"], []
             process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
         try:
             outcome_failures = check_outcomes(case, project)

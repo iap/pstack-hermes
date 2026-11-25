@@ -8,6 +8,10 @@ name: evals
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: "Runner label with hermes and a configured home (hosted ubuntu-latest always fails the guard)"
+        type: string
+        default: ubuntu-latest
       tasks:
         description: "Comma-separated golden case ids (blank = every case, requires reps=1)"
         type: string
@@ -42,7 +46,7 @@ permissions:
 
 jobs:
   golden:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     # The golden tasks can take 15 minutes; the lifecycle install adds a clone,
     # an install, a remove, a pinned reinstall and an update on top of that.
     timeout-minutes: 360

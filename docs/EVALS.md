@@ -29,8 +29,10 @@ uv run --frozen python tools/evals/run.py \
 
 ### Dispatch a sweep in CI
 
-The `evals` workflow is manual-only with inputs `tasks` (default
-`poteto-routing`; blank runs every case and requires `reps=1`), `arm` (default
+The `evals` workflow is manual-only. Pass `runner` as the label of a configured
+maintainer runner: GitHub-hosted `ubuntu-latest` has no hermes CLI or home, so
+the guard step fails there before the session probe runs. Other inputs: `tasks`
+(default `poteto-routing`; blank runs every case and requires `reps=1`), `arm` (default
 `both`), `reps` (default 3), `timeout` (default 1200 s), `model`, and `lifecycle`
 (default off). The runner's session probe rejects unusable hosts before any
 case; the workflow publishes the per-case table to the job summary and uploads

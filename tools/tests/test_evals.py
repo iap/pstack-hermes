@@ -142,6 +142,31 @@ def test_run_case_detects_a_changed_fixture(monkeypatch, tmp_path):
     assert status == "pass", failures
 
 
+def test_run_case_rejects_a_failed_all_session_read(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+    def fake_run(argv, **k):
+        _fake_session_db(Path(k["env"]["HERMES_HOME"]), [])
+        return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    monkeypatch.setattr(eval_run, "load_all_tool_calls", lambda *a, **k: None)
+    case = {
+        "id": "demo",
+        "prompt": "do it",
+        "process": {"gates": ["verification_present"]},
+    }
+
+    status, failures, _process = eval_run.run_case(case, "hermes", "skill")
+
+    assert status == "error"
+    assert any("all-session record" in line for line in failures)
+
+
 def test_run_case_rejects_fixture_path_escape(monkeypatch, tmp_path):
     active = tmp_path / "active"
     active.mkdir()
@@ -505,6 +530,22 @@ def test_protected_tests_restore_the_fixture_and_check_the_result(tmp_path):
     failures = eval_run.run_protected_tests(case, project, protected)
     assert failures
     assert "protected test failed" in failures[0]
+
+
+def test_protected_test_wins_over_files_changed_overlap(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    protected = tmp_path / "protected"
+    original = "def test_ok():\n    assert True\n"
+    case = {
+        "fixtures": {"test_payments.py": original},
+        "verify_tests": ["test_payments.py"],
+        "expect": {"files_changed": ["test_payments.py"]},
+    }
+    (project / "test_payments.py").write_text("def test_bad():\n    assert False\n", encoding="utf-8")
+
+    assert eval_run.run_protected_tests(case, project, protected) == []
+    assert (protected / "test_payments.py").read_text(encoding="utf-8") == original
 
 
 def test_routing_case_has_fixture_and_behavior_rubric():

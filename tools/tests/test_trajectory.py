@@ -710,6 +710,9 @@ def test_verification_present_sees_delegate_child_calls(tmp_path):
     result = trajectory.grade({"gates": ["verification_present"]}, root, "done", tmp_path, all_calls)
     assert result[0]["status"] == "pass"
 
+    claim = trajectory._verify_before_claim(root, "pytest: 1 passed", all_calls)
+    assert claim["status"] == "pass"
+
 
 def test_verification_present_is_unavailable_with_unparseable_records():
     calls = trajectory.ToolCalls(
@@ -746,3 +749,6 @@ def test_verification_present_grades_the_final_test_attempt():
 
     prefixed_masked = [call("pytest -q", 0), call("cd project && pytest -q | tee out", 0)]
     assert trajectory._verification_present(prefixed_masked)["status"] == "unavailable"
+
+    async_test = [call("pytest -q &", 0)]
+    assert trajectory._verification_present(async_test)["status"] == "unavailable"
