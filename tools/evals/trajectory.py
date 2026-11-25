@@ -434,14 +434,17 @@ def _verify_before_claim(calls: list[dict], final_text: str) -> dict:
 
 
 def _invokes_test(command: str) -> bool:
-    """Test runner in command position, allowing only known wrappers."""
-    text = command.strip()
-    for prefix in ("bash -c ", "sh -c ", "zsh -c "):
-        if text.startswith(prefix):
-            text = text[len(prefix):].strip()
-            break
-    text = re.sub(r"^(?:sudo|time|env\s+\S+|timeout\s+\S+)\s+", "", text)
-    return bool(TEST_COMMAND_PATTERN.match(text.strip("'\"")))
+    """Test runner in command position in any shell segment, allowing known wrappers."""
+    for segment in re.split(r"&&|\|\||[;|\n]", command or ""):
+        text = segment.strip()
+        for prefix in ("bash -c ", "sh -c ", "zsh -c "):
+            if text.startswith(prefix):
+                text = text[len(prefix):].strip()
+                break
+        text = re.sub(r"^(?:sudo|time|env\s+\S+|timeout\s+\S+)\s+", "", text)
+        if TEST_COMMAND_PATTERN.match(text.strip("'\"")):
+            return True
+    return False
 
 
 def _verification_present(calls: list[dict] | None) -> dict:

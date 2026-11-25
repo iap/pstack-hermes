@@ -698,3 +698,6 @@ def test_verification_present_grades_the_final_test_attempt():
 
     for wrapped in ("bash -c 'pytest -q'", "timeout 60 pytest -q", "pytest -q | tee out"):
         assert trajectory._verification_present([call(wrapped, 0)])["status"] == "unavailable"
+
+    prefixed_masked = [call("pytest -q", 0), call("cd project && pytest -q | tee out", 0)]
+    assert trajectory._verification_present(prefixed_masked)["status"] == "unavailable"
