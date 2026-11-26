@@ -4,6 +4,11 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.5] - 2026-11-26
+
+### Fixed
+- Poteto-mode playbooks now follow the product policy: Graphite (`gt`) is the default with GitHub CLI (`gh`) as fallback, trunk is `origin/master`, and `deslop` / `control-ui` / `control-cli` are documented as external skills with an explicit incomplete-verdict rule when absent. Also replaced a stale Cursor restart note with gateway restart (#253).
+
 ## [0.16.4] - 2026-11-25
 
 ### Fixed
