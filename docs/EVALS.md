@@ -97,6 +97,25 @@ Two hosts were tried; record them so the next attempt does not repeat the work.
 | Ubuntu 24.04 container, Hermes 0.19.0 via `uv tool install` | provider reachable (`GET /v1/models` → 200), `hermes --version` works, but `hermes -z` and even `hermes --help` stall after `Plugin discovery complete` — with either the copied config or a minimal one, and with both the Nous and OpenRouter providers. Not diagnosed further. |
 | macOS 12.7.6, Hermes v0.23.2 git install | A single `hermes -z` completes with a free model, but repeated isolated runs leave gateways that never persist sessions; the session probe now rejects this host in seconds. The runner default `--timeout` is 1200 s. |
 
+### Environment findings (2026-11-26)
+
+NixOS 25.11 (WSL2, x86_64), Hermes v0.21.3+29407.g0ef3ee1 git install, head
+`a5c75f8`. The store-Python launcher cannot start under the harness's throwaway
+`HERMES_HOME`; `hermes pm repair` does not change that. Passing the in-tree venv
+console script via `--hermes <install>/.venv/bin/hermes` makes preflight and the
+session probe pass. Runs used a dedicated home with `plugins.enabled: []` so the
+baseline had zero enabled skills; skill preload was verified separately by a
+verbatim quote from `poteto-mode`.
+
+The best callable free model from a live survey was `upstage/solar-mini4:free`.
+A 3-rep `both` sweep at the default 1200 s timeout produced skill 0/3 (one
+runner error, two rubric failures) and baseline 0/3 (two runner errors). The
+printed `+0pp` is not evidence: three of six runs were runner errors, so the
+delta is **n/a with cause** (masked test status and a final test command that
+exited 1). An earlier 1-rep run with `tencent/hy4-flash:free` was likewise n/a.
+No method effect is claimed. A trustworthy delta still needs a configured
+maintainer runner or a funded model that follows the bare-test-command rule.
+
 The earlier macOS failure was host- and version-specific; a newer Hermes on the
 maintainer host does run live cases. A fresh CI runner still has no configured
 home, so keep the dispatch manual and fail-closed.
