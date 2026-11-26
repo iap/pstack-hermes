@@ -641,5 +641,24 @@ def test_vocab_map_flags_a_gate_key_without_checker_coverage(tmp_path):
     assert any("NEW_VOCAB_BANS" in p for p in problems)
 
 
+def test_vocab_map_scopes_t9_toks_to_check_phase1(tmp_path):
+    validate = VOCAB_VALIDATE.replace('"create-skill": "why"', '"other": "why"')
+    validate += '\ndef unrelated():\n    t9_toks = {"create-skill": "why"}\n'
+    root = _vocab_tree(tmp_path, validate=validate)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/validate.py" in p and "create-skill" in p for p in problems)
+
+
+def test_vocab_map_rejects_an_augmented_gate_binding(tmp_path):
+    bans = VOCAB_BANS + 'DELEGATION_VOCAB_BANS += ("AskQuestion",)\n'
+    root = _vocab_tree(tmp_path, bans=bans)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/bans.py" in p and "DELEGATION_VOCAB_BANS" in p for p in problems)
+
+
 def test_repository_vocabulary_map_is_clean():
     assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []

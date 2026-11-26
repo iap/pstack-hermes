@@ -350,21 +350,41 @@ VOCAB_GATE_SOURCES = {
     "tools/validate.py:HERMES_ADAPTATION_BANS": ("HERMES_ADAPTATION_BANS", VOCAB_VALIDATE, True),
     "tools/validate.py:check_phase1:t9_toks": ("t9_toks", VOCAB_VALIDATE, False),
 }
+VOCAB_GATE_SCOPES = {"t9_toks": "check_phase1"}
+VOCAB_AUGMENTED = "<augmented>"
 
 
 def _vocab_literals(
     sources: dict[Path, str],
-) -> dict[Path, dict[str, list[str] | dict[str, str]]]:
+) -> dict[Path, dict[str, list[str] | dict[str, str] | str]]:
     names = {spec[0] for spec in VOCAB_GATE_SOURCES.values()}
-    found: dict[Path, dict[str, list[str] | dict[str, str]]] = {}
+    found: dict[Path, dict[str, list[str] | dict[str, str] | str]] = {}
     for path, source in sources.items():
-        per_file: dict[str, list[str] | dict[str, str]] = {}
-        for node in ast.walk(ast.parse(source)):
+        tree = ast.parse(source)
+        per_file: dict[str, list[str] | dict[str, str] | str] = {}
+        augmented = {
+            node.target.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.AugAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id in names
+        }
+
+        def capture(
+            node: ast.AST,
+            allowed: set[str],
+            *,
+            augmented: set[str] = augmented,
+            per_file: dict[str, list[str] | dict[str, str] | str] = per_file,
+        ) -> None:
             targets = node.targets if isinstance(node, ast.Assign) else (
                 [node.target] if isinstance(node, ast.AnnAssign) else []
             )
             for target in targets:
-                if not isinstance(target, ast.Name) or target.id not in names:
+                if not isinstance(target, ast.Name) or target.id not in allowed:
+                    continue
+                if target.id in augmented:
+                    per_file[target.id] = VOCAB_AUGMENTED
                     continue
                 try:
                     value = ast.literal_eval(node.value)
@@ -372,6 +392,15 @@ def _vocab_literals(
                     continue
                 if isinstance(value, (list, tuple, dict)):
                     per_file[target.id] = value
+
+        for node in tree.body:
+            capture(node, names - set(VOCAB_GATE_SCOPES))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name not in VOCAB_GATE_SCOPES.values():
+                continue
+            scoped = {name for name, func in VOCAB_GATE_SCOPES.items() if func == node.name}
+            for child in ast.walk(node):
+                capture(child, scoped)
         found[path] = per_file
     return found
 
@@ -428,7 +457,13 @@ def check_vocab_map(root: Path = ROOT) -> list[str]:
         if name not in literals.get(path, {}):
             problems.append(f"{path}: {name} missing (canonical: {VOCAB_DOC})")
             continue
-        code = set(literals[path][name])
+        value = literals[path][name]
+        if value == VOCAB_AUGMENTED:
+            problems.append(
+                f"{path}: {name} uses an augmented assignment; the literal gate cannot verify it"
+            )
+            continue
+        code = set(value)
         documented_set = set(documented)
         for token in sorted(documented_set - code):
             problems.append(f"{path}: {name} missing {token!r} (canonical: {VOCAB_DOC})")
