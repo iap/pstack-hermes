@@ -54,8 +54,8 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 ### PR mechanics, for every PR
 
-- [ ] Resolve the forge once. Use `gt` when available; otherwise use `gh` and record the fallback. Use `origin pr` only when the operator explicitly opted in. Treat missing `gt` as an expected fallback, not a failure.
-- [ ] Open the PR ready, never draft, with `origin pr create --status open --base <base-branch>` or `gh pr create --base <base-branch>` according to the resolved forge. A stack child targets its parent branch.
+- [ ] Resolve the forge once. Use `gt` for stack topology and restacks when available; PR create, edit, view, watch, ready, and merge use `gh` unless the operator explicitly opted into `origin pr`. Record the fallback when `gt` is unavailable; missing `gt` is not a failure. Never route PR operations through `gt`.
+- [ ] Open the PR ready, never draft, with `gh pr create --base <base-branch>`, or `origin pr create --status open --base <base-branch>` only on the operator's Origin opt-in. A stack child targets its parent branch.
 - [ ] Run the repo's lint and typecheck once before the PR-facing push. Push with hooks on.
 - [ ] Run the external slop-strip pass before each commit (`/deslop` when installed); record it as incomplete when absent. Run `/no-comments` before review.
 - [ ] Triage every Bugbot and security-reviewer comment per `../references/bugbot-triage.md`.
