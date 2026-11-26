@@ -4,6 +4,11 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.4] - 2026-11-25
+
+### Fixed
+- Hermes vocabulary is single-owned by `docs/hermes-vocabulary.md`: a machine-readable token block is checked against `tools/bans.py`, `tools/validate.py` and `skills/hermes-vocabulary/SKILL.md`, naming the file to update on drift and covering aliases the `--vocab-only` gate misses (for example `create-skill`). The skill's panel row now matches the shipped panel source (#246).
+
 ## [0.16.3] - 2026-11-23
 
 ### Fixed

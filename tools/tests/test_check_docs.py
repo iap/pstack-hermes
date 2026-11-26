@@ -520,3 +520,154 @@ def test_model_map_flags_duplicate_rows_that_could_hide_a_stale_slug(tmp_path):
     problems = check_docs.check_model_map(root)
 
     assert any("duplicate row" in p for p in problems)
+
+
+VOCAB_MAP_BLOCK = """<!-- VOCAB-MAP-BEGIN -->
+```json
+{
+  "version": 1,
+  "gates": {
+    "tools/bans.py:DELEGATION_VOCAB_BANS": ["`Task`", "subagent_type"],
+    "tools/bans.py:TRANSCRIPT_VOCAB_BANS": ["agent-transcripts"],
+    "tools/validate.py:HERMES_ADAPTATION_BANS": ["persona:"],
+    "tools/validate.py:check_phase1:t9_toks": ["create-skill"]
+  }
+}
+```
+<!-- VOCAB-MAP-END -->
+"""
+
+VOCAB_DOC = """# Hermes vocabulary
+
+## Canonical mapping
+
+| Use this (hermes) | Banned alias (Cursor) |
+|---|---|
+| `delegate_task` | `` `Task` `` / `subagent_type` |
+| `clarify` | `AskQuestion` |
+
+## Enforcement
+
+""" + VOCAB_MAP_BLOCK
+
+VOCAB_SKILL = """| Use this (hermes) | Banned alias (Cursor, described) |
+|---|---|
+| `delegate_task` | described task type |
+| `clarify` | described question harness |
+"""
+
+VOCAB_BANS = '''DELEGATION_VOCAB_BANS: tuple[str, ...] = ("`Task`", "subagent_type")
+TRANSCRIPT_VOCAB_BANS: tuple[str, ...] = ("agent-transcripts",)
+'''
+
+VOCAB_VALIDATE = '''HERMES_ADAPTATION_BANS = {"persona:": "why"}
+
+def check_phase1():
+    t9_toks = {"create-skill": "why"}
+'''
+
+
+def _vocab_tree(tmp_path, doc=VOCAB_DOC, skill=VOCAB_SKILL, bans=VOCAB_BANS, validate=VOCAB_VALIDATE):
+    _write(tmp_path / "docs" / "hermes-vocabulary.md", doc)
+    _write(tmp_path / "skills" / "hermes-vocabulary" / "SKILL.md", skill)
+    _write(tmp_path / "tools" / "bans.py", bans)
+    _write(tmp_path / "tools" / "validate.py", validate)
+    return tmp_path
+
+
+def test_vocab_map_accepts_matching_gate_lists(tmp_path):
+    assert check_docs.check_vocab_map(_vocab_tree(tmp_path)) == []
+
+
+def test_vocab_map_flags_a_desynced_gate_list(tmp_path):
+    bans = VOCAB_BANS.replace('"subagent_type"', '"subagent_type", "AskQuestion"')
+    root = _vocab_tree(tmp_path, bans=bans)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("docs/hermes-vocabulary.md" in p and "AskQuestion" in p for p in problems)
+    assert check_docs.check(root)[0] == 1
+
+
+def test_vocab_map_flags_a_gate_token_missing_from_the_code(tmp_path):
+    bans = VOCAB_BANS.replace('"`Task`"', '"other"')
+    root = _vocab_tree(tmp_path, bans=bans)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/bans.py" in p and "`Task`" in p for p in problems)
+
+
+def test_vocab_map_flags_a_drifted_skill_row(tmp_path):
+    skill = VOCAB_SKILL.replace("| `clarify` |", "| `ask` |")
+    root = _vocab_tree(tmp_path, skill=skill)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("skills/hermes-vocabulary/SKILL.md" in p for p in problems)
+
+
+def test_vocab_map_flags_an_unenforced_canonical_alias(tmp_path):
+    validate = VOCAB_VALIDATE.replace('"create-skill": "why"', '"other": "why"')
+    root = _vocab_tree(tmp_path, validate=validate)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/validate.py" in p and "create-skill" in p for p in problems)
+
+
+def test_vocab_map_requires_a_gate_constant_in_its_declared_file(tmp_path):
+    bans = "\n".join(
+        line for line in VOCAB_BANS.splitlines() if "DELEGATION_VOCAB_BANS" not in line
+    ) + "\n"
+    validate = VOCAB_VALIDATE + '\nDELEGATION_VOCAB_BANS: tuple[str, ...] = ("`Task`", "subagent_type")\n'
+    root = _vocab_tree(tmp_path, bans=bans, validate=validate)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/bans.py" in p and "DELEGATION_VOCAB_BANS" in p for p in problems)
+
+
+def test_vocab_map_flags_a_gate_key_without_checker_coverage(tmp_path):
+    doc = VOCAB_DOC.replace(
+        '"tools/bans.py:TRANSCRIPT_VOCAB_BANS": ["agent-transcripts"],',
+        '"tools/bans.py:TRANSCRIPT_VOCAB_BANS": ["agent-transcripts"],\n'
+        '    "tools/validate.py:NEW_VOCAB_BANS": ["new-alias"],',
+    )
+    root = _vocab_tree(tmp_path, doc=doc)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("NEW_VOCAB_BANS" in p for p in problems)
+
+
+def test_vocab_map_scopes_t9_toks_to_check_phase1(tmp_path):
+    validate = VOCAB_VALIDATE.replace('"create-skill": "why"', '"other": "why"')
+    validate += '\ndef unrelated():\n    t9_toks = {"create-skill": "why"}\n'
+    root = _vocab_tree(tmp_path, validate=validate)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/validate.py" in p and "create-skill" in p for p in problems)
+
+
+def test_vocab_map_rejects_an_augmented_gate_binding(tmp_path):
+    bans = VOCAB_BANS + 'DELEGATION_VOCAB_BANS += ("AskQuestion",)\n'
+    root = _vocab_tree(tmp_path, bans=bans)
+
+    problems = check_docs.check_vocab_map(root)
+
+    assert any("tools/bans.py" in p and "DELEGATION_VOCAB_BANS" in p for p in problems)
+
+
+def test_vocab_map_ignores_augmented_bindings_outside_the_gate_scope(tmp_path):
+    validate = VOCAB_VALIDATE + (
+        '\ndef unrelated():\n    t9_toks = {}\n    t9_toks |= {"local": "why"}\n'
+    )
+    root = _vocab_tree(tmp_path, validate=validate)
+
+    assert check_docs.check_vocab_map(root) == []
+
+
+def test_repository_vocabulary_map_is_clean():
+    assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []
