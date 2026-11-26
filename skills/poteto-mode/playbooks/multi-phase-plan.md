@@ -34,11 +34,11 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
 - [ ] On the operator's go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal. "<The plan path, the PR ids in order, the verification rule, who merges, and the done condition.>"
 - [ ] Read these from trunk at program start. Re-read them at every tick.
-  - [ ] `git show origin/main:skills/poteto-mode/playbooks/<execution playbook>.md`
-  - [ ] `git show origin/main:skills/swarm/SKILL.md`
-  - [ ] `git show origin/main:<control skill path>`
-  - [ ] `git show origin/main:skills/poteto-mode/playbooks/opening-a-pr.md`
-  - [ ] `git show origin/main:skills/<each other leaf skill the program uses>`
+  - [ ] `git show origin/master:skills/poteto-mode/playbooks/<execution playbook>.md`
+  - [ ] `git show origin/master:skills/swarm/SKILL.md`
+  - [ ] Read the installed control skill at `<control skill path>`. When it is unavailable, mark the live verdict incomplete.
+  - [ ] `git show origin/master:skills/poteto-mode/playbooks/opening-a-pr.md`
+  - [ ] `git show origin/master:skills/<each other leaf skill the program uses>`
 - [ ] Arm the 30-minute audit tick. In a local session, a recurring hermes cron job that delivers the tick prompt. In a local root, a wake chain arms each tick as a recurring hermes cron job whose delivery re-wakes this session. Never leave the cadence to memory.
 - [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk and the armed `goal.md` from the store. Audit the operation against both and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
 - [ ] On the operator's hold or stand-down, send every owner a zero-writes order at once.
@@ -54,10 +54,10 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 ### PR mechanics, for every PR
 
-- [ ] Resolve the forge once. Default to `gh`; if `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Record any fallback to `gh`. Never require `gt`.
-- [ ] Open the PR ready, never draft, with `origin pr create --status open --base <base-branch>` or `gh pr create --base <base-branch>` according to the resolved forge. A stack child targets its parent branch.
+- [ ] Resolve the forge once. Use `gt` for stack topology and restacks when available; PR create, edit, view, watch, ready, and merge use `gh` unless the operator explicitly opted into `origin pr`. Record the fallback when `gt` is unavailable; missing `gt` is not a failure. Never route PR operations through `gt`.
+- [ ] Open the PR ready, never draft, with `gh pr create --base <base-branch>`. On the operator's Origin opt-in, use `origin pr create --status open --base <base-branch>` only when `command -v origin` succeeds and Origin resolves the repository; otherwise fall back to `gh`. A stack child targets its parent branch.
 - [ ] Run the repo's lint and typecheck once before the PR-facing push. Push with hooks on.
-- [ ] Run `/deslop` before each commit and `/no-comments` before review.
+- [ ] Run the external slop-strip pass before each commit (`/deslop` when installed); record it as incomplete when absent. Run `/no-comments` before review.
 - [ ] Triage every Bugbot and security-reviewer comment per `../references/bugbot-triage.md`.
 - [ ] Rebase onto current trunk before the code-ready report and babysit. Keep that merge base in fix rounds. Rebase again only at merge prep, on a `git merge-tree` conflict with trunk, or on a CI failure that comes from a change on trunk.
 

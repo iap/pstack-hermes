@@ -4,6 +4,12 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.5] - 2026-11-26
+
+### Fixed
+- Poteto-mode playbooks now follow the product policy: Graphite (`gt`) handles stack topology and restacks, GitHub CLI (`gh`) handles PR operations by default, trunk is `origin/master`, and `deslop` / `control-ui` / `control-cli` are documented as external skills with an explicit incomplete-verdict rule when absent. Also replaced a stale Cursor restart note with gateway restart (#253).
+- `scripts/check-plan.mjs` now requires the `origin/master` marker used by the plan template; a regression test drives the checker with both the current and retired trunk markers. The playbooks state the `gt` topology versus `gh` PR-operation split explicitly and mark live verification incomplete when the control skill for the unit's surface is absent.
+
 ## [0.16.4] - 2026-11-25
 
 ### Fixed
