@@ -362,13 +362,28 @@ def _vocab_literals(
     for path, source in sources.items():
         tree = ast.parse(source)
         per_file: dict[str, list[str] | dict[str, str] | str] = {}
-        augmented = {
-            node.target.id
-            for node in ast.walk(tree)
-            if isinstance(node, ast.AugAssign)
-            and isinstance(node.target, ast.Name)
-            and node.target.id in names
-        }
+        def augmented_names(nodes: list[ast.stmt], allowed: set[str]) -> set[str]:
+            return {
+                child.target.id
+                for node in nodes
+                for child in ast.walk(node)
+                if isinstance(child, ast.AugAssign)
+                and isinstance(child.target, ast.Name)
+                and child.target.id in allowed
+            }
+
+        augmented = augmented_names(
+            [
+                node
+                for node in tree.body
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ],
+            names - set(VOCAB_GATE_SCOPES),
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name in VOCAB_GATE_SCOPES.values():
+                scoped = {name for name, func in VOCAB_GATE_SCOPES.items() if func == node.name}
+                augmented |= augmented_names(node.body, scoped)
 
         def capture(
             node: ast.AST,

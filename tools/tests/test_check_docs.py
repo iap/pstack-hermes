@@ -660,5 +660,14 @@ def test_vocab_map_rejects_an_augmented_gate_binding(tmp_path):
     assert any("tools/bans.py" in p and "DELEGATION_VOCAB_BANS" in p for p in problems)
 
 
+def test_vocab_map_ignores_augmented_bindings_outside_the_gate_scope(tmp_path):
+    validate = VOCAB_VALIDATE + (
+        '\ndef unrelated():\n    t9_toks = {}\n    t9_toks |= {"local": "why"}\n'
+    )
+    root = _vocab_tree(tmp_path, validate=validate)
+
+    assert check_docs.check_vocab_map(root) == []
+
+
 def test_repository_vocabulary_map_is_clean():
     assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []
