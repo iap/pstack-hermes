@@ -19,11 +19,11 @@ prompt without the skill.
 ```sh
 # One case, both arms — the cheapest end-to-end check
 uv run --frozen python tools/evals/run.py \
-  --model meituan/longcat-2.5:free --arm both --reps 1 --tasks poteto-routing
+  --model tencent/hy4-flash:free --arm both --reps 1 --tasks poteto-routing
 
 # Full sweep, durable record
 uv run --frozen python tools/evals/run.py \
-  --model meituan/longcat-2.5:free --arm both --reps 3 \
+  --model tencent/hy4-flash:free --arm both --reps 3 \
    --json-out tools/evals/results/$(date +%Y-%m-%dT%H%M%S)-sweep.json
  ```
 
