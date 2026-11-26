@@ -109,12 +109,14 @@ verbatim quote from `poteto-mode`.
 
 The best callable free model from a live survey was `upstage/solar-mini4:free`.
 A 3-rep `both` sweep at the default 1200 s timeout produced skill 0/3 (one
-runner error, two rubric failures) and baseline 0/3 (two runner errors). The
-printed `+0pp` is not evidence: three of six runs were runner errors, so the
-delta is **n/a with cause** (masked test status and a final test command that
-exited 1). An earlier 1-rep run with `tencent/hy4-flash:free` was likewise n/a.
-No method effect is claimed. A trustworthy delta still needs a configured
-maintainer runner or a funded model that follows the bare-test-command rule.
+runner error, two rubric failures) and baseline 0/3 (two runner errors). Both
+arms had scored runs, so the harness reports `+0pp`; three of six runs were
+runner errors (masked test status and a final test command that exited 1), so
+that delta is unreliable and is **not** evidence of a method effect. Per the
+reading guide, `n/a` is reserved for an arm with no scored run: an earlier
+1-rep run with `tencent/hy4-flash:free` was `n/a`, this 3-rep run is an
+untrustworthy `+0pp`. A trustworthy delta still needs a configured maintainer
+runner or a funded model that follows the bare-test-command rule.
 
 The earlier macOS failure was host- and version-specific; a newer Hermes on the
 maintainer host does run live cases. A fresh CI runner still has no configured
