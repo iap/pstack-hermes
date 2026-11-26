@@ -17,3 +17,9 @@ reviews:
   review_status: false
   auto_review:
     enabled: false
+  # Lock-file-only PRs need a review verdict too; the defaults exclude these
+  # paths entirely, which makes the bot-review gate unsatisfiable for them.
+  # Exact default patterns re-include them without becoming an allowlist.
+  path_filters:
+    - "**/package-lock.json"
+    - "**/*.lock"
