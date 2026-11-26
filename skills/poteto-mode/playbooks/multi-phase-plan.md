@@ -36,7 +36,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] Read these from trunk at program start. Re-read them at every tick.
   - [ ] `git show origin/master:skills/poteto-mode/playbooks/<execution playbook>.md`
   - [ ] `git show origin/master:skills/swarm/SKILL.md`
-  - [ ] `git show origin/master:<control skill path>`
+  - [ ] Read the installed control skill at `<control skill path>`. When it is unavailable, mark the live verdict incomplete.
   - [ ] `git show origin/master:skills/poteto-mode/playbooks/opening-a-pr.md`
   - [ ] `git show origin/master:skills/<each other leaf skill the program uses>`
 - [ ] Arm the 30-minute audit tick. In a local session, a recurring hermes cron job that delivers the tick prompt. In a local root, a wake chain arms each tick as a recurring hermes cron job whose delivery re-wakes this session. Never leave the cadence to memory.

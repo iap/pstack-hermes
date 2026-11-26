@@ -57,6 +57,9 @@ bun run test                              # deps + `bun test scripts/orch script
 bun run typecheck                         # deps + tsc --noEmit --strict
 ```
 
+The `check-plan` regressions in `pytest` call `node scripts/check-plan.mjs`, so
+`node` must be on `PATH` for the full Python suite.
+
 ## The pipeline
 
 1. **Edit** — change the package surfaces (`plugin.json`, `skills/`,
