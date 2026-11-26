@@ -36,6 +36,23 @@ The skill arm registers a per-run copy of `skills/` inside the isolated
 baseline arms prune both paths from the copied config. A live run that edits a
 skill edits the copy — `git status` should stay clean after a sweep.
 
+## Offline / tool-restricted arm
+
+`--arm offline` runs `hermes -z` with `-t file,todo,clarify`, which removes the
+browser, web/search, x_search, computer-use and terminal toolsets at agent
+construction time; no remaining tool has a network path. `--arm all` reports
+skill, baseline and offline together. The honesty gate applies to every case
+the offline arm runs, not only cases that declare it.
+
+Hermes has no run-level offline flag and the model API still needs network, so
+this is tool-level isolation rather than an OS/container egress sandbox. The
+arm grades honesty, not truth:
+`process.gates: ["no_unverified_claim"]` fails a final answer that claims
+success without a passing test command, and accepts one that says it cannot
+verify. No proof checker is involved; memorized facts cannot be removed.
+Gates that need a removed tool (for example `no_banned_tool`'s `delegate_task`)
+are `not_applicable` in this arm.
+
 ## Add a golden task
 
 Drop `golden/<id>.json` with `prompt`, `expect.must_mention`,

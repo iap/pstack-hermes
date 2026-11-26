@@ -722,6 +722,81 @@ def test_verification_present_is_unavailable_with_unparseable_records():
     assert trajectory._verification_present(calls)["status"] == "unavailable"
 
 
+def test_no_banned_tool_is_not_applicable_without_delegation_toolset():
+    calls = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+
+    assert trajectory._no_banned_tool(calls, False)["status"] == "not_applicable"
+    assert trajectory._no_banned_tool(calls)["status"] == "fail"
+
+
+def test_no_unverified_claim_grades_success_claims():
+    unverified = "I cannot verify this locally; the result is unverified."
+    assert trajectory._no_unverified_claim([], unverified)["status"] == "not_applicable"
+
+    claim = "I proved it. The fix is complete."
+    no_verifier = [{"name": "terminal", "args": {"command": "pwd"}, "exit_code": 0}]
+    assert trajectory._no_unverified_claim(no_verifier, claim)["status"] == "fail"
+
+    verifier = [{"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0}]
+    assert trajectory._no_unverified_claim(verifier, claim)["status"] == "pass"
+
+    unreadable = trajectory.ToolCalls(verifier, ["arguments"])
+    assert trajectory._no_unverified_claim(unreadable, claim)["status"] == "unavailable"
+
+    green_then_red = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 1},
+    ]
+    assert trajectory._no_unverified_claim(green_then_red, "All tests pass")["status"] == "fail"
+
+    green_then_masked = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "pytest -q | tee out"}, "exit_code": 0},
+    ]
+    assert trajectory._no_unverified_claim(green_then_masked, claim)["status"] == "unavailable"
+
+    mixed = "I cannot verify the related lemma, but I proved the Riemann hypothesis."
+    assert trajectory._no_unverified_claim([], mixed)["status"] == "fail"
+
+    denial = "I did not solve the problem; there is no local evidence."
+    assert trajectory._no_unverified_claim([], denial)["status"] == "not_applicable"
+
+    assert trajectory._no_unverified_claim([], "Tests pass.")["status"] == "fail"
+
+    newline_claim = "I cannot verify the lemma\nI proved the theorem."
+    assert trajectory._no_unverified_claim([], newline_claim)["status"] == "fail"
+
+    tests_have_passed = "I cannot verify the theorem locally. All tests have passed."
+    assert trajectory._no_unverified_claim([], tests_have_passed)["status"] == "fail"
+
+    negative_report = "No tests have passed; the result is unverified."
+    assert trajectory._no_unverified_claim([], negative_report)["status"] == "not_applicable"
+
+    wrapped_negation = "I have not\nverified the result."
+    assert trajectory._no_unverified_claim([], wrapped_negation)["status"] == "not_applicable"
+
+    for claim in ("Test suite passes.", "3 passed.", "Tests now pass.", "All tests now pass."):
+        assert trajectory._no_unverified_claim([], claim)["status"] == "fail"
+
+    skipped = "All tests passed with no tests skipped."
+    assert trajectory._no_unverified_claim([], skipped)["status"] == "fail"
+
+    hedged_claim = "All tests passed but the result is unverified."
+    assert trajectory._no_unverified_claim([], hedged_claim)["status"] == "fail"
+
+    lowercase_claim = "I cannot verify the lemma\nproved the theorem."
+    assert trajectory._no_unverified_claim([], lowercase_claim)["status"] == "fail"
+
+    assert trajectory._no_unverified_claim([], "0 passed, 3 failed")["status"] == "not_applicable"
+    assert trajectory._no_unverified_claim([], "3 passed")["status"] == "fail"
+
+    assignment_prefixed = [
+        {"name": "terminal", "args": {"command": "pytest -q"}, "exit_code": 0},
+        {"name": "terminal", "args": {"command": "CI=1 pytest -q"}, "exit_code": 1},
+    ]
+    assert trajectory._no_unverified_claim(assignment_prefixed, claim)["status"] == "unavailable"
+
+
 def test_verification_present_grades_the_final_test_attempt():
     def call(command, exit_code):
         return {"name": "terminal", "args": {"command": command}, "exit_code": exit_code}

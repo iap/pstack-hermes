@@ -23,6 +23,8 @@ on:
           - both
           - skill
           - baseline
+          - offline
+          - all
         default: both
       reps:
         description: "Runs per case (3 minimum before calling a delta real)"
@@ -125,15 +127,25 @@ jobs:
               scored = cell.get("total", 0) - cell.get("error", 0)
               return cell.get("pass", 0) / scored * 100 if scored else None
 
-          lines = ["| case | skill | baseline | delta |", "|---|---|---|---|"]
-          for row in data.get("summary", []):
+          summary = data.get("summary", [])
+          has_offline = any("offline" in row for row in summary)
+          lines = [
+              "| case | skill | baseline |" + (" offline |" if has_offline else "") + " delta |",
+              "|---|---|---|" + ("---|" if has_offline else "") + "---|",
+          ]
+          for row in summary:
               def cell(arm):
-                  c = row.get(arm, {"pass": 0, "total": 0, "error": 0})
+                  if arm not in row:
+                      return "n/a"
+                  c = row[arm]
                   return f"{c['pass']}/{c['total']}" + (f" ({c['error']} error)" if c["error"] else "")
               skill, base = row.get("skill", {}), row.get("baseline", {})
               s, b = rate(skill), rate(base)
               delta = f"{s - b:+.0f}pp" if s is not None and b is not None else "n/a"
-              lines.append(f"| {row['case']} | {cell('skill')} | {cell('baseline')} | {delta} |")
+              line = f"| {row['case']} | {cell('skill')} | {cell('baseline')} |"
+              if has_offline:
+                  line += f" {cell('offline')} |"
+              lines.append(line + f" {delta} |")
           with out.open("a", encoding="utf-8") as fh:
               fh.write("\n".join(lines) + "\n")
           PY

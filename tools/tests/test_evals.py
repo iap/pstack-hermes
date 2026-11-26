@@ -53,11 +53,88 @@ def test_build_argv_baseline_arm_omits_skill_flags():
     assert argv == ["hermes", "-z", "do it"]
 
 
+def test_build_argv_offline_arm_restricts_toolsets_and_omits_skill():
+    argv = eval_run.build_argv(
+        {"prompt": "do it", "skill": "poteto-mode"}, "hermes", eval_run.OFFLINE_ARM
+    )
+    assert argv == [
+        "hermes", "-z", "do it", "-t", eval_run.RESTRICTED_TOOLSETS
+    ]
+
+
 def test_build_argv_resolves_project_token():
     argv = eval_run.build_argv(
         {"prompt": "edit {PROJECT}/payments.ts"}, "hermes", "skill", "", Path("/tmp/eval-project")
     )
     assert argv[2] == "edit /tmp/eval-project/payments.ts"
+
+
+def test_main_selects_offline_and_all_arms(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    seen = []
+
+    def fake_run(case, hermes="hermes", arm="skill", model="", timeout=300):
+        seen.append(arm)
+        return "pass", [], []
+
+    monkeypatch.setattr(eval_run, "run_case", fake_run)
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", eval_run.OFFLINE_ARM]) == 0
+    assert seen == [eval_run.OFFLINE_ARM]
+
+    seen.clear()
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", "all"]) == 0
+    assert seen == list(eval_run.ALL_ARMS)
+
+
+def test_offline_arm_injects_the_honesty_gate(monkeypatch, tmp_path):
+    import subprocess
+
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text("model: x\n", encoding="utf-8")
+    monkeypatch.setenv("HERMES_HOME", str(active))
+
+    def fake_run(argv, **k):
+        _fake_session_db(Path(k["env"]["HERMES_HOME"]), [])
+        return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(eval_run.subprocess, "run", fake_run)
+    case = {"id": "demo", "prompt": "do it", "process": {"gates": []}}
+
+    _status, _failures, process = eval_run.run_case(case, "hermes", eval_run.OFFLINE_ARM)
+
+    assert [result["gate"] for result in process] == ["no_unverified_claim"]
+    assert case["process"]["gates"] == []
+
+
+def test_main_fails_on_offline_rubric_failure(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    monkeypatch.setattr(
+        eval_run,
+        "run_case",
+        lambda case, hermes="hermes", arm="skill", model="", timeout=300: (
+            ("fail", ["no_unverified_claim"], []) if arm == eval_run.OFFLINE_ARM else ("pass", [], [])
+        ),
+    )
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", "all"]) == 1
+
+
+def test_main_errors_on_offline_runner_error(monkeypatch):
+    monkeypatch.setattr(eval_run, "preflight", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(eval_run, "probe_session_record", lambda *a, **k: (True, "session ok"))
+    monkeypatch.setattr(
+        eval_run,
+        "run_case",
+        lambda case, hermes="hermes", arm="skill", model="", timeout=300: (
+            ("error", ["runner error"], []) if arm == eval_run.OFFLINE_ARM else ("pass", [], [])
+        ),
+    )
+
+    assert eval_run.main(["--tasks", "offline-honest", "--arm", eval_run.OFFLINE_ARM]) == 2
 
 
 def test_run_case_seeds_fixture_before_hermes(monkeypatch, tmp_path):
@@ -546,6 +623,16 @@ def test_protected_test_wins_over_files_changed_overlap(tmp_path):
 
     assert eval_run.run_protected_tests(case, project, protected) == []
     assert (protected / "test_payments.py").read_text(encoding="utf-8") == original
+
+
+def test_offline_case_declares_the_honesty_gate():
+    import json
+
+    case = json.loads(
+        (Path(__file__).resolve().parents[1] / "evals" / "golden" / "offline-honest.json").read_text()
+    )
+    assert case["process"]["gates"] == ["no_unverified_claim"]
+    assert "skill" not in case
 
 
 def test_routing_case_has_fixture_and_behavior_rubric():

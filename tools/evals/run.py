@@ -44,6 +44,9 @@ from trajectory import load_all_tool_calls, load_tool_calls
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 ARMS = ("skill", "baseline")
+OFFLINE_ARM = "offline"
+ALL_ARMS = ARMS + (OFFLINE_ARM,)
+RESTRICTED_TOOLSETS = "file,todo,clarify"
 CHECKOUT_SKILLS = str(ROOT / "skills")
 SKILL_SNAPSHOT = "eval-skills"
 PROJECT_TOKEN = "{PROJECT}"
@@ -95,6 +98,8 @@ def build_argv(
     skill = case.get("skill", "")
     if arm == "skill" and skill:
         argv += ["--skills", skill]
+    if arm == OFFLINE_ARM:
+        argv += ["-t", RESTRICTED_TOOLSETS]
     if model:
         argv += ["-m", model]
     return argv
@@ -372,6 +377,10 @@ def run_case(
     timeout: float = 1200,
 ) -> tuple[str, list[str], list[dict]]:
     """Return ("pass"|"fail"|"error", rubric failures, trajectory results)."""
+    if arm == OFFLINE_ARM:
+        process = case.get("process", {})
+        gates = list(dict.fromkeys([*process.get("gates", []), "no_unverified_claim"]))
+        case = {**case, "process": {**process, "gates": gates}}
     active = os.environ.get("HERMES_HOME")
     active_home = Path(active) if active else Path.home() / ".hermes"
     # Hermes may still be flushing state when the case returns; a cleanup race
@@ -413,11 +422,14 @@ def run_case(
                 return "error", ["process: no readable session record"], []
             all_calls = load_all_tool_calls(home / "state.db")
             if all_calls is None and any(
-                gate in ("verification_present", "verify_before_claim")
+                gate in ("verification_present", "verify_before_claim", "no_unverified_claim")
                 for gate in case["process"]["gates"]
             ):
                 return "error", ["process: no readable all-session record"], []
-            process = grade_trajectory(case["process"], calls, proc.stdout, project, all_calls)
+            process = grade_trajectory(
+                case["process"], calls, proc.stdout, project, all_calls,
+                delegation_available=arm != OFFLINE_ARM,
+            )
         try:
             outcome_failures = check_outcomes(case, project)
             outcome_failures += run_protected_tests(case, project, td / "protected")
@@ -468,7 +480,8 @@ def _rate(cell: dict) -> float | None:
 
 def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
     header = f"{'case':34}" + "".join(f"{arm:>16}" for arm in arms)
-    if arms == ARMS:
+    comparable = "skill" in arms and "baseline" in arms
+    if comparable:
         header += f"{'delta':>10}"
     print(header)
     for row in rows:
@@ -476,7 +489,7 @@ def _print_summary(rows: list[dict], arms: tuple[str, ...], reps: int) -> None:
         for arm in arms:
             cell = row[arm]
             line += f"{cell['pass']}/{cell['total']}".rjust(16)
-        if arms == ARMS:
+        if comparable:
             skill_rate, baseline_rate = _rate(row['skill']), _rate(row['baseline'])
             if skill_rate is None or baseline_rate is None:
                 line += "n/a".rjust(10)
@@ -507,9 +520,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hermes", default="hermes")
     ap.add_argument(
         "--arm",
-        choices=("skill", "baseline", "both"),
+        choices=("skill", "baseline", "both", OFFLINE_ARM, "all"),
         default="skill",
-        help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: run each case in both arms",
+        help="skill: preload the case skill (default); baseline: no skill, no checkout skills; both: skill+baseline delta; offline: restricted tools; all: every arm",
     )
     ap.add_argument("--reps", type=int, default=1, help="runs per case (default 1)")
     ap.add_argument("--tasks", default="", help="comma-separated case ids (default: all)")
@@ -556,11 +569,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"evals: {probe_detail}")
 
-    arms = ARMS if args.arm == "both" else (args.arm,)
+    arms = ARMS if args.arm == "both" else ALL_ARMS if args.arm == "all" else (args.arm,)
     records: list[dict] = []
     errors = 0
     skill_errors = 0
     skill_failed = 0
+    offline_errors = 0
+    offline_failed = 0
     target = Path(args.json_out) if args.json_out else None
     payload = None
     if target is not None:
@@ -607,6 +622,8 @@ def main(argv: list[str] | None = None) -> int:
                 # gate failure. Only the skill arm measures the method.
                 skill_errors += status == "error" and arm == "skill"
                 skill_failed += status == "fail" and arm == "skill"
+                offline_errors += status == "error" and arm == OFFLINE_ARM
+                offline_failed += status == "fail" and arm == OFFLINE_ARM
                 if payload is not None:
                     payload["summary"] = summarize(records, arms)
                     try:
@@ -617,7 +634,10 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = summarize(records, arms)
     _print_summary(summary, arms, args.reps)
-    print(f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s)")
+    print(
+        f"evals: {errors} runner error(s), {skill_failed} skill-arm rubric failure(s), "
+        f"{offline_failed} offline-arm rubric failure(s)"
+    )
 
     if payload is not None:
         payload["summary"] = summary
@@ -629,9 +649,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"evals: wrote {target}")
 
     baseline_only = arms == ("baseline",)
-    if skill_errors or (baseline_only and errors):
+    if skill_errors or offline_errors or (baseline_only and errors):
         return 2
-    return 1 if skill_failed else 0
+    return 1 if skill_failed or offline_failed else 0
 
 
 if __name__ == "__main__":
