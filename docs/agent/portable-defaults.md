@@ -20,11 +20,14 @@ assume belongs to the user's environment, not to this repository.
 
 - Default branch: resolve the trunk remote first, then use `<trunk-remote>/HEAD`
   (`git symbolic-ref --short refs/remotes/<trunk-remote>/HEAD`). When that ref is
-  absent, query the forge default with `gh repo view --json defaultBranchRef`,
-  fetch it, and use `<trunk-remote>/<branch>` for every read. Re-resolve and fetch
-  at every audit tick so reads use the current default. Never assume a branch or
-  remote name, and never use bare `HEAD`, `refs/heads/...` or the current checkout
-  as trunk.
+  absent, derive `<repository>` from `git remote get-url <trunk-remote>` and query
+  the forge default with `gh repo view <repository> --json defaultBranchRef`;
+  report discovery as incomplete when that repository cannot be queried. Fetch
+  the discovered branch into its named remote-tracking ref with
+  `git fetch <trunk-remote> <branch>:refs/remotes/<trunk-remote>/<branch>`, and use
+  `<trunk-remote>/<branch>` for every read. Re-resolve and fetch at every audit
+  tick so reads use the current default. Never assume a branch or remote name,
+  and never use bare `HEAD`, `refs/heads/...` or the current checkout as trunk.
 - Remote: derive the trunk remote from the main worktree's configured upstream
   (`git -C <main-worktree> config --get branch.<branch>.remote`), then the first
   configured remote, then `origin`. Remote names may contain a slash; do not split

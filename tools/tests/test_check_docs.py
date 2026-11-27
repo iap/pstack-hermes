@@ -690,7 +690,9 @@ def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
     _write(
         tmp_path / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md",
         "- [ ] `git show origin/HEAD:skills/swarm/SKILL.md`\n"
-        "- [ ] Independent PRs branch from the resolved trunk.\n",
+        "- [ ] Independent PRs branch from the resolved trunk.\n"
+        "- [ ] Run `git reset --hard $main` for the configured trunk.\n"
+        "- [ ] Run `git worktree add ../main` for a named path.\n",
     )
 
     assert check_docs.check_portable_trunk_refs(tmp_path) == []
