@@ -65,6 +65,15 @@ def result(name: str, tier: str, status: str, detail: str) -> dict:
     return {"name": name, "tier": tier, "status": status, "detail": detail}
 
 
+def resolve_root(path: Path) -> Path:
+    return path.resolve()
+
+
+def write_record(record: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+
+
 def command_check(name: str, tier: str, argv: list[str], cwd: Path, timeout: int = 300) -> dict:
     try:
         proc = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=timeout)
@@ -81,7 +90,7 @@ def check_seed_home(root: Path, active: Path) -> dict:
     try:
         with tempfile.TemporaryDirectory(prefix="pstack-smoke-home-") as tmp:
             home = Path(tmp)
-            run.seed_home(home, active, register_checkout_skills=False)
+            run.seed_home(home, active, register_checkout_skills=False, skills_root=root)
             config = home / "config.yaml"
             data = yaml.safe_load(config.read_text(encoding="utf-8")) if config.is_file() else {}
             dirs = (data.get("skills") or {}).get("external_dirs") or []
@@ -125,44 +134,66 @@ def check_trajectory_negative() -> dict:
     return result(name, tier, "pass", f"{len(cases)} negative cases default-deny")
 
 
-def live_activation(root: Path, hermes: str, model: str) -> dict:
+def live_activation(root: Path, active: Path, hermes: str, model: str) -> dict:
     name, tier = "activation", "live"
     skill = root / "skills" / "poteto-mode" / "SKILL.md"
     quote = "The Principles section below grounds every trigger."
-    if skill.is_file() and quote not in skill.read_text(encoding="utf-8"):
+    if not skill.is_file() or quote not in skill.read_text(encoding="utf-8"):
         return result(name, tier, "fail", "quote missing from shipped skill")
     prompt = "Quote verbatim the first Non-negotiables sentence from poteto-mode. Answer with only that sentence."
-    try:
-        proc = subprocess.run(
-            [hermes, "-z", prompt, "-m", model], capture_output=True, text=True, timeout=420
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return result(name, tier, "fail", f"one-shot failed: {exc}")
-    status = "pass" if proc.returncode == 0 and quote in (proc.stdout + proc.stderr) else "fail"
-    return result(name, tier, status, f"rc={proc.returncode} verbatim_quote={quote in proc.stdout}")
+    with tempfile.TemporaryDirectory(prefix="pstack-smoke-activation-") as tmp:
+        home = Path(tmp)
+        run.seed_home(home, active, register_checkout_skills=True, skills_root=root)
+        env = {**os.environ, "HERMES_HOME": str(home)}
+        try:
+            proc = subprocess.run(
+                [hermes, "-s", "pstack:poteto-mode", "-z", prompt, "-m", model],
+                capture_output=True, text=True, timeout=420, env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return result(name, tier, "fail", f"one-shot failed: {exc}")
+    matched = quote in (proc.stdout + proc.stderr)
+    status = "pass" if proc.returncode == 0 and matched else "fail"
+    return result(name, tier, status, f"rc={proc.returncode} verbatim_quote={matched}")
 
 
 def live_delegate(active: Path, hermes: str, model: str) -> dict:
     name, tier = "delegate", "live"
     prompt = "Use delegate_task exactly once with a trivial read-only goal: ask the child to reply with OK. Then report the child reply in one line."
-    try:
-        proc = subprocess.run(
-            [hermes, "-z", prompt, "-m", model], capture_output=True, text=True, timeout=500
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return result(name, tier, "fail", f"delegate one-shot failed: {exc}")
-    db = active / "state.db"
-    child_model = "unknown"
-    if db.is_file():
+    with tempfile.TemporaryDirectory(prefix="pstack-smoke-delegate-") as tmp:
+        home = Path(tmp)
+        run.seed_home(home, active, register_checkout_skills=False)
+        env = {**os.environ, "HERMES_HOME": str(home)}
         try:
-            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-            row = conn.execute(
-                "SELECT model FROM sessions WHERE source='subagent' ORDER BY started_at DESC LIMIT 1"
-            ).fetchone()
-            child_model = row[0] if row else "unknown"
-            conn.close()
-        except sqlite3.Error as exc:
-            return result(name, tier, "fail", f"session record unreadable: {exc}")
+            proc = subprocess.run(
+                [hermes, "-z", prompt, "-m", model],
+                capture_output=True, text=True, timeout=500, env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return result(name, tier, "fail", f"delegate one-shot failed: {exc}")
+        db = home / "state.db"
+        child_model = "unknown"
+        if db.is_file():
+            try:
+                conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+                parent = conn.execute(
+                    "SELECT id FROM sessions WHERE source='oneshot' ORDER BY started_at DESC LIMIT 1"
+                ).fetchone()
+                children = conn.execute(
+                    "SELECT model, model_config FROM sessions WHERE source='subagent' ORDER BY started_at DESC"
+                ).fetchall()
+                conn.close()
+                if parent:
+                    for child_name, config in children:
+                        try:
+                            meta = json.loads(config or "{}")
+                        except (TypeError, ValueError):
+                            continue
+                        if meta.get("_delegate_from") == parent[0] and child_name:
+                            child_model = child_name
+                            break
+            except sqlite3.Error as exc:
+                return result(name, tier, "fail", f"session record unreadable: {exc}")
     status = "pass" if proc.returncode == 0 and child_model != "unknown" else "fail"
     return result(name, tier, status, f"rc={proc.returncode} child_model={child_model}")
 
@@ -193,25 +224,26 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     checks = select_checks(args.live, args.model)
+    root = resolve_root(args.root)
     active = (args.active_home or Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))).resolve()
     results: list[dict] = []
     for name, tier in checks:
         if name == "validate":
-            entry = command_check(name, tier, [sys.executable, str(args.root / "tools/validate.py")], args.root)
+            entry = command_check(name, tier, [sys.executable, str(root / "tools/validate.py")], root)
         elif name == "check_docs":
-            entry = command_check(name, tier, [sys.executable, str(args.root / "tools/check_docs.py")], args.root)
+            entry = command_check(name, tier, [sys.executable, str(root / "tools/check_docs.py")], root)
         elif name == "scanner_vocab":
-            entry = command_check(name, tier, [sys.executable, str(args.root / "tools/scanner_gate.py"), "--package", str(args.root), "--vocab-only"], args.root)
+            entry = command_check(name, tier, [sys.executable, str(root / "tools/scanner_gate.py"), "--package", str(root), "--vocab-only"], root)
         elif name == "dual_lock":
-            entry = command_check(name, tier, [sys.executable, str(args.root / "tools/check_dual_lock.py")], args.root)
+            entry = command_check(name, tier, [sys.executable, str(root / "tools/check_dual_lock.py")], root)
         elif name == "plugin_doctor":
-            entry = command_check(name, tier, [args.hermes, "plugins", "doctor", str(args.root), "--ci"], args.root, timeout=180)
+            entry = command_check(name, tier, [args.hermes, "plugins", "doctor", str(root), "--ci"], root, timeout=180)
         elif name == "seed_home_baseline":
-            entry = check_seed_home(args.root, active)
+            entry = check_seed_home(root, active)
         elif name == "trajectory_negative":
             entry = check_trajectory_negative()
         elif name == "activation":
-            entry = live_activation(args.root, args.hermes, args.model)
+            entry = live_activation(root, active, args.hermes, args.model)
         elif name == "delegate":
             entry = live_delegate(active, args.hermes, args.model)
         else:
@@ -219,9 +251,9 @@ def main(argv: list[str] | None = None) -> int:
         results.append(entry)
         print(f"[{entry['status'].upper():4}] {name} ({tier}) {entry['detail']}")
 
-    record = make_record(results, host_metadata(args.root, args.hermes), args.model if args.live else None)
+    record = make_record(results, host_metadata(root, args.hermes), args.model if args.live else None)
     if args.json_out:
-        args.json_out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        write_record(record, args.json_out)
         print(f"record: {args.json_out}")
     print(f"summary: pass={record['summary']['pass']} fail={record['summary']['fail']}")
     return 1 if record["summary"]["fail"] else 0

@@ -64,6 +64,40 @@ def test_seed_home_check_detects_baseline_contamination(tmp_path):
     assert result["status"] == "pass", result["detail"]
 
 
+def test_seed_home_prunes_alternate_checkout_skills(tmp_path):
+    import tempfile
+
+    alt = tmp_path / "other-checkout"
+    (alt / "skills").mkdir(parents=True)
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text(
+        f"skills:\n  external_dirs:\n    - {alt / 'skills'}\n", encoding="utf-8"
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp)
+        smoke.run.seed_home(home, active, register_checkout_skills=False, skills_root=alt)
+        data = smoke.yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8"))
+        dirs = (data.get("skills") or {}).get("external_dirs") or []
+
+    assert str(alt / "skills") not in dirs
+
+
+def test_write_record_creates_parent_directory(tmp_path):
+    target = tmp_path / "new" / "dir" / "record.json"
+
+    smoke.write_record({"schema_version": "1", "checks": []}, target)
+
+    assert target.is_file()
+
+
+def test_resolve_root_makes_relative_path_absolute(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    assert smoke.resolve_root(Path("some-checkout")) == (tmp_path / "some-checkout").resolve()
+
+
 def test_trajectory_negative_check_is_default_deny():
     result = smoke.check_trajectory_negative()
 

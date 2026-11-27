@@ -40,6 +40,11 @@ uv run --frozen python tools/evals/smoke.py --live \
   --model tencent/hy4-flash:free --json-out /tmp/smoke-live.json
 ```
 
+Live results are nondeterministic: one live FAIL is a signal to re-run, not a
+verdict. The two probes make a few one-shot calls, so run them manually rather
+than in a loop; a provider 429 or timeout is a runner error, not a rubric fail,
+and must be recorded as such in the JSON record. Keep these probes out of CI.
+
 ### Dispatch a sweep in CI
 
 The `evals` workflow is manual-only. Pass `runner` as the label of a configured
