@@ -693,7 +693,8 @@ def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
         "- [ ] Independent PRs branch from the resolved trunk.\n"
         "- [ ] Run `git reset --hard $main` for the configured trunk.\n"
         "- [ ] Run `git worktree add ../main` for a named path.\n"
-        "- [ ] Run `git switch feature-main` for a non-trunk branch.\n",
+        "- [ ] Run `git switch feature-main` for a non-trunk branch.\n"
+        "- [ ] Run `git switch \"$trunk\" && echo main` for the resolved trunk.\n",
     )
 
     assert check_docs.check_portable_trunk_refs(tmp_path) == []

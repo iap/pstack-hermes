@@ -184,3 +184,41 @@ def test_audit_handles_detached_main_worktree(tmp_path):
 
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
     assert "unbound variable" not in result.stderr
+
+
+def test_audit_uses_configured_upstream_ref_name(tmp_path):
+    repo, wt = _fork_tree(tmp_path)
+    subprocess.run(["git", "-C", str(wt), "config", "branch.feature.remote", "upstream"], check=True)
+    subprocess.run(
+        ["git", "-C", str(wt), "config", "branch.feature.merge", "refs/heads/review-feature"],
+        check=True,
+    )
+    feature_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD"], text=True).strip()
+    subprocess.run(
+        ["git", "-C", str(repo), "update-ref", "refs/remotes/upstream/review-feature", feature_sha],
+        check=True,
+    )
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    rows = [line for line in result.stdout.splitlines() if "feature-wt" in line]
+    assert rows and "\tpushed\t" in rows[0]
+
+
+def test_audit_skips_local_upstream_as_trunk_remote(tmp_path):
+    repo = tmp_path / "local-upstream-repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(tmp_path / "origin.git")], check=True)
+    branch = subprocess.check_output(
+        ["git", "-C", str(repo), "symbolic-ref", "--short", "HEAD"], text=True
+    ).strip()
+    subprocess.run(["git", "-C", str(repo), "config", f"branch.{branch}.remote", "."], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"],
+        check=True,
+    )
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    assert "could not fetch origin/master" in result.stderr
+    assert result.stdout.startswith("SIZE\tAGE\tMERGED")
