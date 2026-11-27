@@ -39,8 +39,13 @@ candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/
 default_remote=""
 if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
 	git -C "$main_wt" fetch "$candidate_remote" --quiet 2>/dev/null || true
-	git -C "$main_wt" remote set-head "$candidate_remote" --auto >/dev/null 2>&1 || true
-	candidate_head=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
+	candidate_head=""
+	if git -C "$main_wt" remote set-head "$candidate_remote" --auto >/dev/null 2>&1; then
+		candidate_head=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
+	else
+		advertised=$(git -C "$main_wt" ls-remote --symref "$candidate_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+		[ -n "$advertised" ] && candidate_head="refs/remotes/$candidate_remote/${advertised#refs/heads/}"
+	fi
 	if [ -n "$candidate_head" ] && [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
 		default_remote=$candidate_remote
 	fi
