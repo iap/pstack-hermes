@@ -51,7 +51,7 @@ def test_record_carries_tiers_host_and_model():
     assert record["schema_version"] == "1"
     assert record["checks"][0]["tier"] == "deterministic"
     assert record["model"] == "tencent/hy4-flash:free"
-    assert record["summary"] == {"pass": 1, "fail": 0}
+    assert record["summary"] == {"pass": 1, "fail": 0, "error": 0}
 
 
 def test_seed_home_check_detects_baseline_contamination(tmp_path):
@@ -96,6 +96,25 @@ def test_resolve_root_makes_relative_path_absolute(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     assert smoke.resolve_root(Path("some-checkout")) == (tmp_path / "some-checkout").resolve()
+
+
+def test_runner_errors_are_detected_from_provider_diagnostics():
+    assert smoke.is_runner_error("provider 429 rate_limit_exceeded")
+    assert not smoke.is_runner_error("OK")
+
+
+def test_summary_counts_runner_errors():
+    record = smoke.make_record(
+        [{"name": "delegate", "tier": "live", "status": "error", "detail": "timeout"}],
+        host={"platform": "test"},
+    )
+
+    assert record["summary"] == {"pass": 0, "fail": 0, "error": 1}
+
+
+def test_first_line_handles_empty_output():
+    assert smoke.first_line("") == "unknown"
+    assert smoke.first_line("v1\nnext") == "v1"
 
 
 def test_trajectory_negative_check_is_default_deny():

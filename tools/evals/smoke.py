@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -57,6 +58,7 @@ def make_record(checks: list[dict], host: dict, model: str | None = None) -> dic
         "summary": {
             "pass": sum(c["status"] == "pass" for c in checks),
             "fail": sum(c["status"] == "fail" for c in checks),
+            "error": sum(c["status"] == "error" for c in checks),
         },
     }
 
@@ -72,6 +74,17 @@ def resolve_root(path: Path) -> Path:
 def write_record(record: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+
+
+def is_runner_error(text: str) -> bool:
+    return bool(
+        re.search(r"\b429\b|rate[ _-]?limit|resource_exhausted|timed out|timeout", text, re.I)
+    )
+
+
+def first_line(text: str) -> str:
+    lines = text.strip().splitlines()
+    return lines[0] if lines else "unknown"
 
 
 def command_check(name: str, tier: str, argv: list[str], cwd: Path, timeout: int = 300) -> dict:
@@ -95,7 +108,7 @@ def check_seed_home(root: Path, active: Path) -> dict:
             data = yaml.safe_load(config.read_text(encoding="utf-8")) if config.is_file() else {}
             dirs = (data.get("skills") or {}).get("external_dirs") or []
             snapshot = str(home / run.SKILL_SNAPSHOT)
-            if str(run.CHECKOUT_SKILLS) in dirs or snapshot in dirs or (home / run.SKILL_SNAPSHOT).exists():
+            if str(root / "skills") in dirs or snapshot in dirs or (home / run.SKILL_SNAPSHOT).exists():
                 return result(name, tier, "fail", "baseline registered checkout skills")
     except Exception as exc:  # a smoke failure must be visible, not silent
         return result(name, tier, "fail", f"seed_home: {exc}")
@@ -151,8 +164,13 @@ def live_activation(root: Path, active: Path, hermes: str, model: str) -> dict:
                 capture_output=True, text=True, timeout=420, env=env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            return result(name, tier, "fail", f"one-shot failed: {exc}")
-    matched = quote in (proc.stdout + proc.stderr)
+            return result(name, tier, "error", f"one-shot runner error: {exc}")
+    output = proc.stdout + proc.stderr
+    diagnostic = output.strip().splitlines()
+    tail = diagnostic[-1][:300] if diagnostic else "no output"
+    if is_runner_error(output):
+        return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {tail}")
+    matched = quote in output
     status = "pass" if proc.returncode == 0 and matched else "fail"
     return result(name, tier, status, f"rc={proc.returncode} verbatim_quote={matched}")
 
@@ -170,7 +188,11 @@ def live_delegate(active: Path, hermes: str, model: str) -> dict:
                 capture_output=True, text=True, timeout=500, env=env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            return result(name, tier, "fail", f"delegate one-shot failed: {exc}")
+            return result(name, tier, "error", f"delegate runner error: {exc}")
+        if is_runner_error(proc.stdout + proc.stderr):
+            diagnostic = (proc.stdout + proc.stderr).strip().splitlines()
+            tail = diagnostic[-1][:300] if diagnostic else "no output"
+            return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {tail}")
         db = home / "state.db"
         child_model = "unknown"
         if db.is_file():
@@ -202,7 +224,7 @@ def host_metadata(root: Path, hermes: str) -> dict:
     version = "unknown"
     try:
         proc = subprocess.run([hermes, "--version"], capture_output=True, text=True, timeout=60)
-        version = (proc.stdout or proc.stderr).strip().splitlines()[0]
+        version = first_line(proc.stdout or proc.stderr)
     except (OSError, subprocess.TimeoutExpired):
         pass
     return {
@@ -255,8 +277,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json_out:
         write_record(record, args.json_out)
         print(f"record: {args.json_out}")
-    print(f"summary: pass={record['summary']['pass']} fail={record['summary']['fail']}")
-    return 1 if record["summary"]["fail"] else 0
+    summary = record["summary"]
+    print(f"summary: pass={summary['pass']} fail={summary['fail']} error={summary['error']}")
+    return 1 if summary["fail"] or summary["error"] else 0
 
 
 if __name__ == "__main__":
