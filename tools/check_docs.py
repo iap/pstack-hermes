@@ -71,7 +71,10 @@ STALE_INSTALL_RE = re.compile(
 HARDCODED_TRUNK_RE = re.compile(
     r"origin/(?:master|main)\b"
     r"|\b(?:branch|branches|worktree|reset)\b[^.\n]{0,40}`(?:origin/)?(?:master|main)`"
-    r"|`git (?:reset --hard|worktree add|checkout|switch|branch)[^`]*(?<![\w/$/-])(?:master|main)\b`"
+)
+GIT_COMMAND_TRUNK_RE = re.compile(
+    r"\bgit (?:reset --hard|worktree add|checkout|switch|branch)"
+    r"[^`\n]*(?<![\w/$/-])(?:master|main)\b"
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
@@ -277,13 +280,14 @@ def check_portable_trunk_refs(root: Path = ROOT) -> list[str]:
     problems: list[str] = []
     for playbook in sorted((root / "skills").glob("*/playbooks/*.md")):
         text = _read(playbook)
-        for match in HARDCODED_TRUNK_RE.finditer(text):
-            lineno = text.count("\n", 0, match.start()) + 1
-            snippet = " ".join(match.group(0).split())
-            problems.append(
-                f"{playbook.relative_to(root)}:{lineno}: hardcoded trunk ref: {snippet}; "
-                "use origin/HEAD or the forge default"
-            )
+        for pattern in (HARDCODED_TRUNK_RE, GIT_COMMAND_TRUNK_RE):
+            for match in pattern.finditer(text):
+                lineno = text.count("\n", 0, match.start()) + 1
+                snippet = " ".join(match.group(0).split())
+                problems.append(
+                    f"{playbook.relative_to(root)}:{lineno}: hardcoded trunk ref: {snippet}; "
+                    "use origin/HEAD or the forge default"
+                )
     return problems
 
 

@@ -39,7 +39,7 @@ default_remote=""
 [ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 [ -z "$default_remote" ] && default_remote=origin
 fetched_remotes="$default_remote"
-git fetch "$default_remote" --quiet 2>/dev/null || true
+git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
 git remote set-head "$default_remote" --auto >/dev/null 2>&1 || true
 trunk_ref=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null)
 trunk=${trunk_ref#"$default_remote/"}

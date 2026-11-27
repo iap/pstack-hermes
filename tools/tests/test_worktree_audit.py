@@ -136,6 +136,17 @@ def test_audit_checks_feature_push_remote_separately(tmp_path):
     assert rows and "\tpushed\t" in rows[0]
 
 
+def test_audit_checks_feature_on_trunk_remote(tmp_path):
+    repo, wt = _fork_tree(tmp_path)
+    feature_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "update-ref", "refs/remotes/upstream/feature", feature_sha], check=True)
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    rows = [line for line in result.stdout.splitlines() if "feature-wt" in line]
+    assert rows and "\tpushed\t" in rows[0]
+
+
 def test_audit_handles_remote_name_with_hash(tmp_path):
     repo = tmp_path / "hash-repo"
     subprocess.run(["git", "init", "-q", str(repo)], check=True)

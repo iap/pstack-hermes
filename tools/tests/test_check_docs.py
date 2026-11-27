@@ -699,5 +699,16 @@ def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
     assert check_docs.check_portable_trunk_refs(tmp_path) == []
 
 
+def test_hardcoded_trunk_ref_in_fenced_command_fails(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "autopilot-full.md",
+        "```sh\ngit switch main\n```\n",
+    )
+
+    problems = check_docs.check_portable_trunk_refs(tmp_path)
+
+    assert any("hardcoded trunk ref" in p and "git switch main" in p for p in problems)
+
+
 def test_repository_playbooks_are_portable():
     assert check_docs.check_portable_trunk_refs(Path(check_docs.ROOT)) == []
