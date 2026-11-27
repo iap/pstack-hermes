@@ -114,9 +114,9 @@ $push_remote"
 	fi
 	if [ -z "$branch" ]; then remote=detached
 	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$compare_ref"; then
-		[ "$(git -C "$wt" rev-parse "$compare_ref" 2>/dev/null)" = "$head" ] \
+		[ "$(git -C "$wt" rev-parse "refs/remotes/$compare_ref" 2>/dev/null)" = "$head" ] \
 			&& remote=pushed \
-			|| remote="ahead$(git -C "$wt" rev-list --count "$compare_ref..HEAD" 2>/dev/null)"
+			|| remote="ahead$(git -C "$wt" rev-list --count "refs/remotes/$compare_ref..HEAD" 2>/dev/null)"
 	else remote=no-remote; fi
 
 	pr=$([ -n "$branch" ] && jq -r --arg b "$branch" \

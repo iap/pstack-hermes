@@ -266,3 +266,27 @@ def test_audit_discovers_main_default_from_bare_remote(tmp_path):
     assert "remote default branch unknown" not in result.stderr
     rows = [line for line in result.stdout.splitlines() if str(wt) in line]
     assert rows and "\tYES\t" in rows[0]
+
+
+def test_audit_ignores_local_branch_shadowing_remote(tmp_path):
+    repo, wt = _fork_tree(tmp_path)
+    subprocess.run(["git", "-C", str(wt), "config", "branch.feature.remote", "upstream"], check=True)
+    subprocess.run(
+        ["git", "-C", str(wt), "config", "branch.feature.merge", "refs/heads/review-feature"],
+        check=True,
+    )
+    (wt / "next.txt").write_text("y", encoding="utf-8")
+    subprocess.run(["git", "-C", str(wt), "add", "next.txt"], check=True)
+    subprocess.run(["git", "-C", str(wt), "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-qm", "next"], check=True)
+    head_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD"], text=True).strip()
+    parent_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD^"], text=True).strip()
+    subprocess.run(
+        ["git", "-C", str(repo), "update-ref", "refs/remotes/upstream/review-feature", parent_sha],
+        check=True,
+    )
+    subprocess.run(["git", "-C", str(repo), "branch", "upstream/review-feature", head_sha], check=True)
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    rows = [line for line in result.stdout.splitlines() if "feature-wt" in line]
+    assert rows and "\tahead1\t" in rows[0]
