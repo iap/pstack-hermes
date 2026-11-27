@@ -30,10 +30,12 @@ cd "$repo" || exit 1
 main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 
 # The remote default branch drives the merge check. Derive the remote from the
-# main worktree's upstream, then fall back to the first configured remote.
-# Both network steps are best-effort so the audit still works offline.
-default_remote=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null | sed 's#/.*##')
-[ -z "$default_remote" ] && default_remote=$(git remote 2>/dev/null | sed -n '1p')
+# main worktree's configured upstream, which may itself contain a slash, then
+# fall back to the first configured remote. Both network steps are best-effort
+# so the audit still works offline.
+main_branch=$(git -C "$main_wt" symbolic-ref --quiet --short HEAD 2>/dev/null)
+[ -n "$main_branch" ] && default_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null)
+[ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 [ -z "$default_remote" ] && default_remote=origin
 git fetch "$default_remote" --quiet 2>/dev/null || true
 git remote set-head "$default_remote" --auto >/dev/null 2>&1 || true
@@ -78,11 +80,13 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	else dirty="scratch:$(printf '%s\n' "$porcelain" | grep -c '^??')"; fi
 
 	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
+	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
+	[ -z "$push_remote" ] && push_remote=$default_remote
 	if [ -z "$branch" ]; then remote=detached
-	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$default_remote/$branch"; then
-		[ "$(git -C "$wt" rev-parse "$default_remote/$branch" 2>/dev/null)" = "$head" ] \
+	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$push_remote/$branch"; then
+		[ "$(git -C "$wt" rev-parse "$push_remote/$branch" 2>/dev/null)" = "$head" ] \
 			&& remote=pushed \
-			|| remote="ahead$(git -C "$wt" rev-list --count "$default_remote/$branch..HEAD" 2>/dev/null)"
+			|| remote="ahead$(git -C "$wt" rev-list --count "$push_remote/$branch..HEAD" 2>/dev/null)"
 	else remote=no-remote; fi
 
 	pr=$([ -n "$branch" ] && jq -r --arg b "$branch" \

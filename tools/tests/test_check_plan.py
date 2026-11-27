@@ -109,9 +109,10 @@ def test_any_trunk_ref_marker_passes_checker(tmp_path, marker):
     assert result.returncode == 0, result.stderr + result.stdout
 
 
-def test_missing_trunk_read_fails_checker(tmp_path):
+@pytest.mark.parametrize("marker", ["git show HEAD:", "Read the trunk playbook from disk."])
+def test_non_remote_trunk_read_fails_checker(tmp_path, marker):
     plan = tmp_path / "plan.md"
-    plan.write_text(_plan("Read the trunk playbook from disk."), encoding="utf-8")
+    plan.write_text(_plan(marker), encoding="utf-8")
     result = subprocess.run(
         ["node", str(CHECK_PLAN), str(plan)],
         capture_output=True,

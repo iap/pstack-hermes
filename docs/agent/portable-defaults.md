@@ -20,11 +20,14 @@ assume belongs to the user's environment, not to this repository.
 
 - Default branch: `git symbolic-ref --short refs/remotes/origin/HEAD`, or
   `git show origin/HEAD:<path>` directly. When that ref is absent, query the forge
-  default with `gh repo view --json defaultBranchRef`. Never assume `master` or
-  `main`.
-- Remote: derive it from the main worktree's upstream
-  (`git rev-parse --abbrev-ref --symbolic-full-name @{u}`), then the first
-  configured remote, then `origin`.
+  default with `gh repo view --json defaultBranchRef`, fetch it, and use the
+  remote-tracking ref (`origin/<branch>`) for every read. Never assume a branch
+  name, and never use bare `HEAD` or the current checkout as trunk.
+- Remote: derive the trunk remote from the main worktree's configured upstream
+  (`git -C <main-worktree> config --get branch.<branch>.remote`), then the first
+  configured remote, then `origin`. Remote names may contain a slash; do not split
+  an upstream ref at its first slash. For per-branch pushed/ahead checks, use that
+  branch's own upstream remote, which may differ from the trunk remote in a fork.
 - Paths: use `HERMES_HOME`, `hermes profile show`, `TMPDIR` or `mktemp`. A
   `~/.cursor/...` path is only a compatibility probe that skips gracefully; never
   use a machine-local absolute path as a live default.

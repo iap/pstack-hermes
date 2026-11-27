@@ -33,7 +33,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
 - [ ] On the operator's go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal. "<The plan path, the PR ids in order, the verification rule, who merges, and the done condition.>"
-- [ ] Resolve the trunk once from `git symbolic-ref --short refs/remotes/origin/HEAD`. If that ref is absent, query the forge default with `gh repo view --json defaultBranchRef`. Never assume `master` or `main`. Stop with an incomplete verdict when the trunk cannot be resolved.
+- [ ] Resolve the trunk once. Use `origin/HEAD` when present. If absent, query the forge default with `gh repo view --json defaultBranchRef`, fetch it with `git fetch origin <branch>`, and use `origin/<branch>` for every read below. Never assume `master` or `main`, and never use bare `HEAD` or the current checkout as trunk. Stop with an incomplete verdict when the trunk cannot be resolved.
 - [ ] Read these from trunk at program start. Re-read them at every tick.
   - [ ] `git show origin/HEAD:skills/poteto-mode/playbooks/<execution playbook>.md`
   - [ ] `git show origin/HEAD:skills/swarm/SKILL.md`
