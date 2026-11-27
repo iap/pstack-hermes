@@ -18,11 +18,13 @@ The release ZIP ships `skills/`, `scripts/`, `config/`, `assets/`, `README.md`,
 `LICENSE`, `plugin.json` and lockfiles. A branch, path, tool or model those files
 assume belongs to the user's environment, not to this repository.
 
-- Default branch: `git symbolic-ref --short refs/remotes/origin/HEAD`, or
-  `git show origin/HEAD:<path>` directly. When that ref is absent, query the forge
-  default with `gh repo view --json defaultBranchRef`, fetch it, and use the
-  remote-tracking ref (`origin/<branch>`) for every read. Never assume a branch
-  name, and never use bare `HEAD` or the current checkout as trunk.
+- Default branch: resolve the trunk remote first, then use `<trunk-remote>/HEAD`
+  (`git symbolic-ref --short refs/remotes/<trunk-remote>/HEAD`). When that ref is
+  absent, query the forge default with `gh repo view --json defaultBranchRef`,
+  fetch it, and use `<trunk-remote>/<branch>` for every read. Re-resolve and fetch
+  at every audit tick so reads use the current default. Never assume a branch or
+  remote name, and never use bare `HEAD`, `refs/heads/...` or the current checkout
+  as trunk.
 - Remote: derive the trunk remote from the main worktree's configured upstream
   (`git -C <main-worktree> config --get branch.<branch>.remote`), then the first
   configured remote, then `origin`. Remote names may contain a slash; do not split

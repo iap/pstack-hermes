@@ -34,12 +34,15 @@ main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)
 # fall back to the first configured remote. Both network steps are best-effort
 # so the audit still works offline.
 main_branch=$(git -C "$main_wt" symbolic-ref --quiet --short HEAD 2>/dev/null)
+default_remote=""
 [ -n "$main_branch" ] && default_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null)
 [ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 [ -z "$default_remote" ] && default_remote=origin
+fetched_remotes="$default_remote"
 git fetch "$default_remote" --quiet 2>/dev/null || true
 git remote set-head "$default_remote" --auto >/dev/null 2>&1 || true
-trunk=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null | sed "s#^$default_remote/##")
+trunk_ref=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null)
+trunk=${trunk_ref#"$default_remote/"}
 if [ -z "$trunk" ]; then
 	echo "warn: remote default branch unknown; merged column unavailable" >&2
 else
@@ -82,6 +85,11 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
 	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
 	[ -z "$push_remote" ] && push_remote=$default_remote
+	if ! printf '%s\n' "$fetched_remotes" | grep -qxF "$push_remote"; then
+		git fetch "$push_remote" --quiet 2>/dev/null || echo "warn: could not fetch $push_remote; pushed column may be stale" >&2
+		fetched_remotes="$fetched_remotes
+$push_remote"
+	fi
 	if [ -z "$branch" ]; then remote=detached
 	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$push_remote/$branch"; then
 		[ "$(git -C "$wt" rev-parse "$push_remote/$branch" 2>/dev/null)" = "$head" ] \

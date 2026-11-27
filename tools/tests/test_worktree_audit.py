@@ -134,3 +134,42 @@ def test_audit_checks_feature_push_remote_separately(tmp_path):
 
     rows = [line for line in result.stdout.splitlines() if "feature-wt" in line]
     assert rows and "\tpushed\t" in rows[0]
+
+
+def test_audit_handles_remote_name_with_hash(tmp_path):
+    repo = tmp_path / "hash-repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "team#upstream", str(tmp_path / "upstream.git")], check=True)
+    branch = subprocess.check_output(
+        ["git", "-C", str(repo), "symbolic-ref", "--short", "HEAD"], text=True
+    ).strip()
+    subprocess.run(["git", "-C", str(repo), "config", f"branch.{branch}.remote", "team#upstream"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "symbolic-ref", "refs/remotes/team#upstream/HEAD", "refs/remotes/team#upstream/trunk"],
+        check=True,
+    )
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    assert "could not fetch team#upstream/trunk" in result.stderr
+
+
+def test_audit_handles_detached_main_worktree(tmp_path):
+    repo = tmp_path / "detached-repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    (repo / "file.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "file.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+    subprocess.run(["git", "-C", str(repo), "checkout", "--detach", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(tmp_path / "origin.git")], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"],
+        check=True,
+    )
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    assert result.stdout.startswith("SIZE\tAGE\tMERGED")
+    assert "unbound variable" not in result.stderr
