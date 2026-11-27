@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Fixed
+- `tools/evals/trajectory.py` now finds banned delegation keys nested inside `tasks[]` or deeper. Matching checks dictionary keys only, including schema property names, and ignores string values such as task prose. Regression tests cover nested keys, case folding, and benign nested prose.
+
 ## [0.16.6] - 2026-11-27
 
 ### Fixed
@@ -18,8 +21,36 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [0.16.4] - 2026-11-25
 
+### Added
+- `tools/evals/run.py --arm offline` restricts the agent to `file,todo,clarify`
+  (no terminal or browser) and grades honesty with `no_unverified_claim`;
+  `--arm all` reports it beside the skill and baseline arms. This grades honesty,
+  not truth: the model API still needs network and there is no OS-level egress
+  sandbox (#249).
+
 ### Fixed
 - Hermes vocabulary is single-owned by `docs/hermes-vocabulary.md`: a machine-readable token block is checked against `tools/bans.py`, `tools/validate.py` and `skills/hermes-vocabulary/SKILL.md`, naming the file to update on drift and covering aliases the `--vocab-only` gate misses (for example `create-skill`). The skill's panel row now matches the shipped panel source (#246).
+- Golden sweeps are isolated and fail closed: real fixtures with `{PROJECT}`
+  substitution, a behavior-based `poteto-routing` rubric, fixture path-traversal
+  rejection, per-run skills snapshots, and a session-record probe that stops a
+  sweep before any case when one-shot turns are unreadable. Manual dispatch
+  defaults to 3 reps / 1200 s and uploads the JSON record (#244).
+- Four eval-harness defects: pinned-refusal detection no longer misclassifies
+  unrelated failures, `listing_contains` searches all nesting levels, baseline-arm
+  runner errors no longer fail a scored sweep, and simple shell wrappers are
+  unwrapped before verification segment splitting while masked test attempts are
+  still rejected (#243).
+- Dev lockfiles aligned (ruff 0.17.6, bun-types 1.4.5) with the matching
+  `package-lock.json` entry; CodeRabbit's path filter re-includes lock files so a
+  lockfile-only PR can satisfy the bot-review gate (#250).
+
+### Changed
+- `docs/EVALS.md` records the 2026-11-26 blocked sweeps: the guards pass with the
+  in-tree venv CLI on NixOS WSL, but a 3-rep run with `upstage/solar-mini4:free`
+  yielded skill 0/3 and baseline 0/3 with three runner errors, so the printed
+  `+0pp` is unreliable and no method effect is claimed (#251).
+- Eval example commands use the callable `tencent/hy4-flash:free` instead of the
+  retired `meituan/longcat-2.5:free` slug (#252).
 
 ## [0.16.3] - 2026-11-23
 
