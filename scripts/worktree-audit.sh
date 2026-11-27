@@ -51,8 +51,8 @@ fetched_remotes="$default_remote"
 git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
 trunk=""
 if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
-	trunk_ref=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
-	trunk=${trunk_ref#"$default_remote/"}
+	trunk_ref=$(git symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
+	trunk=${trunk_ref#"refs/remotes/$default_remote/"}
 else
 	remote_head=$(git ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
 	trunk=${remote_head#refs/heads/}
