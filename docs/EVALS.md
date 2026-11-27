@@ -27,6 +27,19 @@ uv run --frozen python tools/evals/run.py \
    --json-out tools/evals/results/$(date +%Y-%m-%dT%H%M%S)-sweep.json
  ```
 
+### Smoke checks
+
+`tools/evals/smoke.py` runs deterministic checks by default — package gates,
+baseline skill pruning, and synthetic trajectory cases. Live model-calling
+checks are opt-in and are never a required CI gate. Each check reports a tier;
+the command exits 0 with no failures and writes a JSON record when asked.
+
+```sh
+uv run --frozen python tools/evals/smoke.py --json-out /tmp/smoke.json
+uv run --frozen python tools/evals/smoke.py --live \
+  --model tencent/hy4-flash:free --json-out /tmp/smoke-live.json
+```
+
 ### Dispatch a sweep in CI
 
 The `evals` workflow is manual-only. Pass `runner` as the label of a configured

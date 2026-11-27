@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Added
+- `tools/evals/smoke.py`: a deterministic-first smoke entry point that reuses existing gates, requires explicit `--live --model` for model-calling checks, and emits a tier-labelled JSON record (#260).
+
 ### Fixed
 - `tools/evals/trajectory.py` now finds banned delegation keys nested inside `tasks[]` or deeper. Matching checks dictionary keys only, including schema property names, and ignores string values such as task prose. Regression tests cover nested keys, case folding, and benign nested prose.
 
