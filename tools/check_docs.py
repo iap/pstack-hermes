@@ -71,7 +71,7 @@ STALE_INSTALL_RE = re.compile(
 HARDCODED_TRUNK_RE = re.compile(
     r"origin/(?:master|main)\b"
     r"|\b(?:branch|branches|worktree|reset)\b[^.\n]{0,40}`(?:origin/)?(?:master|main)`"
-    r"|`git (?:reset --hard|worktree add|checkout|switch|branch)[^`]*(?<![$/])\b(?:master|main)\b`"
+    r"|`git (?:reset --hard|worktree add|checkout|switch|branch)[^`]*(?<![\w/$/-])(?:master|main)\b`"
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
