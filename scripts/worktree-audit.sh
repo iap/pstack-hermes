@@ -29,25 +29,36 @@ cd "$repo" || exit 1
 # Main worktree is the first entry; everything else is a candidate.
 main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 
-# The remote default branch drives the merge check. Derive the remote from the
-# main worktree's configured upstream, which may itself contain a slash, then
-# fall back to the first configured remote. Both network steps are best-effort
-# so the audit still works offline.
+# The remote default branch drives the merge check. Use the main worktree's
+# upstream only when that branch is its remote's default, so a checked-out
+# feature branch cannot select the wrong trunk remote. Both network steps are
+# best-effort so the audit still works offline.
 main_branch=$(git -C "$main_wt" symbolic-ref --quiet --short HEAD 2>/dev/null)
+candidate_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null || true)
+candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/dev/null || true)
 default_remote=""
-[ -n "$main_branch" ] && default_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null)
-[ "$default_remote" = "." ] && default_remote=""
+if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
+	candidate_head=$(git -C "$main_wt" symbolic-ref --quiet --short "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
+	if [ -n "$candidate_head" ] && [ "$candidate_head" = "${candidate_merge#refs/heads/}" ]; then
+		default_remote=$candidate_remote
+	fi
+fi
 [ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 [ -z "$default_remote" ] && default_remote=origin
 fetched_remotes="$default_remote"
 git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
-git remote set-head "$default_remote" --auto >/dev/null 2>&1 || true
-trunk_ref=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null)
-trunk=${trunk_ref#"$default_remote/"}
+trunk=""
+if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
+	trunk_ref=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
+	trunk=${trunk_ref#"$default_remote/"}
+else
+	remote_head=$(git ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+	trunk=${remote_head#refs/heads/}
+fi
 if [ -z "$trunk" ]; then
 	echo "warn: remote default branch unknown; merged column unavailable" >&2
 else
-	git fetch "$default_remote" "$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
+	git fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
 fi
 
 # PR state by branch, fetched once. Empty if gh is unavailable.
@@ -85,9 +96,11 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 
 	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
 	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
-	[ "$push_remote" = "." ] && push_remote=""
+	local_upstream=no
+	[ "$push_remote" = "." ] && { push_remote=""; local_upstream=yes; }
 	[ -z "$push_remote" ] && push_remote=$default_remote
 	merge_ref=$(git -C "$wt" config --get "branch.$branch.merge" 2>/dev/null || true)
+	[ "$local_upstream" = yes ] && merge_ref=""
 	compare_ref="$push_remote/$branch"
 	if [ -n "$merge_ref" ] && [ -n "$push_remote" ]; then
 		compare_ref="$push_remote/${merge_ref#refs/heads/}"

@@ -75,6 +75,7 @@ HARDCODED_TRUNK_RE = re.compile(
 GIT_COMMAND_TRUNK_RE = re.compile(
     r"\bgit (?:reset --hard|worktree add|checkout|switch|branch)"
     r"[^`\n;&|]*(?<![\w/$/-])(?:master|main)\b"
+    r"|\bgit show [^`\n;&|]*(?<![\w/$/-])(?:master|main):"
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"

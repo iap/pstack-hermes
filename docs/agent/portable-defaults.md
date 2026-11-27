@@ -25,13 +25,17 @@ assume belongs to the user's environment, not to this repository.
   report discovery as incomplete when that repository cannot be queried. Fetch
   the discovered branch into its named remote-tracking ref with
   `git fetch <trunk-remote> +<branch>:refs/remotes/<trunk-remote>/<branch>`, and use
-  `<trunk-remote>/<branch>` for every read. Re-resolve and fetch at every audit
-  tick so reads use the current default. Never assume a branch or remote name,
+  `<trunk-remote>/<branch>` for every read. If `git remote set-head --auto`
+  fails, resolve the current default from `git ls-remote --symref`; do not trust
+  a cached `origin/HEAD`. Re-resolve and fetch at every audit tick so reads use
+  the current default. Never assume a branch or remote name,
   and never use bare `HEAD`, `refs/heads/...` or the current checkout as trunk.
-- Remote: derive the trunk remote from the main worktree's configured upstream
-  (`git -C <main-worktree> config --get branch.<branch>.remote`), then the first
-  configured remote, then `origin`. The value `.` means a local upstream, not a
-  remote: skip it and use the configured-remote fallback. Remote names may contain
+- Remote: the trunk remote must hold the trunk, not merely be the upstream of
+  whichever branch the main worktree has checked out. Use the main worktree's
+  upstream only when that branch is its remote's default; otherwise take the
+  first configured remote, then `origin`. The value `.` means a local upstream,
+  not a remote: skip it and use the configured-remote fallback. Remote names may
+  contain
   a slash; do not split an upstream ref at its first slash. For per-branch
   pushed/ahead checks, use that branch's own upstream remote and its configured
   upstream ref, which may differ in name from the local branch and from the trunk

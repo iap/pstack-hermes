@@ -34,20 +34,20 @@ def _audit(tmp_path, trunk: str, remote: str = "origin"):
 
 def test_audit_uses_remote_default_master(tmp_path):
     result = _audit(tmp_path, "master")
-    assert "could not fetch origin/master" in result.stderr
+    assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
     assert "origin/main" not in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
 
 
 def test_audit_keeps_remote_default_main(tmp_path):
     result = _audit(tmp_path, "main")
-    assert "could not fetch origin/main" in result.stderr
+    assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
 
 
 def test_audit_uses_named_remote(tmp_path):
     result = _audit(tmp_path, "trunk", "upstream")
-    assert "could not fetch upstream/trunk" in result.stderr
+    assert "could not fetch upstream; merged and pushed columns may be stale" in result.stderr
     assert "origin" not in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
 
@@ -112,7 +112,7 @@ def test_audit_preserves_slash_named_remote(tmp_path):
     )
     result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch team/upstream/trunk" in result.stderr
+    assert "could not fetch team/upstream; merged and pushed columns may be stale" in result.stderr
 
 
 def test_audit_invoked_from_linked_worktree_uses_main_upstream(tmp_path):
@@ -121,7 +121,7 @@ def test_audit_invoked_from_linked_worktree_uses_main_upstream(tmp_path):
 
     result = subprocess.run(["bash", str(AUDIT), str(wt)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch upstream/main" in result.stderr
+    assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
 
 
 def test_audit_checks_feature_push_remote_separately(tmp_path):
@@ -138,6 +138,7 @@ def test_audit_checks_feature_push_remote_separately(tmp_path):
 
 def test_audit_checks_feature_on_trunk_remote(tmp_path):
     repo, wt = _fork_tree(tmp_path)
+    subprocess.run(["git", "-C", str(wt), "config", "branch.feature.remote", "upstream"], check=True)
     feature_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD"], text=True).strip()
     subprocess.run(["git", "-C", str(repo), "update-ref", "refs/remotes/upstream/feature", feature_sha], check=True)
 
@@ -162,7 +163,7 @@ def test_audit_handles_remote_name_with_hash(tmp_path):
 
     result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch team#upstream/trunk" in result.stderr
+    assert "could not fetch team#upstream; merged and pushed columns may be stale" in result.stderr
 
 
 def test_audit_handles_detached_main_worktree(tmp_path):
@@ -220,5 +221,5 @@ def test_audit_skips_local_upstream_as_trunk_remote(tmp_path):
 
     result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch origin/master" in result.stderr
+    assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
