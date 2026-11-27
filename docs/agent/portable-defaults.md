@@ -24,7 +24,8 @@ assume belongs to the user's environment, not to this repository.
   the forge default with `gh repo view <repository> --json defaultBranchRef`;
   report discovery as incomplete when that repository cannot be queried. Fetch
   the discovered branch into its named remote-tracking ref with
-  `git fetch <trunk-remote> +<branch>:refs/remotes/<trunk-remote>/<branch>`, and use
+  `git fetch <trunk-remote> +refs/heads/<branch>:refs/remotes/<trunk-remote>/<branch>`,
+  and use
   `<trunk-remote>/<branch>` for every read. If `git remote set-head --auto`
   fails, resolve the current default from `git ls-remote --symref`; do not trust
   a cached `origin/HEAD`. Re-resolve and fetch at every audit tick so reads use

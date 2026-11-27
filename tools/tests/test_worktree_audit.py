@@ -223,3 +223,46 @@ def test_audit_skips_local_upstream_as_trunk_remote(tmp_path):
 
     assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
+
+
+def _discoverable_tree(tmp_path, default_branch):
+    seed = tmp_path / f"seed-{default_branch}"
+    subprocess.run(["git", "init", "-q", str(seed)], check=True)
+    subprocess.run(["git", "-C", str(seed), "symbolic-ref", "HEAD", f"refs/heads/{default_branch}"], check=True)
+    subprocess.run(["git", "-C", str(seed), "config", "user.email", "test@example.com"], check=True)
+    subprocess.run(["git", "-C", str(seed), "config", "user.name", "Test"], check=True)
+    (seed / "file.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(seed), "add", "file.txt"], check=True)
+    subprocess.run(["git", "-C", str(seed), "commit", "-qm", "init"], check=True)
+    remote = tmp_path / f"remote-{default_branch}.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(seed), str(remote)], check=True)
+    subprocess.run(["git", "--git-dir=" + str(remote), "symbolic-ref", "HEAD", f"refs/heads/{default_branch}"], check=True)
+    repo = tmp_path / f"repo-{default_branch}"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(remote)], check=True)
+    subprocess.run(["git", "-C", str(repo), "fetch", "-q", "origin"], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "set-head", "origin", "--auto"], check=True)
+    subprocess.run(["git", "-C", str(repo), "checkout", "-q", "-b", default_branch, f"origin/{default_branch}"], check=True)
+    wt = tmp_path / f"wt-{default_branch}"
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "-b", "feature", str(wt)], check=True)
+    return repo, wt
+
+
+def test_audit_discovers_master_default_from_bare_remote(tmp_path):
+    repo, wt = _discoverable_tree(tmp_path, "master")
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    assert "remote default branch unknown" not in result.stderr
+    rows = [line for line in result.stdout.splitlines() if str(wt) in line]
+    assert rows and "\tYES\t" in rows[0]
+
+
+def test_audit_discovers_main_default_from_bare_remote(tmp_path):
+    repo, wt = _discoverable_tree(tmp_path, "main")
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    assert "remote default branch unknown" not in result.stderr
+    rows = [line for line in result.stdout.splitlines() if str(wt) in line]
+    assert rows and "\tYES\t" in rows[0]

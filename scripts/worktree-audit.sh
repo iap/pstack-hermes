@@ -38,8 +38,8 @@ candidate_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2
 candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/dev/null || true)
 default_remote=""
 if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
-	candidate_head=$(git -C "$main_wt" symbolic-ref --quiet --short "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
-	if [ -n "$candidate_head" ] && [ "$candidate_head" = "${candidate_merge#refs/heads/}" ]; then
+	candidate_head=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
+	if [ -n "$candidate_head" ] && [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
 		default_remote=$candidate_remote
 	fi
 fi
