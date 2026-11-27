@@ -1,6 +1,8 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 CHECK_PLAN = ROOT / "scripts" / "check-plan.mjs"
 
@@ -101,12 +103,20 @@ def _check(tmp_path, marker: str):
     )
 
 
-def test_current_trunk_marker_passes_checker(tmp_path):
-    result = _check(tmp_path, "git show origin/master:")
+@pytest.mark.parametrize("marker", ["git show origin/HEAD:", "git show origin/master:", "git show origin/main:"])
+def test_any_trunk_ref_marker_passes_checker(tmp_path, marker):
+    result = _check(tmp_path, marker)
     assert result.returncode == 0, result.stderr + result.stdout
 
 
-def test_old_trunk_marker_fails_checker(tmp_path):
-    result = _check(tmp_path, "git show origin/main:")
+def test_missing_trunk_read_fails_checker(tmp_path):
+    plan = tmp_path / "plan.md"
+    plan.write_text(_plan("Read the trunk playbook from disk."), encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(CHECK_PLAN), str(plan)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert result.returncode == 1
     assert "Program checklist lacks" in result.stderr

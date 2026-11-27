@@ -91,7 +91,9 @@ The `check-plan` regressions in `pytest` call `node scripts/check-plan.mjs`, so
 
 - Target `master` for development PRs. There is no compatibility branch:
   the repository root is the package, and Releases are the only published
-  artifacts.
+  artifacts. This pin is repository-owned; shipped playbooks and scripts must
+  resolve the user's trunk and environment at runtime
+  ([portable defaults](docs/agent/portable-defaults.md)).
 
 - `plugin.json`, `skills/`, `config/`, `assets/`, `README.md` and
   `LICENSE` are **hand-written source** at the repository root — edit them

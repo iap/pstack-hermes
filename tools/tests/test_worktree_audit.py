@@ -5,17 +5,22 @@ ROOT = Path(__file__).resolve().parents[2]
 AUDIT = ROOT / "scripts" / "worktree-audit.sh"
 
 
-def _audit(tmp_path, trunk: str):
-    repo = tmp_path / trunk
+def _audit(tmp_path, trunk: str, remote: str = "origin"):
+    repo = tmp_path / f"{remote}-{trunk}"
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    if remote != "origin":
+        subprocess.run(
+            ["git", "-C", str(repo), "remote", "add", remote, str(tmp_path / "upstream.git")],
+            check=True,
+        )
     subprocess.run(
         [
             "git",
             "-C",
             str(repo),
             "symbolic-ref",
-            "refs/remotes/origin/HEAD",
-            f"refs/remotes/origin/{trunk}",
+            f"refs/remotes/{remote}/HEAD",
+            f"refs/remotes/{remote}/{trunk}",
         ],
         check=True,
     )
@@ -37,6 +42,13 @@ def test_audit_uses_remote_default_master(tmp_path):
 def test_audit_keeps_remote_default_main(tmp_path):
     result = _audit(tmp_path, "main")
     assert "could not fetch origin/main" in result.stderr
+    assert result.stdout.startswith("SIZE\tAGE\tMERGED")
+
+
+def test_audit_uses_named_remote(tmp_path):
+    result = _audit(tmp_path, "trunk", "upstream")
+    assert "could not fetch upstream/trunk" in result.stderr
+    assert "origin" not in result.stderr
     assert result.stdout.startswith("SIZE\tAGE\tMERGED")
 
 

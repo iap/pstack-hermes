@@ -18,6 +18,8 @@ broke:
    `after-install.md` would have failed every release).
 5. Install docs (`README.md`, `docs/USING.md`) do not resurrect the dead
    `master` subdirectory install route.
+6. Shipped playbooks resolve the trunk at runtime instead of hardcoding
+   `origin/master` or `origin/main`.
 
 Exit codes: 0 clean; 1 drift found; 2 unreadable input.
 """
@@ -65,6 +67,10 @@ STALE_INSTALL_RE = re.compile(
     r"|subdirectory\s+installs?\s+are\s+re-cloned"
     r"|Subdirectory\s+updates\s+replace\s+shipped\s+skills",
     re.IGNORECASE,
+)
+HARDCODED_TRUNK_RE = re.compile(
+    r"git show origin/(?:master|main):"
+    r"|branch from `(?:origin/)?(?:master|main)`"
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
@@ -263,6 +269,20 @@ def check_stale_install_route(root: Path = ROOT) -> list[str]:
                     f"{rel}:{lineno}: stale subdirectory-install route: {snippet}"
                 )
             start = pos + len(LEGACY_REPO)
+    return problems
+
+
+def check_portable_trunk_refs(root: Path = ROOT) -> list[str]:
+    problems: list[str] = []
+    for playbook in sorted((root / "skills").glob("*/playbooks/*.md")):
+        text = _read(playbook)
+        for match in HARDCODED_TRUNK_RE.finditer(text):
+            lineno = text.count("\n", 0, match.start()) + 1
+            snippet = " ".join(match.group(0).split())
+            problems.append(
+                f"{playbook.relative_to(root)}:{lineno}: hardcoded trunk ref: {snippet}; "
+                "use origin/HEAD or the forge default"
+            )
     return problems
 
 
@@ -506,6 +526,7 @@ CHECKS = (
     ("layout matches .gitattributes", check_layout_manifest),
     ("no stale package subdirectory paths", check_stale_paths),
     ("no stale subdirectory-install route", check_stale_install_route),
+    ("shipped playbooks avoid hardcoded trunk refs", check_portable_trunk_refs),
     ("release packaging sources exist", check_release_sources),
     ("model panel matches docs/MODELS.md", check_model_map),
     ("vocabulary map matches gate lists and skill", check_vocab_map),

@@ -29,15 +29,19 @@ cd "$repo" || exit 1
 # Main worktree is the first entry; everything else is a candidate.
 main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 
-# The remote default branch drives the merge check. Refresh the cache first;
-# both network steps are best-effort so the audit still works offline.
-git fetch origin --quiet 2>/dev/null || true
-git remote set-head origin --auto >/dev/null 2>&1 || true
-trunk=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+# The remote default branch drives the merge check. Derive the remote from the
+# main worktree's upstream, then fall back to the first configured remote.
+# Both network steps are best-effort so the audit still works offline.
+default_remote=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null | sed 's#/.*##')
+[ -z "$default_remote" ] && default_remote=$(git remote 2>/dev/null | sed -n '1p')
+[ -z "$default_remote" ] && default_remote=origin
+git fetch "$default_remote" --quiet 2>/dev/null || true
+git remote set-head "$default_remote" --auto >/dev/null 2>&1 || true
+trunk=$(git symbolic-ref --quiet --short "refs/remotes/$default_remote/HEAD" 2>/dev/null | sed "s#^$default_remote/##")
 if [ -z "$trunk" ]; then
 	echo "warn: remote default branch unknown; merged column unavailable" >&2
 else
-	git fetch origin "$trunk" --quiet 2>/dev/null || echo "warn: could not fetch origin/$trunk; merged column may be stale" >&2
+	git fetch "$default_remote" "$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
 fi
 
 # PR state by branch, fetched once. Empty if gh is unavailable.
@@ -63,7 +67,7 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	# Squash-merged branches are not ancestors of the trunk, so PR state is the
 	# real signal; merge-base only catches fast-forward/rebase merges.
 	if [ -z "$trunk" ]; then merged=unknown
-	elif git merge-base --is-ancestor "$head" "origin/$trunk" 2>/dev/null; then merged=YES
+	elif git merge-base --is-ancestor "$head" "$default_remote/$trunk" 2>/dev/null; then merged=YES
 	else merged=no; fi
 
 	# Distinguish real WIP (tracked edits) from disposable untracked scratch.
@@ -75,10 +79,10 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 
 	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
 	if [ -z "$branch" ]; then remote=detached
-	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-		[ "$(git -C "$wt" rev-parse "origin/$branch" 2>/dev/null)" = "$head" ] \
+	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$default_remote/$branch"; then
+		[ "$(git -C "$wt" rev-parse "$default_remote/$branch" 2>/dev/null)" = "$head" ] \
 			&& remote=pushed \
-			|| remote="ahead$(git -C "$wt" rev-list --count "origin/$branch..HEAD" 2>/dev/null)"
+			|| remote="ahead$(git -C "$wt" rev-list --count "$default_remote/$branch..HEAD" 2>/dev/null)"
 	else remote=no-remote; fi
 
 	pr=$([ -n "$branch" ] && jq -r --arg b "$branch" \

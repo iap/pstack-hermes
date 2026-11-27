@@ -33,12 +33,13 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
 - [ ] On the operator's go, write this exact text to `goal.md` next to the plan file in the agent store as the armed goal. "<The plan path, the PR ids in order, the verification rule, who merges, and the done condition.>"
+- [ ] Resolve the trunk once from `git symbolic-ref --short refs/remotes/origin/HEAD`. If that ref is absent, query the forge default with `gh repo view --json defaultBranchRef`. Never assume `master` or `main`. Stop with an incomplete verdict when the trunk cannot be resolved.
 - [ ] Read these from trunk at program start. Re-read them at every tick.
-  - [ ] `git show origin/master:skills/poteto-mode/playbooks/<execution playbook>.md`
-  - [ ] `git show origin/master:skills/swarm/SKILL.md`
+  - [ ] `git show origin/HEAD:skills/poteto-mode/playbooks/<execution playbook>.md`
+  - [ ] `git show origin/HEAD:skills/swarm/SKILL.md`
   - [ ] Read the installed control skill at `<control skill path>`. When it is unavailable, mark the live verdict incomplete.
-  - [ ] `git show origin/master:skills/poteto-mode/playbooks/opening-a-pr.md`
-  - [ ] `git show origin/master:skills/<each other leaf skill the program uses>`
+  - [ ] `git show origin/HEAD:skills/poteto-mode/playbooks/opening-a-pr.md`
+  - [ ] `git show origin/HEAD:skills/<each other leaf skill the program uses>`
 - [ ] Arm the 30-minute audit tick. In a local session, a recurring hermes cron job that delivers the tick prompt. In a local root, a wake chain arms each tick as a recurring hermes cron job whose delivery re-wakes this session. Never leave the cadence to memory.
 - [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk and the armed `goal.md` from the store. Audit the operation against both and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
 - [ ] On the operator's hold or stand-down, send every owner a zero-writes order at once.
@@ -47,7 +48,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] Spawn one owner per PR with the full lifecycle the execution playbook names.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges, or base it on the parent branch when the execution playbook stacks.
-  - [ ] <PR id> and <PR id> are independent and first. Both branch from `origin/master`.
+  - [ ] <PR id> and <PR id> are independent and first. Both branch from the resolved trunk (`origin/HEAD`, or the forge default when that ref is absent).
   - [ ] <PR id> after <PR id>.
 - [ ] Hold the file boundaries. <PR id or class> touches only `<glob>`.
 - [ ] Hold the review gate. <PR ids> change an interaction. They wait for the operator's review in chat with screenshots and a video before merge.

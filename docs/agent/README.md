@@ -7,6 +7,7 @@ Always-on contract: [AGENTS.md](../../AGENTS.md). Open **one** row below.
 | Unsure which paths are hand-written | [layout.md](layout.md) |
 | Changing package surfaces, assets, bans, skill prose | [convert-adapt.md](convert-adapt.md) |
 | Scope and parallel-work discipline | [dev-ops.md](dev-ops.md) |
+| Deciding when a default is contractual or portable | [portable-defaults.md](portable-defaults.md) |
 | Replying to bot review findings | [review-ops.md](review-ops.md) |
 | Bot review gate, flow, and policy (SSOT) | [bot-reviews.md](bot-reviews.md) |
 | Invoking / configuring the installed package | [../USING.md](../USING.md) |

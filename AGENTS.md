@@ -64,6 +64,7 @@ Everything below follows from that rule.
 | Adapt package surfaces, bans, verify | [docs/agent/convert-adapt.md](docs/agent/convert-adapt.md) |
 | Standalone decisions (identity, versioning, provenance) | [docs/standalone-decisions.md](docs/standalone-decisions.md) |
 | Scope and parallel-work discipline | [docs/agent/dev-ops.md](docs/agent/dev-ops.md) |
+| Portable defaults (branch, path, tool, model) | [docs/agent/portable-defaults.md](docs/agent/portable-defaults.md) |
 | Reply to CodeRabbit / Qodo findings | [docs/agent/review-ops.md](docs/agent/review-ops.md) |
 | Bot review gate, flow, and policy (SSOT) | [docs/agent/bot-reviews.md](docs/agent/bot-reviews.md) |
 | Setup, CI/Actions policy, PR, release | [CONTRIBUTING.md](CONTRIBUTING.md) |

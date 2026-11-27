@@ -671,3 +671,29 @@ def test_vocab_map_ignores_augmented_bindings_outside_the_gate_scope(tmp_path):
 
 def test_repository_vocabulary_map_is_clean():
     assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []
+
+
+def test_hardcoded_trunk_ref_in_playbook_fails(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md",
+        "- [ ] `git show origin/master:skills/swarm/SKILL.md`\n"
+        "- [ ] Independent PRs branch from `main`.\n",
+    )
+    problems = check_docs.check_portable_trunk_refs(tmp_path)
+
+    assert len(problems) == 2
+    assert all("hardcoded trunk ref" in p for p in problems)
+
+
+def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md",
+        "- [ ] `git show origin/HEAD:skills/swarm/SKILL.md`\n"
+        "- [ ] Independent PRs branch from the resolved trunk.\n",
+    )
+
+    assert check_docs.check_portable_trunk_refs(tmp_path) == []
+
+
+def test_repository_playbooks_are_portable():
+    assert check_docs.check_portable_trunk_refs(Path(check_docs.ROOT)) == []
