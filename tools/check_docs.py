@@ -69,8 +69,8 @@ STALE_INSTALL_RE = re.compile(
     re.IGNORECASE,
 )
 HARDCODED_TRUNK_RE = re.compile(
-    r"origin/(?:master|main)\b"
-    r"|\b(?:branch|branches|worktree|reset)\b[^.\n]{0,40}`(?:origin/)?(?:master|main)`"
+    r"\b[A-Za-z0-9][A-Za-z0-9_.-]*/(?:master|main)\b"
+    r"|\b(?:branch|branches|worktree|reset)\b[^.\n]{0,40}`(?:[A-Za-z0-9][A-Za-z0-9_.-]*/)?(?:master|main)`"
 )
 GIT_COMMAND_TRUNK_RE = re.compile(
     r"\bgit (?:reset --hard|worktree add|checkout|switch|branch)"

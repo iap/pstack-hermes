@@ -38,6 +38,8 @@ candidate_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2
 candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/dev/null || true)
 default_remote=""
 if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
+	git -C "$main_wt" fetch "$candidate_remote" --quiet 2>/dev/null || true
+	git -C "$main_wt" remote set-head "$candidate_remote" --auto >/dev/null 2>&1 || true
 	candidate_head=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
 	if [ -n "$candidate_head" ] && [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
 		default_remote=$candidate_remote
@@ -84,7 +86,7 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	# Squash-merged branches are not ancestors of the trunk, so PR state is the
 	# real signal; merge-base only catches fast-forward/rebase merges.
 	if [ -z "$trunk" ]; then merged=unknown
-	elif git merge-base --is-ancestor "$head" "$default_remote/$trunk" 2>/dev/null; then merged=YES
+	elif git merge-base --is-ancestor "$head" "refs/remotes/$default_remote/$trunk" 2>/dev/null; then merged=YES
 	else merged=no; fi
 
 	# Distinguish real WIP (tracked edits) from disposable untracked scratch.

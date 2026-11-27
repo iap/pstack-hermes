@@ -679,11 +679,13 @@ def test_hardcoded_trunk_ref_in_playbook_fails(tmp_path):
         "- [ ] `git show origin/master:skills/swarm/SKILL.md`\n"
         "- [ ] Independent PRs branch from `main`.\n"
         "- [ ] Run `git reset --hard main` before review.\n"
-        "- [ ] `git show main:skills/poteto-mode/playbooks/opening-a-pr.md`\n",
+        "- [ ] `git show main:skills/poteto-mode/playbooks/opening-a-pr.md`\n"
+        "- [ ] `git reset --hard upstream/main` for a fork.\n"
+        "- [ ] `git show upstream/main:skills/swarm/SKILL.md`\n",
     )
     problems = check_docs.check_portable_trunk_refs(tmp_path)
 
-    assert len(problems) == 4
+    assert len(problems) == 6
     assert all("hardcoded trunk ref" in p for p in problems)
 
 
