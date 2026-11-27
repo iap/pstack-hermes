@@ -4,6 +4,11 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+## [0.16.6] - 2026-11-27
+
+### Fixed
+- The poteto-mode playbooks now branch independent PRs and worktrees from `origin/master` instead of `main`, matching the trunk used by the rest of the template. `scripts/worktree-audit.sh` refreshes and resolves the remote default branch for its fetch and merge-state check instead of hardcoding `origin/main`, and reports an unknown merge state rather than comparing a worktree with its own feature branch when the default cannot be discovered. Tests cover `master`, `main` and missing-default hosts.
+
 ## [0.16.5] - 2026-11-26
 
 ### Fixed
