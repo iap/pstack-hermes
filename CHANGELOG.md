@@ -4,6 +4,9 @@ All notable changes to the pstack-hermes port tooling will be documented in this
 
 ## [Unreleased]
 
+### Fixed
+- `tools/evals/trajectory.py` now finds banned delegation keys nested inside `tasks[]` or deeper. Matching checks dictionary keys only, including schema property names, and ignores string values such as task prose. Regression tests cover nested keys, case folding, and benign nested prose.
+
 ## [0.16.6] - 2026-11-27
 
 ### Fixed

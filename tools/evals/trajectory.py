@@ -543,6 +543,27 @@ def _verification_present(calls: list[dict] | None) -> dict:
     return {"gate": gate, "status": "pass", "detail": "passing final test command in session"}
 
 
+def _banned_arg_key(value: object) -> str | None:
+    """Find a banned delegation key anywhere in nested tool arguments.
+
+    Only dictionary keys are matched, never values: prose such as a task goal
+    may legitimately mention the retired vocabulary while explaining it.
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if str(key).lower() in BANNED_TOOL_ARGS:
+                return str(key)
+            found = _banned_arg_key(item)
+            if found:
+                return found
+    elif isinstance(value, list):
+        for item in value:
+            found = _banned_arg_key(item)
+            if found:
+                return found
+    return None
+
+
 def _no_banned_tool(calls: list[dict] | None, delegation_available: bool = True) -> dict:
     gate = "no_banned_tool"
     if calls is None:
@@ -559,13 +580,13 @@ def _no_banned_tool(calls: list[dict] | None, delegation_available: bool = True)
             return {"gate": gate, "status": "fail", "detail": f"banned tool called: {name}"}
         args = call.get("args")
         if isinstance(args, dict):
-            for key in args:
-                if str(key).lower() in BANNED_TOOL_ARGS:
-                    return {
-                        "gate": gate,
-                        "status": "fail",
-                        "detail": f"banned delegation argument passed to {name}: {key}",
-                    }
+            banned_key = _banned_arg_key(args)
+            if banned_key:
+                return {
+                    "gate": gate,
+                    "status": "fail",
+                    "detail": f"banned delegation argument passed to {name}: {banned_key}",
+                }
     if not any(str(c.get("name") or "").lower() == DELEGATE_TOOL for c in calls):
         if not delegation_available:
             return {"gate": gate, "status": "not_applicable", "detail": "delegation toolset unavailable in this arm"}

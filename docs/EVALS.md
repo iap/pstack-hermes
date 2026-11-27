@@ -82,10 +82,10 @@ working. The case now seeds a `fixtures` map into the temp project and uses a
 
 With the fixture, the skill arm needs more than 420 s; at `--timeout 1200` one
 run passed `no_banned_tool` with a real `delegate_task` call, but it claimed
-tests passed without running one and left `payments.ts` unchanged. The 3-rep
-sweep on this host was then rejected by the session probe (`Gateway starting:
-deadline`), so no stable delta is claimed yet. Use `--reps 3` on a host that
-persists one-shot turns.
+tests passed without running one and left `payments.ts` unchanged. A later
+3-rep sweep was first rejected by the session probe (`Gateway starting:
+deadline`), then completed on the same host with the venv-launcher workaround
+below, but yielded an unreliable `+0pp`. No stable delta is claimed yet.
 
 ### Environment findings (2026-11-17)
 
@@ -117,6 +117,16 @@ reading guide, `n/a` is reserved for an arm with no scored run: an earlier
 1-rep run with `tencent/hy4-flash:free` was `n/a`, this 3-rep run is an
 untrustworthy `+0pp`. A trustworthy delta still needs a configured maintainer
 runner or a funded model that follows the bare-test-command rule.
+
+The same workaround (in-tree venv console script via `--hermes`, dedicated home
+with `plugins.enabled: []`) unblocked the macOS 12.7.6 host: preflight and the
+session probe passed. A 3-rep `both` sweep with `tencent/hy4-flash:free` produced
+skill 0/3 (two runner errors, one rubric failure) and baseline 0/3 (one runner
+error, two rubric failures), delta `+0pp` with three runner errors. `no_banned_tool`
+failed in all six runs — no `delegate_task` call even in the skill arm — so the
+method's delegation behavior did not trigger with this model. The errors were
+masked test commands. No durable JSON or head SHA was captured for this run, so
+treat it as context only. Still no trustworthy delta.
 
 The earlier macOS failure was host- and version-specific; a newer Hermes on the
 maintainer host does run live cases. A fresh CI runner still has no configured

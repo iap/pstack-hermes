@@ -506,6 +506,55 @@ def test_no_banned_tool_fails_on_banned_argument(tmp_path):
     assert "subagent_type" in result["detail"]
 
 
+def test_no_banned_tool_fails_on_nested_banned_argument(tmp_path):
+    db = _db(
+        tmp_path,
+        [("delegate_task", {"tasks": [{"goal": "x", "subagent_type": "general"}]}, None)],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "fail"
+    assert "subagent_type" in result["detail"]
+
+
+def test_no_banned_tool_fails_on_deeply_nested_banned_argument_case_insensitive(tmp_path):
+    db = _db(
+        tmp_path,
+        [("delegate_task", {"tasks": [{"meta": {"generalPurpose": True}}]}, None)],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "fail"
+    assert "generalPurpose" in result["detail"]
+
+
+def test_no_banned_tool_ignores_banned_words_in_nested_prose_and_schema(tmp_path):
+    db = _db(
+        tmp_path,
+        [
+            (
+                "delegate_task",
+                {
+                    "tasks": [
+                        {
+                            "goal": "review",
+                            "context": "Avoid subagent_type/Task/AskQuestion wording",
+                            "output_schema": {"properties": {"task": {"type": "string"}}},
+                        }
+                    ]
+                },
+                None,
+            )
+        ],
+    )
+
+    result = _no_banned_result(tmp_path, trajectory.load_tool_calls(db))
+
+    assert result["status"] == "pass"
+
+
 def test_no_banned_tool_fails_without_delegate_task(tmp_path):
     db = _db(tmp_path, [("read_file", {"path": "a.py"}, None)])
 
