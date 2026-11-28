@@ -226,6 +226,7 @@ def seed_home(
     home: Path,
     active_home: Path | None,
     register_checkout_skills: bool = True,
+    skills_root: Path | None = None,
 ) -> None:
     """Copy provider config into the isolated home; optionally register skills.
 
@@ -271,13 +272,15 @@ def seed_home(
     skills = data.setdefault("skills", {})
     dirs = skills.setdefault("external_dirs", [])
     snapshot = str(home / SKILL_SNAPSHOT)
-    dirs = [d for d in dirs if d not in (CHECKOUT_SKILLS, snapshot)]
+    checkout_skills = ((skills_root or ROOT) / "skills").resolve()
+    snapshot_path = Path(snapshot).resolve()
+    dirs = [d for d in dirs if Path(str(d)).resolve() not in (checkout_skills, snapshot_path)]
     if register_checkout_skills:
         target = home / SKILL_SNAPSHOT
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(
-            ROOT / "skills",
+            (skills_root or ROOT) / "skills",
             target,
             ignore=shutil.ignore_patterns("node_modules", "__pycache__", ".pytest_cache", ".DS_Store"),
         )
@@ -285,7 +288,7 @@ def seed_home(
         if scripts_dst.exists():
             shutil.rmtree(scripts_dst)
         shutil.copytree(
-            ROOT / "scripts",
+            (skills_root or ROOT) / "scripts",
             scripts_dst,
             ignore=shutil.ignore_patterns("node_modules", "__pycache__", ".pytest_cache", ".DS_Store"),
         )
