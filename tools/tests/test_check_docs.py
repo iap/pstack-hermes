@@ -671,3 +671,55 @@ def test_vocab_map_ignores_augmented_bindings_outside_the_gate_scope(tmp_path):
 
 def test_repository_vocabulary_map_is_clean():
     assert check_docs.check_vocab_map(Path(check_docs.ROOT)) == []
+
+
+def test_hardcoded_trunk_ref_in_playbook_fails(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md",
+        "- [ ] `git show origin/master:skills/swarm/SKILL.md`\n"
+        "- [ ] Independent PRs branch from `main`.\n"
+        "- [ ] Run `git reset --hard main` before review.\n"
+        "- [ ] `git show main:skills/poteto-mode/playbooks/opening-a-pr.md`\n"
+        "- [ ] `git reset --hard upstream/main` for a fork.\n"
+        "- [ ] `git show upstream/main:skills/swarm/SKILL.md`\n"
+        "- [ ] Run `git rebase main` before review.\n"
+        "- [ ] Run `git diff master...HEAD` after review.\n"
+        "- [ ] Run `git log main` for history.\n"
+        "- [ ] Run `git -C \"$repo\" switch main` for a checkout.\n"
+        "- [ ] Run `git show main` without a path.\n"
+    )
+    problems = check_docs.check_portable_trunk_refs(tmp_path)
+
+    assert len(problems) == 11
+    assert all("hardcoded trunk ref" in p for p in problems)
+
+
+def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "multi-phase-plan.md",
+        "- [ ] `git show origin/HEAD:skills/swarm/SKILL.md`\n"
+        "- [ ] Independent PRs branch from the resolved trunk.\n"
+        "- [ ] Run `git reset --hard $main` for the configured trunk.\n"
+        "- [ ] Run `git worktree add ../main` for a named path.\n"
+        "- [ ] Run `git switch feature-main` for a non-trunk branch.\n"
+        "- [ ] Run `git switch \"$trunk\" && echo main` for the resolved trunk.\n"
+        "- [ ] Run `git diff \"$trunk\"...HEAD` for the resolved trunk.\n"
+        "- [ ] Run `git log \"$trunk\"` for the resolved trunk.\n",
+    )
+
+    assert check_docs.check_portable_trunk_refs(tmp_path) == []
+
+
+def test_hardcoded_trunk_ref_in_fenced_command_fails(tmp_path):
+    _write(
+        tmp_path / "skills" / "poteto-mode" / "playbooks" / "autopilot-full.md",
+        "```sh\ngit switch main\n```\n",
+    )
+
+    problems = check_docs.check_portable_trunk_refs(tmp_path)
+
+    assert any("hardcoded trunk ref" in p and "git switch main" in p for p in problems)
+
+
+def test_repository_playbooks_are_portable():
+    assert check_docs.check_portable_trunk_refs(Path(check_docs.ROOT)) == []

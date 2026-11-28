@@ -29,15 +29,52 @@ cd "$repo" || exit 1
 # Main worktree is the first entry; everything else is a candidate.
 main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 
-# The remote default branch drives the merge check. Refresh the cache first;
-# both network steps are best-effort so the audit still works offline.
-git fetch origin --quiet 2>/dev/null || true
-git remote set-head origin --auto >/dev/null 2>&1 || true
-trunk=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
-if [ -z "$trunk" ]; then
-	echo "warn: remote default branch unknown; merged column unavailable" >&2
+# The remote default branch drives the merge check. Use the main worktree's
+# upstream only when that branch is its remote's default, so a checked-out
+# feature branch cannot select the wrong trunk remote. Both network steps are
+# best-effort so the audit still works offline.
+main_ref=$(git -C "$main_wt" symbolic-ref --quiet HEAD 2>/dev/null || true)
+main_branch=${main_ref#refs/heads/}
+candidate_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null || true)
+candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/dev/null || true)
+default_remote=""
+discovery_failed=no
+if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
+	git -C "$main_wt" fetch "$candidate_remote" --quiet 2>/dev/null || true
+	candidate_head=""
+	if git -C "$main_wt" remote set-head "$candidate_remote" --auto >/dev/null 2>&1; then
+		candidate_head=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$candidate_remote/HEAD" 2>/dev/null || true)
+	else
+		advertised=$(git -C "$main_wt" ls-remote --symref "$candidate_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+		[ -n "$advertised" ] && candidate_head="refs/remotes/$candidate_remote/${advertised#refs/heads/}"
+	fi
+	if [ -z "$candidate_head" ]; then
+		discovery_failed=yes
+	elif [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
+		default_remote=$candidate_remote
+	fi
+fi
+fetched_refs=""
+trunk=""
+if [ "$discovery_failed" = yes ]; then
+	echo "warn: trunk remote discovery failed; merged column unavailable" >&2
 else
-	git fetch origin "$trunk" --quiet 2>/dev/null || echo "warn: could not fetch origin/$trunk; merged column may be stale" >&2
+	[ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
+	[ -z "$default_remote" ] && default_remote=origin
+	git -C "$main_wt" fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
+	if git -C "$main_wt" remote set-head "$default_remote" --auto >/dev/null 2>&1; then
+		trunk_ref=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
+		trunk=${trunk_ref#"refs/remotes/$default_remote/"}
+	else
+		remote_head=$(git -C "$main_wt" ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+		trunk=${remote_head#refs/heads/}
+	fi
+	if [ -z "$trunk" ]; then
+		echo "warn: remote default branch unknown; merged column unavailable" >&2
+	else
+		git -C "$main_wt" fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
+		fetched_refs="$default_remote/$trunk"
+	fi
 fi
 
 # PR state by branch, fetched once. Empty if gh is unavailable.
@@ -63,7 +100,7 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	# Squash-merged branches are not ancestors of the trunk, so PR state is the
 	# real signal; merge-base only catches fast-forward/rebase merges.
 	if [ -z "$trunk" ]; then merged=unknown
-	elif git merge-base --is-ancestor "$head" "origin/$trunk" 2>/dev/null; then merged=YES
+	elif git merge-base --is-ancestor "$head" "refs/remotes/$default_remote/$trunk" 2>/dev/null; then merged=YES
 	else merged=no; fi
 
 	# Distinguish real WIP (tracked edits) from disposable untracked scratch.
@@ -73,12 +110,35 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 		dirty="wip:$(printf '%s\n' "$porcelain" | grep -cv '^??')"
 	else dirty="scratch:$(printf '%s\n' "$porcelain" | grep -c '^??')"; fi
 
-	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
+	branch_ref=$(git -C "$wt" symbolic-ref --quiet HEAD 2>/dev/null || true)
+	branch=${branch_ref#refs/heads/}
+	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
+	local_upstream=no
+	[ "$push_remote" = "." ] && { push_remote=""; local_upstream=yes; }
+	if [ -z "$push_remote" ]; then
+		push_remote=$default_remote
+		[ -z "$push_remote" ] && push_remote=$candidate_remote
+		[ "$push_remote" = "." ] && push_remote=""
+		[ -z "$push_remote" ] && push_remote=origin
+	fi
+	merge_ref=$(git -C "$wt" config --get "branch.$branch.merge" 2>/dev/null || true)
+	[ "$local_upstream" = yes ] && merge_ref=""
+	compare_ref="$push_remote/$branch"
+	if [ -n "$merge_ref" ] && [ -n "$push_remote" ]; then
+		compare_ref="$push_remote/${merge_ref#refs/heads/}"
+	fi
+	upstream_branch=$branch
+	if [ -n "$merge_ref" ]; then upstream_branch=${merge_ref#refs/heads/}; fi
+	if [ -n "$branch" ] && ! printf '%s\n' "$fetched_refs" | grep -qxF "$compare_ref"; then
+		git -C "$wt" fetch "$push_remote" "+refs/heads/$upstream_branch:refs/remotes/$compare_ref" --quiet 2>/dev/null || echo "warn: could not fetch $compare_ref; pushed column may be stale" >&2
+		fetched_refs="$fetched_refs
+$compare_ref"
+	fi
 	if [ -z "$branch" ]; then remote=detached
-	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-		[ "$(git -C "$wt" rev-parse "origin/$branch" 2>/dev/null)" = "$head" ] \
+	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$compare_ref"; then
+		[ "$(git -C "$wt" rev-parse "refs/remotes/$compare_ref" 2>/dev/null)" = "$head" ] \
 			&& remote=pushed \
-			|| remote="ahead$(git -C "$wt" rev-list --count "origin/$branch..HEAD" 2>/dev/null)"
+			|| remote="ahead$(git -C "$wt" rev-list --count "refs/remotes/$compare_ref..HEAD" 2>/dev/null)"
 	else remote=no-remote; fi
 
 	pr=$([ -n "$branch" ] && jq -r --arg b "$branch" \
