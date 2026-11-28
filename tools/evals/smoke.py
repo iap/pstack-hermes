@@ -111,8 +111,9 @@ def check_seed_home(root: Path, active: Path) -> dict:
             config = home / "config.yaml"
             data = yaml.safe_load(config.read_text(encoding="utf-8")) if config.is_file() else {}
             dirs = (data.get("skills") or {}).get("external_dirs") or []
-            snapshot = str(home / run.SKILL_SNAPSHOT)
-            if str(root / "skills") in dirs or snapshot in dirs or (home / run.SKILL_SNAPSHOT).exists():
+            checkout = (root / "skills").resolve()
+            snapshot = (home / run.SKILL_SNAPSHOT).resolve()
+            if any(Path(str(d)).resolve() in (checkout, snapshot) for d in dirs) or snapshot.exists():
                 return result(name, tier, "fail", "baseline registered checkout skills")
     except Exception as exc:  # a smoke failure must be visible, not silent
         return result(name, tier, "fail", f"seed_home: {exc}")
@@ -167,7 +168,8 @@ def live_activation(root: Path, active: Path, hermes: str, model: str) -> dict:
                 return result(name, tier, "fail", "eval snapshot missing the shipped quote")
             config = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8")) or {}
             dirs = config.get("skills", {}).get("external_dirs", [])
-            if str(home / run.SKILL_SNAPSHOT) not in dirs:
+            snapshot_dir = (home / run.SKILL_SNAPSHOT).resolve()
+            if not any(Path(str(d)).resolve() == snapshot_dir for d in dirs):
                 return result(name, tier, "fail", "eval snapshot not registered in isolated home")
             env = {**os.environ, "HERMES_HOME": str(home)}
             proc = subprocess.run(

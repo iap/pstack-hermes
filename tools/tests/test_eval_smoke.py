@@ -175,3 +175,21 @@ def test_live_activation_selects_the_seeded_skill(tmp_path, monkeypatch):
 
     assert captured["argv"][captured["argv"].index("-s") + 1] == "poteto-mode"
     assert entry["status"] == "pass"
+
+
+def test_seed_home_prunes_equivalent_checkout_path(tmp_path):
+    checkout = tmp_path / "checkout"
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "config.yaml").write_text(
+        smoke.yaml.safe_dump(
+            {"skills": {"external_dirs": [str(checkout / "skills") + "/"]}}
+        ),
+        encoding="utf-8",
+    )
+    home = tmp_path / "home"
+
+    smoke.run.seed_home(home, active, register_checkout_skills=False, skills_root=checkout)
+
+    data = smoke.yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8"))
+    assert data["skills"]["external_dirs"] == []
