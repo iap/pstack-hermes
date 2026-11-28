@@ -32,7 +32,7 @@ uv run --frozen python tools/evals/run.py \
 `tools/evals/smoke.py` runs deterministic checks by default — package gates,
 baseline skill pruning, and synthetic trajectory cases. Live model-calling
 checks are opt-in and are never a required CI gate. Each check reports a tier;
-the command exits 0 with no failures and writes a JSON record when asked.
+the command exits 0 only with no failures and no errors, exits 1 otherwise, and writes a JSON record when asked.
 
 ```sh
 uv run --frozen python tools/evals/smoke.py --json-out /tmp/smoke.json

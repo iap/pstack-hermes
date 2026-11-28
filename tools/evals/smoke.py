@@ -8,6 +8,7 @@ Default runs only deterministic checks. Live model-calling checks require
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import platform
@@ -171,7 +172,7 @@ def live_activation(root: Path, active: Path, hermes: str, model: str) -> dict:
             snapshot_dir = (home / run.SKILL_SNAPSHOT).resolve()
             if not any(Path(str(d)).resolve() == snapshot_dir for d in dirs):
                 return result(name, tier, "fail", "eval snapshot not registered in isolated home")
-            env = {**os.environ, "HERMES_HOME": str(home)}
+            env = {**os.environ, "HERMES_HOME": str(home), "HERMES_SUPERVISED_CHILD": "1"}
             proc = subprocess.run(
                 [hermes, "-s", "poteto-mode", "-z", prompt, "-m", model],
                 capture_output=True, text=True, timeout=420, env=env,
@@ -194,7 +195,7 @@ def live_delegate(root: Path, active: Path, hermes: str, model: str) -> dict:
         home = Path(tmp)
         try:
             run.seed_home(home, active, register_checkout_skills=False, skills_root=root)
-            env = {**os.environ, "HERMES_HOME": str(home)}
+            env = {**os.environ, "HERMES_HOME": str(home), "HERMES_SUPERVISED_CHILD": "1"}
             proc = subprocess.run(
                 [hermes, "-z", prompt, "-m", model],
                 capture_output=True, text=True, timeout=500, env=env,
@@ -208,14 +209,13 @@ def live_delegate(root: Path, active: Path, hermes: str, model: str) -> dict:
         child_model = "unknown"
         if db.is_file():
             try:
-                conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-                parent = conn.execute(
-                    "SELECT id FROM sessions WHERE source='oneshot' ORDER BY started_at DESC LIMIT 1"
-                ).fetchone()
-                children = conn.execute(
-                    "SELECT model, model_config FROM sessions WHERE source='subagent' ORDER BY started_at DESC"
-                ).fetchall()
-                conn.close()
+                with contextlib.closing(sqlite3.connect(f"file:{db}?mode=ro", uri=True)) as conn:
+                    parent = conn.execute(
+                        "SELECT id FROM sessions WHERE source='oneshot' ORDER BY started_at DESC LIMIT 1"
+                    ).fetchone()
+                    children = conn.execute(
+                        "SELECT model, model_config FROM sessions WHERE source='subagent' ORDER BY started_at DESC"
+                    ).fetchall()
                 if parent:
                     for child_name, config in children:
                         try:
