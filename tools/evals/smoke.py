@@ -82,6 +82,10 @@ def is_runner_error(text: str) -> bool:
     )
 
 
+def runner_error_line(text: str) -> str:
+    return next((line for line in text.splitlines() if is_runner_error(line)), "no output")
+
+
 def first_line(text: str) -> str:
     lines = text.strip().splitlines()
     return lines[0] if lines else "unknown"
@@ -156,43 +160,48 @@ def live_activation(root: Path, active: Path, hermes: str, model: str) -> dict:
     prompt = "Quote verbatim the first Non-negotiables sentence from poteto-mode. Answer with only that sentence."
     with tempfile.TemporaryDirectory(prefix="pstack-smoke-activation-") as tmp:
         home = Path(tmp)
-        run.seed_home(home, active, register_checkout_skills=True, skills_root=root)
-        env = {**os.environ, "HERMES_HOME": str(home)}
         try:
+            run.seed_home(home, active, register_checkout_skills=True, skills_root=root)
+            snapshot = home / run.SKILL_SNAPSHOT / "poteto-mode" / "SKILL.md"
+            if not snapshot.is_file() or quote not in snapshot.read_text(encoding="utf-8"):
+                return result(name, tier, "fail", "eval snapshot missing the shipped quote")
+            config = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8")) or {}
+            dirs = config.get("skills", {}).get("external_dirs", [])
+            if str(home / run.SKILL_SNAPSHOT) not in dirs:
+                return result(name, tier, "fail", "eval snapshot not registered in isolated home")
+            env = {**os.environ, "HERMES_HOME": str(home)}
             proc = subprocess.run(
-                [hermes, "-s", "pstack:poteto-mode", "-z", prompt, "-m", model],
+                [hermes, "-s", "poteto-mode", "-z", prompt, "-m", model],
                 capture_output=True, text=True, timeout=420, env=env,
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        except (OSError, RuntimeError, yaml.YAMLError, subprocess.TimeoutExpired) as exc:
             return result(name, tier, "error", f"one-shot runner error: {exc}")
     output = proc.stdout + proc.stderr
-    diagnostic = output.strip().splitlines()
-    tail = diagnostic[-1][:300] if diagnostic else "no output"
     if is_runner_error(output):
-        return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {tail}")
+        hit = runner_error_line(output)
+        return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {hit[:300]}")
     matched = quote in output
     status = "pass" if proc.returncode == 0 and matched else "fail"
     return result(name, tier, status, f"rc={proc.returncode} verbatim_quote={matched}")
 
 
-def live_delegate(active: Path, hermes: str, model: str) -> dict:
+def live_delegate(root: Path, active: Path, hermes: str, model: str) -> dict:
     name, tier = "delegate", "live"
     prompt = "Use delegate_task exactly once with a trivial read-only goal: ask the child to reply with OK. Then report the child reply in one line."
     with tempfile.TemporaryDirectory(prefix="pstack-smoke-delegate-") as tmp:
         home = Path(tmp)
-        run.seed_home(home, active, register_checkout_skills=False)
-        env = {**os.environ, "HERMES_HOME": str(home)}
         try:
+            run.seed_home(home, active, register_checkout_skills=False, skills_root=root)
+            env = {**os.environ, "HERMES_HOME": str(home)}
             proc = subprocess.run(
                 [hermes, "-z", prompt, "-m", model],
                 capture_output=True, text=True, timeout=500, env=env,
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        except (OSError, RuntimeError, yaml.YAMLError, subprocess.TimeoutExpired) as exc:
             return result(name, tier, "error", f"delegate runner error: {exc}")
         if is_runner_error(proc.stdout + proc.stderr):
-            diagnostic = (proc.stdout + proc.stderr).strip().splitlines()
-            tail = diagnostic[-1][:300] if diagnostic else "no output"
-            return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {tail}")
+            hit = runner_error_line(proc.stdout + proc.stderr)
+            return result(name, tier, "error", f"rc={proc.returncode} provider/timeout: {hit[:300]}")
         db = home / "state.db"
         child_model = "unknown"
         if db.is_file():
@@ -267,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         elif name == "activation":
             entry = live_activation(root, active, args.hermes, args.model)
         elif name == "delegate":
-            entry = live_delegate(active, args.hermes, args.model)
+            entry = live_delegate(root, active, args.hermes, args.model)
         else:
             entry = result(name, tier, "fail", "unknown check")
         results.append(entry)

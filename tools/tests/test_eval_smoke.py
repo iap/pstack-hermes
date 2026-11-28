@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -121,3 +122,56 @@ def test_trajectory_negative_check_is_default_deny():
     result = smoke.check_trajectory_negative()
 
     assert result["status"] == "pass", result["detail"]
+
+
+def test_runner_error_line_returns_first_matching_line():
+    assert smoke.runner_error_line("all good\nprovider 429 limit\nother") == "provider 429 limit"
+    assert smoke.runner_error_line("all good") == "no output"
+
+
+def test_live_delegate_prunes_the_selected_root(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_seed(home, active, register_checkout_skills=True, skills_root=None):
+        captured["skills_root"] = skills_root
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        raise OSError("stop")
+
+    monkeypatch.setattr(smoke.run, "seed_home", fake_seed)
+    monkeypatch.setattr(smoke.subprocess, "run", fake_run)
+    root = tmp_path / "other-checkout"
+    entry = smoke.live_delegate(root, tmp_path / "home", "hermes", "model")
+
+    assert captured["skills_root"] == root
+    assert entry["status"] == "error"
+
+
+def test_live_activation_selects_the_seeded_skill(tmp_path, monkeypatch):
+    quote = "The Principles section below grounds every trigger."
+    root = tmp_path / "checkout"
+    (root / "skills" / "poteto-mode").mkdir(parents=True)
+    (root / "skills" / "poteto-mode" / "SKILL.md").write_text(quote, encoding="utf-8")
+
+    def fake_seed(home, active, register_checkout_skills=True, skills_root=None):
+        snapshot = home / smoke.run.SKILL_SNAPSHOT / "poteto-mode"
+        snapshot.mkdir(parents=True)
+        (snapshot / "SKILL.md").write_text(quote, encoding="utf-8")
+        (home / "config.yaml").write_text(
+            f"skills:\n  external_dirs:\n  - '{home / smoke.run.SKILL_SNAPSHOT}'\n",
+            encoding="utf-8",
+        )
+
+    captured = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        return subprocess.CompletedProcess(argv, 0, quote, "")
+
+    monkeypatch.setattr(smoke.run, "seed_home", fake_seed)
+    monkeypatch.setattr(smoke.subprocess, "run", fake_run)
+    entry = smoke.live_activation(root, tmp_path / "home", "hermes", "model")
+
+    assert captured["argv"][captured["argv"].index("-s") + 1] == "poteto-mode"
+    assert entry["status"] == "pass"
