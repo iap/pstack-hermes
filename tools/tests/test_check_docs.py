@@ -686,10 +686,11 @@ def test_hardcoded_trunk_ref_in_playbook_fails(tmp_path):
         "- [ ] Run `git diff master...HEAD` after review.\n"
         "- [ ] Run `git log main` for history.\n"
         "- [ ] Run `git -C \"$repo\" switch main` for a checkout.\n"
+        "- [ ] Run `git show main` without a path.\n"
     )
     problems = check_docs.check_portable_trunk_refs(tmp_path)
 
-    assert len(problems) == 10
+    assert len(problems) == 11
     assert all("hardcoded trunk ref" in p for p in problems)
 
 

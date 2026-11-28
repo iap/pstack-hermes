@@ -75,7 +75,7 @@ HARDCODED_TRUNK_RE = re.compile(
 GIT_COMMAND_TRUNK_RE = re.compile(
     r"\bgit (?:-C [^\s`]+ )?(?:reset --hard|worktree add|checkout|switch|branch|rebase|merge|diff|log)"
     r"[^`\n;&|]*(?<![\w/$/-])(?:master|main)\b"
-    r"|\bgit show [^`\n;&|]*(?<![\w/$/-])(?:master|main):"
+    r"|\bgit show [^`\n;&|]*(?<![\w/$/-])(?:master|main)(?::|\b)"
 )
 LEGACY_REPO = "iap/pstack-hermes"
 LEGACY_PREFIX_TERMINATORS = " \t\r\n/`'\"(=:"
@@ -283,6 +283,8 @@ def check_portable_trunk_refs(root: Path = ROOT) -> list[str]:
         text = _read(playbook)
         for lineno, line in enumerate(text.splitlines(), 1):
             command_part = re.split(r"\s--(?:\s|$)", line)[0]
+            command_part = re.sub(r"--[A-Za-z][\w-]*=[^\s]+", "", command_part)
+            command_part = re.sub(r"\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*", "", command_part)
             for pattern in (HARDCODED_TRUNK_RE, GIT_COMMAND_TRUNK_RE):
                 target = line if pattern is HARDCODED_TRUNK_RE else command_part
                 for match in pattern.finditer(target):
