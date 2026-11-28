@@ -290,3 +290,28 @@ def test_audit_ignores_local_branch_shadowing_remote(tmp_path):
 
     rows = [line for line in result.stdout.splitlines() if "feature-wt" in line]
     assert rows and "\tahead1\t" in rows[0]
+
+
+def test_audit_keeps_publication_fallback_when_trunk_discovery_fails(tmp_path):
+    repo = tmp_path / "pub-fallback-repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    (repo / "file.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "file.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+    main_branch = subprocess.check_output(
+        ["git", "-C", str(repo), "symbolic-ref", "--short", "HEAD"], text=True
+    ).strip()
+    subprocess.run(["git", "-C", str(repo), "config", f"branch.{main_branch}.remote", "origin"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", f"branch.{main_branch}.merge", "refs/heads/main"], check=True)
+    wt = tmp_path / "pub-fallback-wt"
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "-b", "feature", str(wt)], check=True)
+    feature_sha = subprocess.check_output(["git", "-C", str(wt), "rev-parse", "HEAD"], text=True).strip()
+    subprocess.run(["git", "-C", str(repo), "update-ref", "refs/remotes/origin/feature", feature_sha], check=True)
+
+    result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
+
+    rows = [line for line in result.stdout.splitlines() if "pub-fallback-wt" in line]
+    assert rows and "\tpushed\t" in rows[0]
+    assert "unknown" in rows[0]

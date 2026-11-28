@@ -114,7 +114,12 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
 	local_upstream=no
 	[ "$push_remote" = "." ] && { push_remote=""; local_upstream=yes; }
-	[ -z "$push_remote" ] && push_remote=$default_remote
+	if [ -z "$push_remote" ]; then
+		push_remote=$default_remote
+		[ -z "$push_remote" ] && push_remote=$candidate_remote
+		[ "$push_remote" = "." ] && push_remote=""
+		[ -z "$push_remote" ] && push_remote=origin
+	fi
 	merge_ref=$(git -C "$wt" config --get "branch.$branch.merge" 2>/dev/null || true)
 	[ "$local_upstream" = yes ] && merge_ref=""
 	compare_ref="$push_remote/$branch"
