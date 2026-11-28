@@ -18,15 +18,15 @@ The release ZIP ships `skills/`, `scripts/`, `config/`, `assets/`, `README.md`,
 `LICENSE`, `plugin.json` and lockfiles. A branch, path, tool or model those files
 assume belongs to the user's environment, not to this repository.
 
-- Default branch: resolve the trunk remote first, then use `<trunk-remote>/HEAD`
-  (`git symbolic-ref --short refs/remotes/<trunk-remote>/HEAD`). When that ref is
+- Default branch: resolve the trunk remote first, then use `refs/remotes/<trunk-remote>/HEAD`
+  (`git symbolic-ref refs/remotes/<trunk-remote>/HEAD`). When that ref is
   absent, derive `<repository>` from `git remote get-url <trunk-remote>` and query
   the forge default with `gh repo view <repository> --json defaultBranchRef`;
   report discovery as incomplete when that repository cannot be queried. Fetch
   the discovered branch into its named remote-tracking ref with
   `git fetch <trunk-remote> +refs/heads/<branch>:refs/remotes/<trunk-remote>/<branch>`,
   and use
-  `<trunk-remote>/<branch>` for every read. If `git remote set-head --auto`
+  `refs/remotes/<trunk-remote>/<branch>` for every read. If `git remote set-head --auto`
   fails, resolve the current default from `git ls-remote --symref`; do not trust
   a cached `origin/HEAD`. Re-resolve and fetch at every audit tick so reads use
   the current default. Never assume a branch or remote name,

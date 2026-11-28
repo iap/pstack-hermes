@@ -52,7 +52,7 @@ if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
 fi
 [ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 [ -z "$default_remote" ] && default_remote=origin
-fetched_remotes="$default_remote"
+fetched_refs=""
 git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
 trunk=""
 if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
@@ -66,6 +66,7 @@ if [ -z "$trunk" ]; then
 	echo "warn: remote default branch unknown; merged column unavailable" >&2
 else
 	git fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
+	fetched_refs="$default_remote/$trunk"
 fi
 
 # PR state by branch, fetched once. Empty if gh is unavailable.
@@ -112,10 +113,12 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	if [ -n "$merge_ref" ] && [ -n "$push_remote" ]; then
 		compare_ref="$push_remote/${merge_ref#refs/heads/}"
 	fi
-	if ! printf '%s\n' "$fetched_remotes" | grep -qxF "$push_remote"; then
-		git fetch "$push_remote" --quiet 2>/dev/null || echo "warn: could not fetch $push_remote; pushed column may be stale" >&2
-		fetched_remotes="$fetched_remotes
-$push_remote"
+	upstream_branch=$branch
+	if [ -n "$merge_ref" ]; then upstream_branch=${merge_ref#refs/heads/}; fi
+	if [ -n "$branch" ] && ! printf '%s\n' "$fetched_refs" | grep -qxF "$compare_ref"; then
+		git fetch "$push_remote" "+refs/heads/$upstream_branch:refs/remotes/$compare_ref" --quiet 2>/dev/null || echo "warn: could not fetch $compare_ref; pushed column may be stale" >&2
+		fetched_refs="$fetched_refs
+$compare_ref"
 	fi
 	if [ -z "$branch" ]; then remote=detached
 	elif git -C "$wt" show-ref --verify --quiet "refs/remotes/$compare_ref"; then

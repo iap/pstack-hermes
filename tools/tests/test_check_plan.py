@@ -105,7 +105,7 @@ def _check(tmp_path, marker: str):
 
 @pytest.mark.parametrize(
     "marker",
-    ["git show <trunk-remote>/HEAD:", "git show origin/HEAD:", "git show origin/master:", "git show origin/main:"],
+    ["git show refs/remotes/<trunk-remote>/HEAD:", "git show origin/HEAD:", "git show origin/master:", "git show origin/main:"],
 )
 def test_any_trunk_ref_marker_passes_checker(tmp_path, marker):
     result = _check(tmp_path, marker)
