@@ -110,7 +110,8 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 		dirty="wip:$(printf '%s\n' "$porcelain" | grep -cv '^??')"
 	else dirty="scratch:$(printf '%s\n' "$porcelain" | grep -c '^??')"; fi
 
-	branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
+	branch_ref=$(git -C "$wt" symbolic-ref --quiet HEAD 2>/dev/null || true)
+	branch=${branch_ref#refs/heads/}
 	push_remote=$(git -C "$wt" config --get "branch.$branch.remote" 2>/dev/null || true)
 	local_upstream=no
 	[ "$push_remote" = "." ] && { push_remote=""; local_upstream=yes; }

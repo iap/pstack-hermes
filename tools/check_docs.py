@@ -281,14 +281,16 @@ def check_portable_trunk_refs(root: Path = ROOT) -> list[str]:
     problems: list[str] = []
     for playbook in sorted((root / "skills").glob("*/playbooks/*.md")):
         text = _read(playbook)
-        for pattern in (HARDCODED_TRUNK_RE, GIT_COMMAND_TRUNK_RE):
-            for match in pattern.finditer(text):
-                lineno = text.count("\n", 0, match.start()) + 1
-                snippet = " ".join(match.group(0).split())
-                problems.append(
-                    f"{playbook.relative_to(root)}:{lineno}: hardcoded trunk ref: {snippet}; "
-                    "use origin/HEAD or the forge default"
-                )
+        for lineno, line in enumerate(text.splitlines(), 1):
+            command_part = re.split(r"\s--(?:\s|$)", line)[0]
+            for pattern in (HARDCODED_TRUNK_RE, GIT_COMMAND_TRUNK_RE):
+                target = line if pattern is HARDCODED_TRUNK_RE else command_part
+                for match in pattern.finditer(target):
+                    snippet = " ".join(match.group(0).split())
+                    problems.append(
+                        f"{playbook.relative_to(root)}:{lineno}: hardcoded trunk ref: {snippet}; "
+                        "use origin/HEAD or the forge default"
+                    )
     return problems
 
 
