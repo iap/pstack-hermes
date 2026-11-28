@@ -33,10 +33,12 @@ main_wt=$(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)
 # upstream only when that branch is its remote's default, so a checked-out
 # feature branch cannot select the wrong trunk remote. Both network steps are
 # best-effort so the audit still works offline.
-main_branch=$(git -C "$main_wt" symbolic-ref --quiet --short HEAD 2>/dev/null)
+main_ref=$(git -C "$main_wt" symbolic-ref --quiet HEAD 2>/dev/null || true)
+main_branch=${main_ref#refs/heads/}
 candidate_remote=$(git -C "$main_wt" config --get "branch.$main_branch.remote" 2>/dev/null || true)
 candidate_merge=$(git -C "$main_wt" config --get "branch.$main_branch.merge" 2>/dev/null || true)
 default_remote=""
+discovery_failed=no
 if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
 	git -C "$main_wt" fetch "$candidate_remote" --quiet 2>/dev/null || true
 	candidate_head=""
@@ -46,27 +48,33 @@ if [ -n "$candidate_remote" ] && [ "$candidate_remote" != "." ]; then
 		advertised=$(git -C "$main_wt" ls-remote --symref "$candidate_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
 		[ -n "$advertised" ] && candidate_head="refs/remotes/$candidate_remote/${advertised#refs/heads/}"
 	fi
-	if [ -n "$candidate_head" ] && [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
+	if [ -z "$candidate_head" ]; then
+		discovery_failed=yes
+	elif [ "$candidate_head" = "refs/remotes/$candidate_remote/${candidate_merge#refs/heads/}" ]; then
 		default_remote=$candidate_remote
 	fi
 fi
-[ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
-[ -z "$default_remote" ] && default_remote=origin
 fetched_refs=""
-git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
 trunk=""
-if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
-	trunk_ref=$(git symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
-	trunk=${trunk_ref#"refs/remotes/$default_remote/"}
+if [ "$discovery_failed" = yes ]; then
+	echo "warn: trunk remote discovery failed; merged column unavailable" >&2
 else
-	remote_head=$(git ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
-	trunk=${remote_head#refs/heads/}
-fi
-if [ -z "$trunk" ]; then
-	echo "warn: remote default branch unknown; merged column unavailable" >&2
-else
-	git fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
-	fetched_refs="$default_remote/$trunk"
+	[ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
+	[ -z "$default_remote" ] && default_remote=origin
+	git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
+	if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
+		trunk_ref=$(git symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
+		trunk=${trunk_ref#"refs/remotes/$default_remote/"}
+	else
+		remote_head=$(git ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+		trunk=${remote_head#refs/heads/}
+	fi
+	if [ -z "$trunk" ]; then
+		echo "warn: remote default branch unknown; merged column unavailable" >&2
+	else
+		git fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
+		fetched_refs="$default_remote/$trunk"
+	fi
 fi
 
 # PR state by branch, fetched once. Empty if gh is unavailable.

@@ -73,7 +73,7 @@ HARDCODED_TRUNK_RE = re.compile(
     r"|\b(?:branch|branches|worktree|reset)\b[^.\n]{0,40}`(?:[A-Za-z0-9][A-Za-z0-9_.-]*/)?(?:master|main)`"
 )
 GIT_COMMAND_TRUNK_RE = re.compile(
-    r"\bgit (?:reset --hard|worktree add|checkout|switch|branch|rebase|merge)"
+    r"\bgit (?:reset --hard|worktree add|checkout|switch|branch|rebase|merge|diff|log)"
     r"[^`\n;&|]*(?<![\w/$/-])(?:master|main)\b"
     r"|\bgit show [^`\n;&|]*(?<![\w/$/-])(?:master|main):"
 )

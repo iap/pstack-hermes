@@ -683,10 +683,12 @@ def test_hardcoded_trunk_ref_in_playbook_fails(tmp_path):
         "- [ ] `git reset --hard upstream/main` for a fork.\n"
         "- [ ] `git show upstream/main:skills/swarm/SKILL.md`\n"
         "- [ ] Run `git rebase main` before review.\n"
+        "- [ ] Run `git diff master...HEAD` after review.\n"
+        "- [ ] Run `git log main` for history.\n"
     )
     problems = check_docs.check_portable_trunk_refs(tmp_path)
 
-    assert len(problems) == 7
+    assert len(problems) == 9
     assert all("hardcoded trunk ref" in p for p in problems)
 
 
@@ -698,7 +700,9 @@ def test_dynamic_trunk_ref_in_playbook_passes(tmp_path):
         "- [ ] Run `git reset --hard $main` for the configured trunk.\n"
         "- [ ] Run `git worktree add ../main` for a named path.\n"
         "- [ ] Run `git switch feature-main` for a non-trunk branch.\n"
-        "- [ ] Run `git switch \"$trunk\" && echo main` for the resolved trunk.\n",
+        "- [ ] Run `git switch \"$trunk\" && echo main` for the resolved trunk.\n"
+        "- [ ] Run `git diff \"$trunk\"...HEAD` for the resolved trunk.\n"
+        "- [ ] Run `git log \"$trunk\"` for the resolved trunk.\n",
     )
 
     assert check_docs.check_portable_trunk_refs(tmp_path) == []

@@ -48,7 +48,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] Spawn one owner per PR with the full lifecycle the execution playbook names.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges, or base it on the parent branch when the execution playbook stacks.
-  - [ ] <PR id> and <PR id> are independent and first. Both branch from the resolved trunk (`<trunk-remote>/HEAD`, or the fetched forge-default ref when that ref is absent).
+  - [ ] <PR id> and <PR id> are independent and first. Both branch from the resolved trunk (`refs/remotes/<trunk-remote>/HEAD`, or the fetched `refs/remotes/<trunk-remote>/<branch>` ref when that ref is absent).
   - [ ] <PR id> after <PR id>.
 - [ ] Hold the file boundaries. <PR id or class> touches only `<glob>`.
 - [ ] Hold the review gate. <PR ids> change an interaction. They wait for the operator's review in chat with screenshots and a video before merge.

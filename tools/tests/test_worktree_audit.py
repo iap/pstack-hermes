@@ -112,7 +112,7 @@ def test_audit_preserves_slash_named_remote(tmp_path):
     )
     result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch team/upstream; merged and pushed columns may be stale" in result.stderr
+    assert "trunk remote discovery failed; merged column unavailable" in result.stderr
 
 
 def test_audit_invoked_from_linked_worktree_uses_main_upstream(tmp_path):
@@ -121,7 +121,7 @@ def test_audit_invoked_from_linked_worktree_uses_main_upstream(tmp_path):
 
     result = subprocess.run(["bash", str(AUDIT), str(wt)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch origin; merged and pushed columns may be stale" in result.stderr
+    assert "trunk remote discovery failed; merged column unavailable" in result.stderr
 
 
 def test_audit_checks_feature_push_remote_separately(tmp_path):
@@ -163,7 +163,7 @@ def test_audit_handles_remote_name_with_hash(tmp_path):
 
     result = subprocess.run(["bash", str(AUDIT), str(repo)], capture_output=True, text=True, check=False)
 
-    assert "could not fetch team#upstream; merged and pushed columns may be stale" in result.stderr
+    assert "trunk remote discovery failed; merged column unavailable" in result.stderr
 
 
 def test_audit_handles_detached_main_worktree(tmp_path):
