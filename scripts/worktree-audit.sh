@@ -61,18 +61,18 @@ if [ "$discovery_failed" = yes ]; then
 else
 	[ -z "$default_remote" ] && default_remote=$(git -C "$main_wt" remote 2>/dev/null | sed -n '1p')
 	[ -z "$default_remote" ] && default_remote=origin
-	git fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
-	if git remote set-head "$default_remote" --auto >/dev/null 2>&1; then
-		trunk_ref=$(git symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
+	git -C "$main_wt" fetch "$default_remote" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote; merged and pushed columns may be stale" >&2
+	if git -C "$main_wt" remote set-head "$default_remote" --auto >/dev/null 2>&1; then
+		trunk_ref=$(git -C "$main_wt" symbolic-ref --quiet "refs/remotes/$default_remote/HEAD" 2>/dev/null || true)
 		trunk=${trunk_ref#"refs/remotes/$default_remote/"}
 	else
-		remote_head=$(git ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
+		remote_head=$(git -C "$main_wt" ls-remote --symref "$default_remote" HEAD 2>/dev/null | awk '$1 == "ref:" { print $2; exit }')
 		trunk=${remote_head#refs/heads/}
 	fi
 	if [ -z "$trunk" ]; then
 		echo "warn: remote default branch unknown; merged column unavailable" >&2
 	else
-		git fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
+		git -C "$main_wt" fetch "$default_remote" "+refs/heads/$trunk:refs/remotes/$default_remote/$trunk" --quiet 2>/dev/null || echo "warn: could not fetch $default_remote/$trunk; merged column may be stale" >&2
 		fetched_refs="$default_remote/$trunk"
 	fi
 fi
@@ -130,7 +130,7 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | while
 	upstream_branch=$branch
 	if [ -n "$merge_ref" ]; then upstream_branch=${merge_ref#refs/heads/}; fi
 	if [ -n "$branch" ] && ! printf '%s\n' "$fetched_refs" | grep -qxF "$compare_ref"; then
-		git fetch "$push_remote" "+refs/heads/$upstream_branch:refs/remotes/$compare_ref" --quiet 2>/dev/null || echo "warn: could not fetch $compare_ref; pushed column may be stale" >&2
+		git -C "$wt" fetch "$push_remote" "+refs/heads/$upstream_branch:refs/remotes/$compare_ref" --quiet 2>/dev/null || echo "warn: could not fetch $compare_ref; pushed column may be stale" >&2
 		fetched_refs="$fetched_refs
 $compare_ref"
 	fi
